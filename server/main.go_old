@@ -1,0 +1,30 @@
+package main
+
+import "fmt"
+
+var arr = []int{}
+
+type AirConditioner struct {
+	Id string
+	name string
+}
+
+func main() {
+	fmt.Println("hello")
+
+	x := []int{1, 2, 3, 4}
+	y := make([]int, 4)
+	num := copy(y, x)
+	fmt.Println(x, y, num)
+
+	totalWins := map[string]int{}
+	fmt.Println(totalWins)
+
+	airConditioner := AirConditioner{
+		Id: "",
+		name: "",
+	}
+	fmt.Println(airConditioner)
+
+
+}
