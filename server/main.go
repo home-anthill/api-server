@@ -32,7 +32,7 @@ var acsHandler *handlers.ACsHandler
 
 func init() {
 	ctx := context.Background()
-	log.Println("COnnecting to MongoDB...")
+	log.Println("Connecting to MongoDB...")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017/"))
 	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		log.Fatal(err)
@@ -54,13 +54,13 @@ func main() {
 	router.DELETE("/homes/:id", homesHandler.DeleteHomeHandler)
 	router.GET("/homes/:id/rooms/", homesHandler.GetRoomsHandler)
 	router.POST("/homes/:id/rooms/", homesHandler.PostRoomHandler)
-	//router.PUT("/homes/:id/rooms/:id", homesHandler.PutRoomHandler)
-	//router.DELETE("/homes/:id/rooms/:id", homesHandler.DeleteRoomHandler)
+	router.PUT("/homes/:id/rooms/:rid", homesHandler.PutRoomHandler)
+	router.DELETE("/homes/:id/rooms/:rid", homesHandler.DeleteRoomHandler)
 
-	router.GET("/airconditioner", acsHandler.GetACsHandler)
-	router.POST("/airconditioner", acsHandler.PostACHandler)
-	router.PUT("/airconditioner/:id", acsHandler.PutACHandler)
-	router.DELETE("/airconditioner/:id", acsHandler.DeleteACHandler)
+	router.GET("/airconditioners", acsHandler.GetACsHandler)
+	router.POST("/airconditioners", acsHandler.PostACHandler)
+	router.PUT("/airconditioners/:id", acsHandler.PutACHandler)
+	router.DELETE("/airconditioners/:id", acsHandler.DeleteACHandler)
 
 	router.Run(":8080")
 }
