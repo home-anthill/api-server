@@ -106,13 +106,15 @@ func (handler *ACsHandler) PutACHandler(c *gin.Context) {
 	objectId, _ := primitive.ObjectIDFromHex(id)
 	_, err := handler.collection.UpdateOne(handler.ctx, bson.M{
 		"_id": objectId,
-	}, bson.D{{"$set", bson.D{
-		{"name", ac.Name},
-		{"manufacturer", ac.Manufacturer},
-		{"model", ac.Model},
-		{"status", ac.Status},
-		{"modifiedAt", time.Now()},
-	}}})
+	}, bson.M{
+		"$set": bson.M{
+			"name":         ac.Name,
+			"manufacturer": ac.Manufacturer,
+			"model":        ac.Model,
+			"status":       ac.Status,
+			"modifiedAt":   time.Now(),
+		},
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -104,12 +104,14 @@ func (handler *HomesHandler) PutHomeHandler(c *gin.Context) {
 	objectId, _ := primitive.ObjectIDFromHex(id)
 	_, err := handler.collection.UpdateOne(handler.ctx, bson.M{
 		"_id": objectId,
-	}, bson.D{{"$set", bson.D{
-		{"name", home.Name},
-		{"location", home.Location},
-		{"rooms", home.Rooms},
-		{"modifiedAt", time.Now()},
-	}}})
+	}, bson.M{
+		"$set": bson.M{
+			"name":       home.Name,
+			"location":   home.Location,
+			"rooms":      home.Rooms,
+			"modifiedAt": time.Now(),
+		},
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -200,10 +202,12 @@ func (handler *HomesHandler) PostRoomHandler(c *gin.Context) {
 
 	_, err2 := handler.collection.UpdateOne(handler.ctx, bson.M{
 		"_id": objectId,
-	}, bson.D{{"$set", bson.D{
-		{"rooms", home.Rooms},
-		{"modifiedAt", time.Now()},
-	}}})
+	}, bson.M{
+		"$set": bson.M{
+			"rooms":      home.Rooms,
+			"modifiedAt": time.Now(),
+		},
+	})
 	if err2 != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

@@ -14,5 +14,5 @@ vet: fmt
 .PHONY:vet
 
 build: vet
-	go build main.go
+	go build -o air-conditioner main.go
 .PHONY: build
