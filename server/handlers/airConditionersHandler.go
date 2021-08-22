@@ -71,6 +71,17 @@ func (handler *ACsHandler) PostACHandler(c *gin.Context) {
 	ac.ID = primitive.NewObjectID()
 	ac.CreatedAt = time.Now()
 	ac.ModifiedAt = time.Now()
+
+	// set default status values
+	var status models.Status
+	status.On = true
+	status.Mode = 0
+	status.TargetTemperature = 0
+	status.Fan.Mode = 0
+	status.Fan.Speed = 0
+
+	ac.Status = status
+
 	_, err := handler.collection.InsertOne(handler.ctx, ac)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new ac"})
