@@ -23,6 +23,7 @@ type Status struct {
 type AirConditioner struct {
 	//swagger:ignore
 	ID           primitive.ObjectID `json:"id" bson:"_id"`
+	Mac          string             `json:"mac" bson:"mac"`
 	Name         string             `json:"name" bson:"name"`
 	Manufacturer string             `json:"manufacturer" bson:"manufacturer"`
 	Model        string             `json:"model" bson:"model"`

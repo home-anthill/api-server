@@ -6,9 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
 	"net/http"
+	"time"
 )
 
 type DevicesHandler struct {
@@ -21,6 +24,54 @@ func NewDevicesHandler(ctx context.Context, collection *mongo.Collection) *Devic
 		collection: collection,
 		ctx:        ctx,
 	}
+}
+
+func (handler *DevicesHandler) PostRegisterDeviceHandler(c *gin.Context) {
+	// receive a payload from devices with
+	var registerBody models.Register
+	if err := c.ShouldBindJSON(&registerBody); err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		return
+	}
+
+	// search and skip db add if already exists
+	var ac models.AirConditioner
+	err := handler.collection.FindOne(handler.ctx, bson.M{
+		"mac": registerBody.Mac,
+	}).Decode(&ac)
+	if err == nil {
+		// if err == nil => ac found in db (already exists)
+		// skip register process returning "already registered"
+		c.JSON(http.StatusOK, gin.H{"message": "already registered"})
+		return
+	}
+
+	var newAc models.AirConditioner
+	newAc.ID = primitive.NewObjectID()
+	newAc.Mac = registerBody.Mac
+	newAc.Name = registerBody.Name
+	newAc.Manufacturer = registerBody.Manufacturer
+	newAc.Model = registerBody.Model
+	newAc.CreatedAt = time.Now()
+	newAc.ModifiedAt = time.Now()
+
+	// set default status values
+	var status models.Status
+	status.On = true
+	status.Mode = 0
+	status.TargetTemperature = 0
+	status.Fan.Mode = 0
+	status.Fan.Speed = 0
+
+	newAc.Status = status
+
+	_, err2 := handler.collection.InsertOne(handler.ctx, newAc)
+	if err2 != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new ac"})
+		return
+	}
+	c.JSON(http.StatusOK, newAc)
 }
 
 func (handler *DevicesHandler) PostOnOffDeviceHandler(c *gin.Context) {

@@ -31,6 +31,8 @@ func main() {
 
 	router := gin.Default()
 
+	router.POST("/devices/register", devicesHandler.PostRegisterDeviceHandler)
+
 	router.POST("/devices/onoff", devicesHandler.PostOnOffDeviceHandler)
 	router.POST("/devices/temperature", devicesHandler.PostTemperatureDeviceHandler)
 	router.POST("/devices/mode", devicesHandler.PostModeDeviceHandler)
