@@ -32,6 +32,7 @@ import (
 var authHandler *handlers.AuthHandler
 var homesHandler *handlers.HomesHandler
 var acsHandler *handlers.ACsHandler
+var profilesHandler *handlers.ProfilesHandler
 
 func init() {
 	ctx := context.Background()
@@ -48,6 +49,7 @@ func init() {
 	authHandler = handlers.NewAuthHandler(ctx, collectionUsers)
 	homesHandler = handlers.NewHomesHandler(ctx, collectionHomes)
 	acsHandler = handlers.NewACsHandler(ctx, collectionACs)
+	profilesHandler = handlers.NewProfilesHandler(ctx, collectionUsers)
 }
 
 func main() {
@@ -92,10 +94,12 @@ func main() {
 		private.POST("/homes", homesHandler.PostHomeHandler)
 		private.PUT("/homes/:id", homesHandler.PutHomeHandler)
 		private.DELETE("/homes/:id", homesHandler.DeleteHomeHandler)
-		private.GET("/homes/:id/rooms/", homesHandler.GetRoomsHandler)
-		private.POST("/homes/:id/rooms/", homesHandler.PostRoomHandler)
+		private.GET("/homes/:id/rooms", homesHandler.GetRoomsHandler)
+		private.POST("/homes/:id/rooms", homesHandler.PostRoomHandler)
 		private.PUT("/homes/:id/rooms/:rid", homesHandler.PutRoomHandler)
 		private.DELETE("/homes/:id/rooms/:rid", homesHandler.DeleteRoomHandler)
+
+		private.POST("/profiles/:id/tokens", profilesHandler.PostProfilesTokenHandler)
 
 		private.GET("/airconditioners", acsHandler.GetACsHandler)
 		private.POST("/airconditioners", acsHandler.PostACHandler)
