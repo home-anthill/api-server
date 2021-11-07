@@ -7,3 +7,5 @@ build/
 public
 public-old
 air-conditioner
+
+device/secrets.h
