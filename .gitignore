@@ -1,5 +1,9 @@
 .idea/
 .DS_Store
 
+tmp/
+build/
+
 public
+public-old
 air-conditioner

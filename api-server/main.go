@@ -17,8 +17,10 @@
 package main
 
 import (
+	amqpSubscriber "air-conditioner/amqp-subscriber"
 	"air-conditioner/github"
 	"air-conditioner/handlers"
+	"air-conditioner/ws"
 	"context"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/static"
@@ -33,6 +35,8 @@ var authHandler *handlers.AuthHandler
 var homesHandler *handlers.HomesHandler
 var acsHandler *handlers.ACsHandler
 var profilesHandler *handlers.ProfilesHandler
+
+
 
 func init() {
 	ctx := context.Background()
@@ -53,14 +57,25 @@ func init() {
 }
 
 func main() {
+	amqpSubscriber.InitAmqpSubscriber()
+
+	hubInstance := ws.GetInstance()
+	go hubInstance.Run()
+
 	router := gin.Default()
+
+	// implement websocket to receive realtime events from rabbitmq via amqp
+	// this service should be protected by authHandler
+	router.GET("/ws", func (c *gin.Context) {
+		ws.ServeWs(c.Writer, c.Request)
+	})
 
 	// - No origin allowed by default
 	// - GET,POST, PUT, HEAD methods
 	// - Credentials share disabled
 	// - Preflight requests cached for 12 hours
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:8080"}
+	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:8082"}
 	// config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
 	router.Use(cors.New(config))
 
@@ -68,7 +83,7 @@ func main() {
 	router.Use(static.Serve("/postlogin", static.LocalFile("./public", true)))
 
 	// init settings for github auth
-	redirectURL := "http://localhost:8080/auth/"
+	redirectURL := "http://localhost:8082/auth/"
 	credFile := "./credentials.json"
 	// You have to select your own scope from here -> https://developer.github.com/v3/oauth/#scopes
 	scopes := []string{"repo"}
@@ -107,7 +122,7 @@ func main() {
 		private.DELETE("/airconditioners/:id", acsHandler.DeleteACHandler)
 	}
 
-	err := router.Run(":8080")
+	err := router.Run(":8082")
 	if err != nil {
 		panic(err)
 	}

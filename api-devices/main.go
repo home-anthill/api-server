@@ -1,6 +1,7 @@
 package main
 
 import (
+	amqpPublisher "air-conditioner/amqp-publisher"
 	"air-conditioner/handlers"
 	mqttClient "air-conditioner/mqtt-client"
 	"context"
@@ -27,6 +28,7 @@ func init() {
 }
 
 func main() {
+	amqpPublisher.InitAmqpPublisher()
 	mqttClient.InitMqtt()
 
 	router := gin.Default()

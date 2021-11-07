@@ -1,8 +1,10 @@
 package mqtt_client
 
 import (
+	amqpPublisher "air-conditioner/amqp-publisher"
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"strings"
 	"time"
 )
 
@@ -39,10 +41,19 @@ func SendSwing(uuid string, messageJSON []byte) mqtt.Token {
 	return c.Publish("devices/"+uuid+"/swing", qos, false, messageJSON)
 }
 
+func PublishMessage(msg mqtt.Message) {
+	fmt.Printf("MessageID: %s\n", msg.MessageID())
+	fmt.Printf("Topic: %s\n", msg.Topic())
+	fmt.Printf("Payload: %s\n", msg.Payload())
+
+	uuid := strings.Split(msg.Topic(), "/")[1]
+	amqpPublisher.Publish(uuid, msg.Payload())
+}
+
 func InitMqtt() {
 	//mqtt.DEBUG = log.New(os.Stdout, "", 0)
 	//mqtt.ERROR = log.New(os.Stdout, "", 0)
-	opts := mqtt.NewClientOptions().AddBroker("tcp://192.168.1.71:1883").SetClientID("apiServer")
+	opts := mqtt.NewClientOptions().AddBroker("tcp://localhost:1883").SetClientID("apiDevices")
 	opts.SetKeepAlive(2 * time.Second)
 	opts.SetDefaultPublishHandler(defaultHandler)
 	opts.SetPingTimeout(1 * time.Second)
@@ -52,39 +63,20 @@ func InitMqtt() {
 		panic(token.Error())
 	}
 
-	c.Subscribe("devices/*/onoff", qos, func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("MessageID: %s\n", msg.MessageID())
-		fmt.Printf("Topic: %s\n", msg.Topic())
-		fmt.Printf("Payload: %s\n", msg.Payload())
-		// TODO receive changes from devices and update api-server/apps and so on in next releases
+	c.Subscribe("devices/+/onoff", qos, func(client mqtt.Client, msg mqtt.Message) {
+		PublishMessage(msg)
 	})
-	c.Subscribe("devices/*/temperature", qos, func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("MessageID: %s\n", msg.MessageID())
-		fmt.Printf("Topic: %s\n", msg.Topic())
-		fmt.Printf("Payload: %s\n", msg.Payload())
-		// TODO receive changes from devices and update api-server/apps and so on in next releases
+	c.Subscribe("devices/+/temperature", qos, func(client mqtt.Client, msg mqtt.Message) {
+		PublishMessage(msg)
 	})
-	c.Subscribe("devices/*/mode", qos, func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("MessageID: %s\n", msg.MessageID())
-		fmt.Printf("Topic: %s\n", msg.Topic())
-		fmt.Printf("Payload: %s\n", msg.Payload())
-		// TODO receive changes from devices and update api-server/apps and so on in next releases
+	c.Subscribe("devices/+/mode", qos, func(client mqtt.Client, msg mqtt.Message) {
+		PublishMessage(msg)
 	})
-	c.Subscribe("devices/*/fan", qos, func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("MessageID: %s\n", msg.MessageID())
-		fmt.Printf("Topic: %s\n", msg.Topic())
-		fmt.Printf("Payload: %s\n", msg.Payload())
-		// TODO receive changes from devices and update api-server/apps and so on in next releases
+	c.Subscribe("devices/+/fan", qos, func(client mqtt.Client, msg mqtt.Message) {
+		PublishMessage(msg)
 	})
-	c.Subscribe("devices/*/swing", qos, func(client mqtt.Client, msg mqtt.Message) {
-		fmt.Printf("MessageID: %s\n", msg.MessageID())
-		fmt.Printf("Topic: %s\n", msg.Topic())
-		fmt.Printf("Payload: %s\n", msg.Payload())
-		// TODO receive changes from devices and update api-server/apps and so on in next releases
+	c.Subscribe("devices/+/swing", qos, func(client mqtt.Client, msg mqtt.Message) {
+		PublishMessage(msg)
 	})
-
 	time.Sleep(6 * time.Second)
-
-	//c.Disconnect(250)
-	//time.Sleep(1 * time.Second)
 }

@@ -14,6 +14,8 @@ import (
 	"time"
 )
 
+const TIMEOUT = 3 * time.Second
+
 type DevicesHandler struct {
 	collection *mongo.Collection
 	ctx        context.Context
@@ -88,16 +90,24 @@ func (handler *DevicesHandler) PostOnOffDeviceHandler(c *gin.Context) {
 		return
 	}
 	t := mqttClient.SendOnOff(onoffValue.UUID, messageJSON)
-	select {
-	case <- t.Done():
-		if t.Error() != nil {
-			fmt.Println(t.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
-		} else {
-			fmt.Println("sending response")
-			c.JSON(http.StatusOK, gin.H{"message": "onoff sent"})
-		}
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
+	} else {
+		fmt.Println("sending response")
+		c.JSON(http.StatusOK, gin.H{"message": "onoff sent"})
 	}
+	//select {
+	//case <- t.Done():
+	//	if t.Error() != nil {
+	//		fmt.Println(t.Error())
+	//		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
+	//	} else {
+	//		fmt.Println("sending response")
+	//		c.JSON(http.StatusOK, gin.H{"message": "onoff sent"})
+	//	}
+	//}
 }
 
 func (handler *DevicesHandler) PostTemperatureDeviceHandler(c *gin.Context) {
@@ -114,15 +124,13 @@ func (handler *DevicesHandler) PostTemperatureDeviceHandler(c *gin.Context) {
 		return
 	}
 	t := mqttClient.SendTemperature(temperatureValue.UUID, messageJSON)
-	select {
-	case <- t.Done():
-		if t.Error() != nil {
-			fmt.Println(t.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
-		} else {
-			fmt.Println("sending response")
-			c.JSON(http.StatusOK, gin.H{"message": "temperature sent"})
-		}
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
+	} else {
+		fmt.Println("sending response")
+		c.JSON(http.StatusOK, gin.H{"message": "temperature sent"})
 	}
 }
 
@@ -140,15 +148,13 @@ func (handler *DevicesHandler) PostModeDeviceHandler(c *gin.Context) {
 		return
 	}
 	t := mqttClient.SendMode(modeValue.UUID, messageJSON)
-	select {
-	case <- t.Done():
-		if t.Error() != nil {
-			fmt.Println(t.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
-		} else {
-			fmt.Println("sending response")
-			c.JSON(http.StatusOK, gin.H{"message": "mode sent"})
-		}
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
+	} else {
+		fmt.Println("sending response")
+		c.JSON(http.StatusOK, gin.H{"message": "mode sent"})
 	}
 }
 
@@ -166,15 +172,13 @@ func (handler *DevicesHandler) PostFanDeviceHandler(c *gin.Context) {
 		return
 	}
 	t := mqttClient.SendFan(fanValue.UUID, messageJSON)
-	select {
-	case <- t.Done():
-		if t.Error() != nil {
-			fmt.Println(t.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
-		} else {
-			fmt.Println("sending response")
-			c.JSON(http.StatusOK, gin.H{"message": "fan sent"})
-		}
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
+	} else {
+		fmt.Println("sending response")
+		c.JSON(http.StatusOK, gin.H{"message": "fan sent"})
 	}
 }
 
@@ -192,14 +196,12 @@ func (handler *DevicesHandler) PostSwingDeviceHandler(c *gin.Context) {
 		return
 	}
 	t := mqttClient.SendSwing(swingValue.UUID, messageJSON)
-	select {
-	case <- t.Done():
-		if t.Error() != nil {
-			fmt.Println(t.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
-		} else {
-			fmt.Println("sending response")
-			c.JSON(http.StatusOK, gin.H{"message": "swing sent"})
-		}
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot send message to device"})
+	} else {
+		fmt.Println("sending response")
+		c.JSON(http.StatusOK, gin.H{"message": "swing sent"})
 	}
 }

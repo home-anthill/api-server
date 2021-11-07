@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	go.mongodb.org/mongo-driver v1.4.5
 	golang.org/x/net v0.0.0-20200822124328-c89045814202
+	github.com/rabbitmq/amqp091-go v1.1.0
 )
 
 require (
