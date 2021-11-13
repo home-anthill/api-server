@@ -23,12 +23,13 @@ import (
 	"air-conditioner/ws"
 	"context"
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"log"
+	"path"
+	"path/filepath"
 )
 
 var authHandler *handlers.AuthHandler
@@ -79,8 +80,22 @@ func main() {
 	// config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
 	router.Use(cors.New(config))
 
-	router.Use(static.Serve("/", static.LocalFile("./public", true)))
-	router.Use(static.Serve("/postlogin", static.LocalFile("./public", true)))
+	// GIN is terrible with SPA, because you can configure static.serve
+	// but if you refresh the SPA it will return an error and you cannot add something like /*
+	// The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
+	// to the index.html page
+	//router.Use(static.Serve("/", static.LocalFile("./public", false)))
+	router.NoRoute(func(c *gin.Context) {
+		dir, file := path.Split(c.Request.RequestURI)
+		ext := filepath.Ext(file)
+		allowedExts := []string{".html", ".htm", ".js", ".css", ".json", ".txt", ".jpeg", ".jpg", ".png", ".ico", ".map", ".svg"}
+		_, found := Find(allowedExts, ext)
+		if found {
+			c.File("./public" + path.Join(dir, file))
+		} else {
+			c.File("./public/index.html")
+		}
+	})
 
 	// init settings for github auth
 	redirectURL := "http://localhost:8082/auth/"
@@ -92,7 +107,7 @@ func main() {
 	sessionName := "goquestsession"
 	router.Use(github.Session(sessionName))
 
-	router.GET("/login", github.GetLoginURLHandler)
+	router.GET("/api/login", github.GetLoginURLHandler)
 
 	// protected url group
 	authorized := router.Group("/auth")
@@ -126,4 +141,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func Find(slice []string, val string) (int, bool) {
+	for i, item := range slice {
+		if item == val {
+			return i, true
+		}
+	}
+	return -1, false
 }
