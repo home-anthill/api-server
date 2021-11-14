@@ -1,27 +1,14 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import Navbar from '../components/Navbar';
-import { Outlet } from 'react-router-dom';
+import { Link, Outlet } from 'react-router-dom';
 
 export default function Main() {
-
-  // useEffect(() => {
-  //   let token = localStorage.getItem('token');
-  //   let headers = {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': 'Bearer ' + token
-  //   };
-  //
-  //   fetch('http://localhost:8082/api/homes', {headers})
-  //     .then(response => response.json())
-  //     .then(responseData => {
-  //       console.log('responseData', responseData);
-  //     });
-  // });
-
   return (
     <div>
       <Navbar/>
       <main>
+        <Link to="/main/homes">Homes</Link>
+        <Link to="/main/devices">Devices</Link>
         <Outlet/>
       </main>
     </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+
 import AuthContext from './AuthContext';
-import { setToken, removeToken, isLoggedIn } from './auth.util';
+import { setToken, removeToken, isLoggedIn } from './auth-utils';
 
 export default function AuthProvider({children}) {
   const [tokenState, setTokenState] = useState(null)

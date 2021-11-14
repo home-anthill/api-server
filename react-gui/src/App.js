@@ -1,18 +1,20 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import axios from "axios";
 
 import './App.css';
+
+import AuthProvider from './auth/AuthProvider';
+import RequireAuth from './auth/RequireAuth';
+import { removeToken } from './auth/auth-utils';
 
 import Login from './pages/Login';
 import PostLogin from './pages/PostLogin';
 import Main from './pages/Main';
 import Homes from './pages/home/Homes';
 import Devices from './pages/home/Devices';
-import AuthProvider from './AuthProvider';
-import RequireAuth from './RequireAuth';
-
-import axios from "axios";
-import { removeToken } from './auth.util';
+import HomeDetails from './pages/home/HomeDetails';
+import RoomDetails from './pages/home/RoomDetails';
 
 const responseSuccessHandler = response => {
   return response;
@@ -21,6 +23,7 @@ const responseErrorHandler = error => {
   if (error.response.status === 401) {
     console.log('responseErrorHandler - 401');
     removeToken();
+    window.location.href = 'http://localhost:8082';
     // Add your logic to
     //  1. Redirect user to LOGIN
     //  2. Reset authentication from localstorage/sessionstorage
@@ -43,6 +46,8 @@ export default function App() {
           <Route path="main" element={<Main/>}>
             <Route index element={<RequireAuth> <Homes/> </RequireAuth>}/>
             <Route index path="homes" element={<RequireAuth> <Homes/> </RequireAuth>}/>
+            <Route path="homes/:id" element={<RequireAuth> <HomeDetails/> </RequireAuth>}/>
+            <Route path="homes/:id/rooms/:rid" element={<RequireAuth> <RoomDetails/> </RequireAuth>}/>
             <Route path="devices" element={<RequireAuth><Devices/></RequireAuth>}/>
           </Route>
           <Route

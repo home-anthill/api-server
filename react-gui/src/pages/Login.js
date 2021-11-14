@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 
 import logo from '../logo.svg';
-import { isLoggedIn } from '../auth.util';
+import { isLoggedIn } from '../auth/auth-utils';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 

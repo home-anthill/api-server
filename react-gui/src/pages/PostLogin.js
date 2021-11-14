@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
-import useAuth from '../useAuth';
+import useAuth from '../auth/useAuth';
 
 export default function PostLogin() {
   const location = useLocation();
