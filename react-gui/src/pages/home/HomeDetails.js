@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import './HomeDetails.css';
 
-export default function HomeDetails({props}) {
+export default function HomeDetails() {
   const { state } = useLocation();
   const navigate = useNavigate();
 
