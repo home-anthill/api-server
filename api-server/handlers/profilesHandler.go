@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/gin-gonic/contrib/sessions"
 	"go.mongodb.org/mongo-driver/bson"
 	"net/http"
 	"time"
@@ -22,6 +23,19 @@ func NewProfilesHandler(ctx context.Context, collection *mongo.Collection) *Prof
 		collection: collection,
 		ctx:        ctx,
 	}
+}
+
+func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
+	var authUser models.User
+	var ok bool
+	session := sessions.Default(c)
+	mysession := session.Get("ginoauthgh")
+	if authUser, ok = mysession.(models.User); ok {
+		c.JSON(http.StatusOK, gin.H{"user": authUser})
+		return
+	}
+
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get user profile"})
 }
 
 // swagger:operation POST /profiles/:id/token
@@ -48,7 +62,7 @@ func (handler *ProfilesHandler) PostProfilesTokenHandler(c *gin.Context) {
 		"_id": id,
 	}, bson.M{
 		"$set": bson.M{
-			"apiToken": apiToken,
+			"apiToken":   apiToken,
 			"modifiedAt": time.Now(),
 		},
 	})

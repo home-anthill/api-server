@@ -129,6 +129,7 @@ func main() {
 		private.PUT("/homes/:id/rooms/:rid", homesHandler.PutRoomHandler)
 		private.DELETE("/homes/:id/rooms/:rid", homesHandler.DeleteRoomHandler)
 
+		private.GET("/profile", profilesHandler.GetProfileHandler)
 		private.POST("/profiles/:id/tokens", profilesHandler.PostProfilesTokenHandler)
 
 		private.GET("/airconditioners", acsHandler.GetACsHandler)
