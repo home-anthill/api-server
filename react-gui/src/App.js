@@ -16,6 +16,9 @@ import Devices from './pages/home/Devices';
 import HomeDetails from './pages/home/HomeDetails';
 import RoomDetails from './pages/home/RoomDetails';
 import Profile from './pages/Profile';
+import NewHome from './pages/home/NewHome';
+import EditHome from './pages/home/EditHome';
+import DeviceDetails from './pages/home/DeviceDetails';
 
 const responseSuccessHandler = response => {
   return response;
@@ -48,9 +51,12 @@ export default function App() {
           <Route path="main" element={<Main/>}>
             <Route index element={<RequireAuth> <Homes/> </RequireAuth>}/>
             <Route index path="homes" element={<RequireAuth> <Homes/> </RequireAuth>}/>
+            <Route path="homes/new" element={<RequireAuth> <NewHome/> </RequireAuth>}/>
             <Route path="homes/:id" element={<RequireAuth> <HomeDetails/> </RequireAuth>}/>
+            <Route path="homes/:id/edit" element={<RequireAuth> <EditHome/> </RequireAuth>}/>
             <Route path="homes/:id/rooms/:rid" element={<RequireAuth> <RoomDetails/> </RequireAuth>}/>
             <Route path="devices" element={<RequireAuth><Devices/></RequireAuth>}/>
+            <Route path="devices/:id" element={<RequireAuth><DeviceDetails/></RequireAuth>}/>
           </Route>
           <Route
             path="*"
