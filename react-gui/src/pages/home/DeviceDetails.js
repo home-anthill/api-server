@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 import './Devices.css';
@@ -9,7 +9,6 @@ const DEFAULT_ROOM = {name: '---'};
 
 export default function DeviceDetails() {
   const {state} = useLocation();
-  const navigate = useNavigate();
   const device = state.device;
 
   const [homes, setHomes] = useState([]);
@@ -20,6 +19,7 @@ export default function DeviceDetails() {
 
   useEffect(() => {
     async function fn() {
+      console.log('useEffect 1 - fn');
       const token = localStorage.getItem('token');
       const headers = {
         'Content-Type': 'application/json',
@@ -31,15 +31,33 @@ export default function DeviceDetails() {
         })
         const data = response.data;
         console.log('Homes: ', data);
-        setHomes([DEFAULT_HOME, ...data]);
+        const homes = [DEFAULT_HOME, ...data];
+        setHomes(homes);
+
+        let homeFound;
+        let roomFound;
+        homes.forEach(home => {
+          home.rooms.forEach(room => {
+            if (room && room.airConditioners && room.airConditioners.find(ac => ac === device.id)) {
+              homeFound = home;
+              roomFound = room;
+            }
+          });
+        });
+
+        console.log('Init: homeFound: ', homeFound);
+
+        if (homeFound) {
+          setSelectedHome(homeFound);
+          setRooms([DEFAULT_ROOM, ...homeFound.rooms])
+          setSelectedRoom(roomFound);
+        }
       } catch (err) {
         console.error('Cannot get homes');
       }
     }
 
     fn();
-    setSelectedHome(DEFAULT_HOME);
-    setSelectedRoom(DEFAULT_ROOM);
   }, []);
 
   function onChangeHome(event) {
@@ -66,7 +84,7 @@ export default function DeviceDetails() {
   }
 
   async function onSave() {
-    console.log('Saving with selectedHome and selectedRoom', {selectedHome, selectedRoom});
+    console.log('onSave', {selectedHome, selectedRoom});
     const token = localStorage.getItem('token');
     const headers = {
       'Content-Type': 'application/json',
@@ -95,13 +113,12 @@ export default function DeviceDetails() {
       <h1>Device</h1>
       <p>{device.name} - {device.manufacturer} - {device.model}</p>
       <br/>
-      <select name="home" id="homes" onChange={event => onChangeHome(event)}>
+      <select name="home" id="homes" onChange={event => onChangeHome(event)} value={selectedHome.id}>
         {
           homes.map(home => <option key={home.id} value={home.id}>{home.name}</option>)
         }
       </select>
-      <br/>
-      <select name="room" id="rooms" onChange={event => onChangeRoom(event)}>
+      <select name="room" id="rooms" onChange={event => onChangeRoom(event)} value={selectedRoom.id}>
         {
           rooms.map(room => <option key={room.id} value={room.id}>{room.name}</option>)
         }
