@@ -38,13 +38,14 @@ func NewAuthHandler(ctx context.Context, collection *mongo.Collection) *AuthHand
 }
 
 func (handler *AuthHandler) LoginCallbackHandler(c *gin.Context) {
-	var user = c.Value("user").(models.User)
+	var profile = c.Value("profile").(models.Profile)
+	fmt.Println("LoginCallbackHandler with profile = ", profile)
 
 	expirationTime := time.Now().Add(5 * time.Minute)
 
 	claims := &Claims{
-		ID: user.ID,
-		Name: user.Name,
+		ID: profile.Github.ID,
+		Name: profile.Github.Name,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 		},

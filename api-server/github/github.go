@@ -10,50 +10,54 @@ import (
 	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
+	"github.com/google/go-github/github"
+	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"golang.org/x/oauth2"
+	oauth2gh "golang.org/x/oauth2/github"
 	"io/ioutil"
 	"net/http"
 	"strings"
-
-	"github.com/google/go-github/github"
-	"golang.org/x/oauth2"
-	oauth2gh "golang.org/x/oauth2/github"
+	"time"
 )
 
-// Credentials stores google client-ids.
 type Credentials struct {
 	ClientID     string `json:"clientid"`
 	ClientSecret string `json:"secret"`
 }
 
-var (
-	conf  *oauth2.Config
-	cred  Credentials
-	state string
-	store sessions.CookieStore
-)
+var conf *oauth2.Config
+var state string
+var store sessions.CookieStore
+var collection *mongo.Collection
 
-func randToken() string {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		glog.Fatalf("[Gin-OAuth] Failed to read rand: %v\n", err)
-	}
-	return base64.StdEncoding.EncodeToString(b)
+func init() {
+	gob.Register(models.Profile{})
 }
 
-func Setup(redirectURL, credFile string, scopes []string, secret []byte) {
+func Setup(redirectURL string, credFile string, scopes []string, secret []byte, profilesCollection *mongo.Collection) {
+	// init some global vars
+	collection = profilesCollection
 	store = sessions.NewCookieStore(secret)
-	var c Credentials
+
+	// read credential from external json file
+	// with clientid and secret
+	var credentials Credentials
 	file, err := ioutil.ReadFile(credFile)
 	if err != nil {
 		glog.Fatalf("[Gin-OAuth] File error: %v\n", err)
 	}
-	err = json.Unmarshal(file, &c)
+	err = json.Unmarshal(file, &credentials)
 	if err != nil {
 		glog.Fatalf("[Gin-OAuth] Failed to unmarshal client credentials: %v\n", err)
 	}
+
+	// init global configuration with received params
 	conf = &oauth2.Config{
-		ClientID:     c.ClientID,
-		ClientSecret: c.ClientSecret,
+		ClientID:     credentials.ClientID,
+		ClientSecret: credentials.ClientSecret,
 		RedirectURL:  redirectURL,
 		Scopes:       scopes,
 		Endpoint:     oauth2gh.Endpoint,
@@ -69,7 +73,7 @@ func GetLoginURLHandler(c *gin.Context) {
 	session := sessions.Default(c)
 	session.Set("state", state)
 	session.Save()
-	loginURL := GetLoginURL(state)
+	loginURL := conf.AuthCodeURL(state)
 	noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
 	fmt.Println("noUnicodeString", noUnicodeString)
 	c.JSON(http.StatusOK, gin.H{
@@ -77,71 +81,118 @@ func GetLoginURLHandler(c *gin.Context) {
 	})
 }
 
-//func LoginHandler(ctx *gin.Context) {
-//	state = randToken()
-//	session := sessions.Default(ctx)
-//	session.Set("state", state)
-//	session.Save()
-//	ctx.Writer.Write([]byte("<html><title>Golang Github</title> <body> <a href='" + GetLoginURL(state) + "'><button>Login with GitHub!</button> </a> </body></html>"))
-//}
-
-func GetLoginURL(state string) string {
-	return conf.AuthCodeURL(state)
-}
-
-func init() {
-	gob.Register(models.User{})
-}
-
 func Auth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		var (
-			ok       bool
-			authUser models.User
-			user     *github.User
-		)
-
-		// Handle the exchange code to initiate a transport.
+		// read current profile from session.
+		// if available save it in the context
 		session := sessions.Default(ctx)
-		mysession := session.Get("ginoauthgh")
-		if authUser, ok = mysession.(models.User); ok {
-			ctx.Set("user", authUser)
+		if dbProfile, ok := session.Get("profile").(models.Profile); ok {
+			fmt.Println("***** Already in session **** - dbProfile: ", dbProfile)
+			ctx.Set("profile", dbProfile)
 			ctx.Next()
 			return
 		}
 
+		// read state query param from context (URL)
 		retrievedState := session.Get("state")
 		if retrievedState != ctx.Query("state") {
-			ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("Invalid session state: %s", retrievedState))
+			ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("invalid session state: %s", retrievedState))
 			return
 		}
 
 		// TODO: oauth2.NoContext -> context.Context from stdlib
+		// read the "code"
 		tok, err := conf.Exchange(oauth2.NoContext, ctx.Query("code"))
+		fmt.Println("===== tok =====", tok)
 		if err != nil {
-			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("Failed to do exchange: %v", err))
+			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to do exchange: %v", err))
 			return
 		}
+
+		// create a new GitHub API client to perform authentication
 		client := github.NewClient(conf.Client(oauth2.NoContext, tok))
-		user, _, err = client.Users.Get(oauth2.NoContext, "")
+		var githubClientUser *github.User
+		githubClientUser, _, err = client.Users.Get(oauth2.NoContext, "")
 		if err != nil {
-			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("Failed to get user: %v", err))
+			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
 			return
 		}
-
-		// save userinfo, which could be used in Handlers
-		authUser = models.User{
-			ID:    *user.ID,
-			Login: *user.Login,
-			Name:  *user.Name,
-			URL:   *user.URL,
+		fmt.Println("----------user: ", githubClientUser)
+		dbGithubUser := models.Github{
+			ID:        *githubClientUser.ID,
+			Login:     *githubClientUser.Login,
+			Name:      *githubClientUser.Name,
+			Email:     *githubClientUser.Email,
+			AvatarURL: *githubClientUser.AvatarURL,
 		}
-		ctx.Set("user", authUser)
 
-		// populate cookie
-		session.Set("ginoauthgh", authUser)
-		if err := session.Save(); err != nil {
-			glog.Errorf("Failed to save session: %v", err)
+		// find profile searching by github.id == githubClientUser.ID
+		var profileFound models.Profile
+		err = collection.FindOne(ctx, bson.M{
+			"github.id": githubClientUser.ID,
+		}).Decode(&profileFound)
+
+		if err == nil {
+			fmt.Println("Profile found!")
+			// profile found
+			ctx.Set("profile", profileFound)
+
+			// populate cookie
+			session.Set("profile", profileFound)
+			if err := session.Save(); err != nil {
+				glog.Errorf("Failed to save profile in session: %v", err)
+			}
+
+			//ctxUser2 := ctx.Value("profile").(models.Profile)
+			//fmt.Println("ctx get user - ctxUser2: ", ctxUser2)
+			//sessionUser := session.Get("profile").(models.Profile)
+			//fmt.Println("session profile - sessionUser: ", sessionUser)
+		} else {
+			// there is an error
+			if err == mongo.ErrNoDocuments {
+				fmt.Println("Profile not found, adding a new one...")
+				// profile not found, so create a new profile
+				var newProfile models.Profile
+				newProfile.ID = primitive.NewObjectID()
+				newProfile.Github = dbGithubUser
+				newProfile.ApiToken = uuid.NewString()
+				newProfile.Devices = []string{} // empty slice of strings
+				newProfile.CreatedAt = time.Now()
+				newProfile.ModifiedAt = time.Now()
+
+				ctx.Set("profile", newProfile)
+
+				// populate cookie
+				session.Set("profile", newProfile)
+				if err := session.Save(); err != nil {
+					glog.Errorf("Failed to save profile in session: %v", err)
+				}
+
+				//ctxUser2 := ctx.Value("profile").(models.Profile)
+				//fmt.Println("ctx get user - ctxUser2: ", ctxUser2)
+				//sessionUser := session.Get("profile").(models.Profile)
+				//fmt.Println("session profile - sessionUser: ", sessionUser)
+
+				// ad profile to db
+				_, err2 := collection.InsertOne(ctx, newProfile)
+				if err2 != nil {
+					ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("cannot save new profile on db: %v", err2))
+					return
+				}
+				fmt.Println("New profile added to db!")
+			} else {
+				// other error
+				fmt.Println("Cannot find profile on db. Unknown reason: ", err)
+				ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("cannot find profile in db: %v", err))
+			}
 		}
 	}
+}
+
+func randToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		glog.Fatalf("[Gin-OAuth] Failed to read rand: %v\n", err)
+	}
+	return base64.StdEncoding.EncodeToString(b)
 }

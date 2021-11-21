@@ -26,12 +26,11 @@ func NewProfilesHandler(ctx context.Context, collection *mongo.Collection) *Prof
 }
 
 func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
-	var authUser models.User
+	var profile models.Profile
 	var ok bool
-	session := sessions.Default(c)
-	mysession := session.Get("ginoauthgh")
-	if authUser, ok = mysession.(models.User); ok {
-		c.JSON(http.StatusOK, gin.H{"user": authUser})
+	session := sessions.Default(c).Get("profile")
+	if profile, ok = session.(models.Profile); ok {
+		c.JSON(http.StatusOK, gin.H{"profile": profile})
 		return
 	}
 
@@ -50,8 +49,8 @@ func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
 //         description: Invalid input
 func (handler *ProfilesHandler) PostProfilesTokenHandler(c *gin.Context) {
 	id := c.Param("id")
-	var user models.User
-	if err := c.ShouldBindJSON(&user); err != nil {
+	var profile models.Profile
+	if err := c.ShouldBindJSON(&profile); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

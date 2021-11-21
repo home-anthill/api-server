@@ -36,8 +36,8 @@ var authHandler *handlers.AuthHandler
 var homesHandler *handlers.HomesHandler
 var acsHandler *handlers.ACsHandler
 var profilesHandler *handlers.ProfilesHandler
-
-
+var registerHandler *handlers.RegisterHandler
+var collectionProfiles *mongo.Collection
 
 func init() {
 	ctx := context.Background()
@@ -47,14 +47,15 @@ func init() {
 		log.Fatal(err)
 	}
 	log.Println("Connected to MongoDB")
-	collectionUsers := client.Database("airConditionerDb").Collection("users")
+	collectionProfiles = client.Database("airConditionerDb").Collection("profiles")
 	collectionHomes := client.Database("airConditionerDb").Collection("homes")
 	collectionACs := client.Database("airConditionerDb").Collection("airconditioners")
 
-	authHandler = handlers.NewAuthHandler(ctx, collectionUsers)
+	authHandler = handlers.NewAuthHandler(ctx, collectionProfiles)
 	homesHandler = handlers.NewHomesHandler(ctx, collectionHomes)
-	acsHandler = handlers.NewACsHandler(ctx, collectionACs)
-	profilesHandler = handlers.NewProfilesHandler(ctx, collectionUsers)
+	acsHandler = handlers.NewACsHandler(ctx, collectionACs, collectionProfiles)
+	profilesHandler = handlers.NewProfilesHandler(ctx, collectionProfiles)
+	registerHandler = handlers.NewRegisterHandler(ctx, collectionACs, collectionProfiles)
 }
 
 func main() {
@@ -103,11 +104,13 @@ func main() {
 	// You have to select your own scope from here -> https://developer.github.com/v3/oauth/#scopes
 	scopes := []string{"repo"}
 	secret := []byte("secret")
-	github.Setup(redirectURL, credFile, scopes, secret)
-	sessionName := "goquestsession"
+	github.Setup(redirectURL, credFile, scopes, secret, collectionProfiles)
+	sessionName := "session"
 	router.Use(github.Session(sessionName))
 
 	router.GET("/api/login", github.GetLoginURLHandler)
+
+	router.POST("/api/register", registerHandler.PostRegisterHandler)
 
 	// protected url group
 	authorized := router.Group("/auth")

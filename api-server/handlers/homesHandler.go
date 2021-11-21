@@ -278,6 +278,7 @@ func (handler *HomesHandler) PutRoomHandler(c *gin.Context) {
 		"$set": bson.M{
 			"rooms.$[x].name":       room.Name,
 			"rooms.$[x].floor":      room.Floor,
+			"rooms.$[x].airConditioners":      room.AirConditioners,
 			"rooms.$[x].modifiedAt": time.Now(),
 		},
 	}

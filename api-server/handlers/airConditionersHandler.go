@@ -1,7 +1,8 @@
 package handlers
 
 import (
-	"log"
+	"fmt"
+	"github.com/gin-gonic/contrib/sessions"
 	"net/http"
 	"time"
 
@@ -14,14 +15,16 @@ import (
 )
 
 type ACsHandler struct {
-	collection *mongo.Collection
-	ctx        context.Context
+	collection        *mongo.Collection
+	collectionProfile *mongo.Collection
+	ctx               context.Context
 }
 
-func NewACsHandler(ctx context.Context, collection *mongo.Collection) *ACsHandler {
+func NewACsHandler(ctx context.Context, collection *mongo.Collection, collectionProfile *mongo.Collection) *ACsHandler {
 	return &ACsHandler{
-		collection: collection,
-		ctx:        ctx,
+		collection:        collection,
+		collectionProfile: collectionProfile,
+		ctx:               ctx,
 	}
 }
 
@@ -34,10 +37,33 @@ func NewACsHandler(ctx context.Context, collection *mongo.Collection) *ACsHandle
 //     '200':
 //         description: Successful operation
 func (handler *ACsHandler) GetACsHandler(c *gin.Context) {
-	log.Printf("Request to MongoDB")
-	cur, err := handler.collection.Find(handler.ctx, bson.M{})
+	// retrieve current profile ID from session
+	session := sessions.Default(c)
+	profileSession := session.Get("profile").(models.Profile)
+	fmt.Println("GetACsHandler with profileID = ", profileSession.ID)
+
+	// search profile in DB
+	// This is required to get fresh data from db, because data in session could be outdated
+	var profile models.Profile
+	err := handler.collectionProfile.FindOne(handler.ctx, bson.M{
+		"_id": profileSession.ID,
+	}).Decode(&profile)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
+		return
+	}
+	// extract a list of ObjectIDs from profile.devices
+	var objectIds []primitive.ObjectID
+	for _, val := range profile.Devices {
+		objectId, _ := primitive.ObjectIDFromHex(val)
+		objectIds = append(objectIds, objectId)
+	}
+	// extract ACs from db
+	cur, errAc := handler.collection.Find(handler.ctx, bson.M{
+		"_id": bson.M{"$in": objectIds},
+	})
+	if errAc != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errAc.Error()})
 		return
 	}
 	defer cur.Close(handler.ctx)
@@ -72,15 +98,15 @@ func (handler *ACsHandler) PostACHandler(c *gin.Context) {
 	ac.CreatedAt = time.Now()
 	ac.ModifiedAt = time.Now()
 
-	// set default status values
-	var status models.Status
-	status.On = true
-	status.Mode = 0
-	status.TargetTemperature = 0
-	status.Fan.Mode = 0
-	status.Fan.Speed = 0
-
-	ac.Status = status
+	//// set default status values
+	//var status models.Status
+	//status.On = true
+	//status.Mode = 0
+	//status.TargetTemperature = 0
+	//status.Fan.Mode = 0
+	//status.Fan.Speed = 0
+	//
+	//ac.Status = status
 
 	_, err := handler.collection.InsertOne(handler.ctx, ac)
 	if err != nil {
@@ -122,8 +148,8 @@ func (handler *ACsHandler) PutACHandler(c *gin.Context) {
 			"name":         ac.Name,
 			"manufacturer": ac.Manufacturer,
 			"model":        ac.Model,
-			"status":       ac.Status,
-			"modifiedAt":   time.Now(),
+			//"status":       ac.Status,
+			"modifiedAt": time.Now(),
 		},
 	})
 	if err != nil {
