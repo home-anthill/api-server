@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gin-gonic/contrib/sessions"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"net/http"
 	"time"
 
@@ -12,6 +13,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
 )
+
+type ProfileResponse struct {
+	ID     primitive.ObjectID `json:"id"`
+	Github GithubResponse     `json:"github"`
+}
+
+type GithubResponse struct {
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatarURL"`
+}
 
 type ProfilesHandler struct {
 	collection *mongo.Collection
@@ -30,7 +43,15 @@ func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
 	var ok bool
 	session := sessions.Default(c).Get("profile")
 	if profile, ok = session.(models.Profile); ok {
-		c.JSON(http.StatusOK, gin.H{"profile": profile})
+		var profileToReturn ProfileResponse
+		profileToReturn.ID = profile.ID
+		profileToReturn.Github = GithubResponse{
+			Email:     profile.Github.Email,
+			Login:     profile.Github.Login,
+			Name:      profile.Github.Name,
+			AvatarURL: profile.Github.AvatarURL,
+		}
+		c.JSON(http.StatusOK, gin.H{"profile": profileToReturn})
 		return
 	}
 
