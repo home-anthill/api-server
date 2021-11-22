@@ -76,10 +76,21 @@ func (handler *ProfilesHandler) PostProfilesTokenHandler(c *gin.Context) {
 		return
 	}
 
+	// check it the profile you are trying to update is your profile
+	session := sessions.Default(c)
+	profileSessionId := session.Get("profile").(models.Profile).ID
+
+	profileId, _ := primitive.ObjectIDFromHex(id)
+
+	if profileSessionId != profileId {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot re-generate ApiToken for a different profile then yours"})
+		return
+	}
+
 	apiToken := uuid.NewString()
 
 	_, err := handler.collection.UpdateOne(handler.ctx, bson.M{
-		"_id": id,
+		"_id": profileId,
 	}, bson.M{
 		"$set": bson.M{
 			"apiToken":   apiToken,
