@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 import './Devices.css';
@@ -10,6 +10,7 @@ const DEFAULT_ROOM = {name: '---'};
 export default function DeviceDetails() {
   const {state} = useLocation();
   const device = state.device;
+  const navigate = useNavigate();
 
   const [homes, setHomes] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -103,8 +104,30 @@ export default function DeviceDetails() {
           headers
         }
       );
+      // navigate back
+      navigate(-1);
     } catch (err) {
-      console.error('Cannot put room with paired device');
+      console.error('Cannot save AC assigning it to this room');
+    }
+  }
+
+  async function onRemove() {
+    console.log('onRemove');
+    const token = localStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    };
+    try {
+      await axios.delete(`http://localhost:8082/api/airconditioners/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`,
+        {
+          headers
+        }
+      );
+      // navigate back
+      navigate(-1);
+    } catch (err) {
+      console.error('Cannot remove AC');
     }
   }
 
@@ -128,6 +151,9 @@ export default function DeviceDetails() {
       selectedRoom.name !== DEFAULT_ROOM.name &&
       <button onClick={() => onSave()}>Save</button>
       }
+      <br/>
+      <br/>
+      <button onClick={() => onRemove()}>Remove this AC</button>
     </div>
   )
 }
