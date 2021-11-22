@@ -41,7 +41,7 @@ func (handler *AuthHandler) LoginCallbackHandler(c *gin.Context) {
 	var profile = c.Value("profile").(models.Profile)
 	fmt.Println("LoginCallbackHandler with profile = ", profile)
 
-	expirationTime := time.Now().Add(5 * time.Minute)
+	expirationTime := time.Now().Add(20 * time.Minute)
 
 	claims := &Claims{
 		ID: profile.Github.ID,

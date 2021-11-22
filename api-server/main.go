@@ -52,8 +52,8 @@ func init() {
 	collectionACs := client.Database("airConditionerDb").Collection("airconditioners")
 
 	authHandler = handlers.NewAuthHandler(ctx, collectionProfiles)
-	homesHandler = handlers.NewHomesHandler(ctx, collectionHomes)
-	acsHandler = handlers.NewACsHandler(ctx, collectionACs, collectionProfiles)
+	homesHandler = handlers.NewHomesHandler(ctx, collectionHomes, collectionProfiles)
+	acsHandler = handlers.NewACsHandler(ctx, collectionACs, collectionProfiles, collectionHomes)
 	profilesHandler = handlers.NewProfilesHandler(ctx, collectionProfiles)
 	registerHandler = handlers.NewRegisterHandler(ctx, collectionACs, collectionProfiles)
 }
@@ -136,8 +136,8 @@ func main() {
 		private.POST("/profiles/:id/tokens", profilesHandler.PostProfilesTokenHandler)
 
 		private.GET("/airconditioners", acsHandler.GetACsHandler)
-		private.POST("/airconditioners", acsHandler.PostACHandler)
-		private.PUT("/airconditioners/:id", acsHandler.PutACHandler)
+		//private.POST("/airconditioners", acsHandler.PostACHandler)
+		//private.PUT("/airconditioners/:id", acsHandler.PutACHandler)
 		private.DELETE("/airconditioners/:id", acsHandler.DeleteACHandler)
 	}
 

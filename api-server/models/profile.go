@@ -16,10 +16,11 @@ type Github struct {
 }
 
 type Profile struct {
-	ID         primitive.ObjectID `json:"id" bson:"_id"`
-	Github     Github             `json:"github" bson:"github"`
-	ApiToken   string             `json:"apiToken" bson:"apiToken"`
-	Devices    []string           `json:"devices" bson:"devices"`
-	CreatedAt  time.Time          `json:"createdAt" bson:"createdAt"`
-	ModifiedAt time.Time          `json:"modifiedAt" bson:"modifiedAt"`
+	ID         primitive.ObjectID   `json:"id" bson:"_id"`
+	Github     Github               `json:"github" bson:"github"`
+	ApiToken   string               `json:"apiToken" bson:"apiToken"`
+	Devices    []primitive.ObjectID `json:"devices" bson:"devices"`
+	Homes      []primitive.ObjectID `json:"homes" bson:"homes"`
+	CreatedAt  time.Time            `json:"createdAt" bson:"createdAt"`
+	ModifiedAt time.Time            `json:"modifiedAt" bson:"modifiedAt"`
 }
