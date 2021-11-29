@@ -22,12 +22,14 @@ type Status struct {
 // swagger:parameters acs newAC
 type AirConditioner struct {
 	//swagger:ignore
-	ID           primitive.ObjectID `json:"id" bson:"_id"`
-	Mac          string             `json:"mac" bson:"mac"`
-	Name         string             `json:"name" bson:"name"`
-	Manufacturer string             `json:"manufacturer" bson:"manufacturer"`
-	Model        string             `json:"model" bson:"model"`
-	Status       Status             `json:"status" bson:"status"`
+	ID             primitive.ObjectID `json:"id" bson:"_id"`
+	Mac            string             `json:"mac" bson:"mac"`
+	Name           string             `json:"name" bson:"name"`
+	Manufacturer   string             `json:"manufacturer" bson:"manufacturer"`
+	Model          string             `json:"model" bson:"model"`
+	ProfileOwnerId string             `json:"profileOwnerId" bson:"profileOwnerId"`
+	ApiToken       string             `json:"apiToken" bson:"apiToken"`
+	Status         Status             `json:"status" bson:"status"`
 
 	CreatedAt  time.Time `json:"createdAt" bson:"createdAt"`
 	ModifiedAt time.Time `json:"modifiedAt" bson:"modifiedAt"`

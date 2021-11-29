@@ -1,7 +1,7 @@
 package mqtt_client
 
 import (
-	amqpPublisher "air-conditioner/amqp-publisher"
+	amqpPublisher "api-devices/amqp-publisher"
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"strings"
