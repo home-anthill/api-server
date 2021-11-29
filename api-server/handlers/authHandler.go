@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"air-conditioner/models"
+	"api-server/models"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"

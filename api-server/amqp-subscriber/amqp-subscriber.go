@@ -1,7 +1,7 @@
 package amqp
 
 import (
-	"air-conditioner/ws"
+	"api-server/ws"
 	"encoding/json"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -19,7 +19,7 @@ func failOnError(err error, msg string) {
 func Subscribe() {
 	fmt.Println("Subscribed to AMPQ")
 	deliveries, err := channelAmpq.Consume(
-		"ac",
+		"device",
 		"",
 		true,
 		false,
@@ -29,7 +29,7 @@ func Subscribe() {
 		)
 
 	if err != nil {
-		log.Printf("cannot consume from: %q, %v", "ac", err)
+		log.Printf("cannot consume from: %q, %v", "device", err)
 		return
 	}
 
@@ -68,7 +68,7 @@ func InitAmqpSubscriber() {
 	}
 
 	_, err = channelAmpq.QueueDeclare(
-		"ac",
+		"device",
 		false,
 		false,
 		false,

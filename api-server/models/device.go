@@ -5,8 +5,7 @@ import (
 	"time"
 )
 
-// swagger:parameters acs newAC
-type AirConditioner struct {
+type Device struct {
 	//swagger:ignore
 	ID           primitive.ObjectID `json:"id" bson:"_id"`
 	Mac          string             `json:"mac" bson:"mac"`

@@ -1,0 +1,73 @@
+syntax = "proto3";
+
+package device;
+
+option go_package = "github.com/Ks89/air-conditioner/api-server/device";
+
+service Device {
+  rpc SetOnOff (OnOffValueRequest) returns (OnOffValueResponse) {}
+  rpc SetTemperature (TemperatureValueRequest) returns (TemperatureValueResponse) {}
+  rpc SetMode (ModeValueRequest) returns (ModeValueResponse) {}
+  rpc SetFanMode (FanModeValueRequest) returns (FanModeValueResponse) {}
+  rpc SetFanSwing (FanSwingValueRequest) returns (FanSwingValueResponse) {}
+}
+
+message OnOffValueRequest {
+  string  id = 1;
+  string          mac = 2;
+  string  profile_token = 3;
+  bool              on = 4;
+}
+
+message TemperatureValueRequest {
+  string  id = 1;
+  string          mac = 2;
+  string  profile_token = 3;
+  int32  temperature = 4;
+}
+
+message ModeValueRequest {
+  string  id = 1;
+  string          mac = 2;
+  string  profile_token = 3;
+  int32         mode = 4;
+}
+
+message FanModeValueRequest {
+  string  id = 1;
+  string          mac = 2;
+  string  profile_token = 3;
+  int32          fan = 4;
+}
+
+message FanSwingValueRequest {
+  string  id = 1;
+  string          mac = 2;
+  string  profile_token = 3;
+  bool        swing = 4;
+}
+
+message OnOffValueResponse {
+  string status = 1;
+  string message = 2;
+}
+
+message TemperatureValueResponse {
+  string status = 1;
+  string message = 2;
+}
+
+message ModeValueResponse {
+  string status = 1;
+  string message = 2;
+}
+
+message FanModeValueResponse {
+  string status = 1;
+  string message = 2;
+}
+
+message FanSwingValueResponse {
+  string status = 1;
+  string message = 2;
+}

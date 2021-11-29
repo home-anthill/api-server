@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"air-conditioner/models"
+	"api-server/models"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -403,7 +403,7 @@ func (handler *HomesHandler) PutRoomHandler(c *gin.Context) {
 		"$set": bson.M{
 			"rooms.$[x].name":            room.Name,
 			"rooms.$[x].floor":           room.Floor,
-			"rooms.$[x].airConditioners": room.AirConditioners,
+			"rooms.$[x].devices": room.Devices,
 			"rooms.$[x].modifiedAt":      time.Now(),
 		},
 	}

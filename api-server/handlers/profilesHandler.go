@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"air-conditioner/models"
+	"api-server/models"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/mongo"

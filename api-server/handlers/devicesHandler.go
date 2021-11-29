@@ -18,18 +18,18 @@ import (
 	"time"
 )
 
-type ACsHandler struct {
+type DevicesHandler struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
 	collectionHomes    *mongo.Collection
 	ctx                context.Context
 }
 
-func NewACsHandler(ctx context.Context,
+func NewDevicesHandler(ctx context.Context,
 		collection *mongo.Collection,
 		collectionProfiles *mongo.Collection,
-		collectionHomes *mongo.Collection) *ACsHandler {
-	return &ACsHandler{
+		collectionHomes *mongo.Collection) *DevicesHandler {
+	return &DevicesHandler{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		collectionHomes:    collectionHomes,
@@ -37,15 +37,15 @@ func NewACsHandler(ctx context.Context,
 	}
 }
 
-// swagger:operation GET /airconditioners airconditioners getACs
-// Returns list of airconditioners
+// swagger:operation GET /devices devices getDevices
+// Returns list of devices
 // ---
 // produces:
 // - application/json
 // responses:
 //     '200':
 //         description: Successful operation
-func (handler *ACsHandler) GetACsHandler(c *gin.Context) {
+func (handler *DevicesHandler) GetDevicesHandler(c *gin.Context) {
 	// retrieve current profile ID from session
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
@@ -60,27 +60,27 @@ func (handler *ACsHandler) GetACsHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
-	// extract ACs from db
-	cur, errAc := handler.collection.Find(handler.ctx, bson.M{
+	// extract Devices from db
+	cur, errDevices := handler.collection.Find(handler.ctx, bson.M{
 		"_id": bson.M{"$in": profile.Devices},
 	})
-	if errAc != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": errAc.Error()})
+	if errDevices != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": errDevices.Error()})
 		return
 	}
 	defer cur.Close(handler.ctx)
 
-	airconditioners := make([]models.AirConditioner, 0)
+	devices := make([]models.Device, 0)
 	for cur.Next(handler.ctx) {
-		var ac models.AirConditioner
-		cur.Decode(&ac)
-		airconditioners = append(airconditioners, ac)
+		var device models.Device
+		cur.Decode(&device)
+		devices = append(devices, device)
 	}
-	c.JSON(http.StatusOK, airconditioners)
+	c.JSON(http.StatusOK, devices)
 }
 
-// swagger:operation DELETE /airconditioners/{id} airconditioners deleteAC
-// Delete an existing airconditioner
+// swagger:operation DELETE /devices/{id} devices deleteDevice
+// Delete an existing device
 // ---
 // produces:
 // - application/json
@@ -89,7 +89,7 @@ func (handler *ACsHandler) GetACsHandler(c *gin.Context) {
 //         description: Successful operation
 //     '404':
 //         description: Invalid home ID
-func (handler *ACsHandler) DeleteACHandler(c *gin.Context) {
+func (handler *DevicesHandler) DeleteDeviceHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 	homeId := c.Query("homeId")
@@ -111,14 +111,14 @@ func (handler *ACsHandler) DeleteACHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
-	// check if the profile contains that device -> if profile is the owner of that ac
+	// check if the profile contains that device -> if profile is the owner of that device
 	found := contains(profile.Devices, objectId)
 	if !found {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete AC, because it is not in your profile"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete device, because it is not in your profile"})
 		return
 	}
 
-	// update rooms removing the AC
+	// update rooms removing the device
 	filter := bson.D{primitive.E{Key: "_id", Value: objectHomeId}}
 	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": objectRoomId}}}
 	opts := options.UpdateOptions{
@@ -126,7 +126,7 @@ func (handler *ACsHandler) DeleteACHandler(c *gin.Context) {
 	}
 	update := bson.M{
 		"$pull": bson.M{
-			"rooms.$[x].airConditioners": objectId,
+			"rooms.$[x].devices": objectId,
 		},
 	}
 	_, err2 := handler.collectionHomes.UpdateOne(handler.ctx, filter, update, &opts)
@@ -135,18 +135,18 @@ func (handler *ACsHandler) DeleteACHandler(c *gin.Context) {
 		return
 	}
 
-	// update profile removing the AC from devices
+	// update profile removing the device from devices
 	_, errUpd := handler.collectionProfiles.UpdateOne(
 		handler.ctx,
 		bson.M{"_id": profileSession.ID},
 		bson.M{"$pull": bson.M{"devices": objectId}},
 	)
 	if errUpd != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove AC from profile"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove device from profile"})
 		return
 	}
 
-	// remove AC
+	// remove device
 	_, errDel := handler.collection.DeleteOne(handler.ctx, bson.M{
 		"_id": objectId,
 	})
@@ -154,14 +154,14 @@ func (handler *ACsHandler) DeleteACHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": errDel.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "AC has been deleted"})
+	c.JSON(http.StatusOK, gin.H{"message": "device has been deleted"})
 }
 
-func (handler *ACsHandler) PostOnOffAcHandler(c *gin.Context) {
+func (handler *DevicesHandler) PostOnOffDeviceHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
-	var value interface{}
+	var value models.OnOffValue
 	if err := c.ShouldBindJSON(&value); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -181,7 +181,7 @@ func (handler *ACsHandler) PostOnOffAcHandler(c *gin.Context) {
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find ac"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
@@ -195,7 +195,7 @@ func (handler *ACsHandler) PostOnOffAcHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 
-func (handler *ACsHandler) PostTemperatureAcHandler(c *gin.Context) {
+func (handler *DevicesHandler) PostTemperatureDeviceHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -219,7 +219,7 @@ func (handler *ACsHandler) PostTemperatureAcHandler(c *gin.Context) {
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find ac"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
@@ -232,7 +232,7 @@ func (handler *ACsHandler) PostTemperatureAcHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
-func (handler *ACsHandler) PostModeAcHandler(c *gin.Context) {
+func (handler *DevicesHandler) PostModeDeviceHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -256,7 +256,7 @@ func (handler *ACsHandler) PostModeAcHandler(c *gin.Context) {
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find ac"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
@@ -269,7 +269,7 @@ func (handler *ACsHandler) PostModeAcHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
-func (handler *ACsHandler) PostFanModeAcHandler(c *gin.Context) {
+func (handler *DevicesHandler) PostFanModeDeviceHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -293,7 +293,7 @@ func (handler *ACsHandler) PostFanModeAcHandler(c *gin.Context) {
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find ac"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
@@ -306,7 +306,7 @@ func (handler *ACsHandler) PostFanModeAcHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
-func (handler *ACsHandler) PostFanSwingAcHandler(c *gin.Context) {
+func (handler *DevicesHandler) PostFanSwingDeviceHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -330,7 +330,7 @@ func (handler *ACsHandler) PostFanSwingAcHandler(c *gin.Context) {
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find ac"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
@@ -344,7 +344,7 @@ func (handler *ACsHandler) PostFanSwingAcHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 
-func (handler *ACsHandler) sendViaGrpc(device *models.AirConditioner, value interface{}, apiToken string) error {
+func (handler *DevicesHandler) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
@@ -418,7 +418,7 @@ func (handler *ACsHandler) sendViaGrpc(device *models.AirConditioner, value inte
 	}
 }
 
-func (handler *ACsHandler) getProfile(session *sessions.Session) (models.Profile, error) {
+func (handler *DevicesHandler) getProfile(session *sessions.Session) (models.Profile, error) {
 	profileSession := (*session).Get("profile").(models.Profile)
 	// search profile in DB
 	// This is required to get fresh data from db, because data in session could be outdated
@@ -429,17 +429,17 @@ func (handler *ACsHandler) getProfile(session *sessions.Session) (models.Profile
 	return profile, err
 }
 
-func (handler *ACsHandler) isDeviceInProfile(profile *models.Profile, deviceId primitive.ObjectID) bool {
-	// check if the profile contains that device -> if profile is the owner of that ac
+func (handler *DevicesHandler) isDeviceInProfile(profile *models.Profile, deviceId primitive.ObjectID) bool {
+	// check if the profile contains that device -> if profile is the owner of that device
 	return contains(profile.Devices, deviceId)
 }
 
-func (handler *ACsHandler) getDevice(deviceId primitive.ObjectID) (models.AirConditioner, error) {
-	var ac models.AirConditioner
+func (handler *DevicesHandler) getDevice(deviceId primitive.ObjectID) (models.Device, error) {
+	var device models.Device
 	err := handler.collection.FindOne(handler.ctx, bson.M{
 		"_id": deviceId,
-	}).Decode(&ac)
-	return ac, err
+	}).Decode(&device)
+	return device, err
 }
 
 func getType(value interface{}) string {

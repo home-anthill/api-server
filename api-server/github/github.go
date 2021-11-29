@@ -1,7 +1,7 @@
 package github
 
 import (
-	"air-conditioner/models"
+	"api-server/models"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/gob"

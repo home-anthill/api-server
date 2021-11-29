@@ -17,10 +17,10 @@
 package main
 
 import (
-	amqpSubscriber "air-conditioner/amqp-subscriber"
-	"air-conditioner/github"
-	"air-conditioner/handlers"
-	"air-conditioner/ws"
+	amqpSubscriber "api-server/amqp-subscriber"
+	"api-server/github"
+	"api-server/handlers"
+	"api-server/ws"
 	"context"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -32,9 +32,11 @@ import (
 	"path/filepath"
 )
 
+const DbName = "api-server"
+
 var authHandler *handlers.AuthHandler
 var homesHandler *handlers.HomesHandler
-var acsHandler *handlers.ACsHandler
+var devicesHandler *handlers.DevicesHandler
 var profilesHandler *handlers.ProfilesHandler
 var registerHandler *handlers.RegisterHandler
 var collectionProfiles *mongo.Collection
@@ -47,15 +49,15 @@ func init() {
 		log.Fatal(err)
 	}
 	log.Println("Connected to MongoDB")
-	collectionProfiles = client.Database("airConditionerDb").Collection("profiles")
-	collectionHomes := client.Database("airConditionerDb").Collection("homes")
-	collectionACs := client.Database("airConditionerDb").Collection("airconditioners")
+	collectionProfiles = client.Database(DbName).Collection("profiles")
+	collectionHomes := client.Database(DbName).Collection("homes")
+	collectionDevices := client.Database(DbName).Collection("devices")
 
 	authHandler = handlers.NewAuthHandler(ctx, collectionProfiles)
 	homesHandler = handlers.NewHomesHandler(ctx, collectionHomes, collectionProfiles)
-	acsHandler = handlers.NewACsHandler(ctx, collectionACs, collectionProfiles, collectionHomes)
+	devicesHandler = handlers.NewDevicesHandler(ctx, collectionDevices, collectionProfiles, collectionHomes)
 	profilesHandler = handlers.NewProfilesHandler(ctx, collectionProfiles)
-	registerHandler = handlers.NewRegisterHandler(ctx, collectionACs, collectionProfiles)
+	registerHandler = handlers.NewRegisterHandler(ctx, collectionDevices, collectionProfiles)
 }
 
 func main() {
@@ -68,7 +70,7 @@ func main() {
 
 	// implement websocket to receive realtime events from rabbitmq via amqp
 	// this service should be protected by authHandler
-	router.GET("/ws", func (c *gin.Context) {
+	router.GET("/ws", func(c *gin.Context) {
 		ws.ServeWs(c.Writer, c.Request)
 	})
 
@@ -135,10 +137,14 @@ func main() {
 		private.GET("/profile", profilesHandler.GetProfileHandler)
 		private.POST("/profiles/:id/tokens", profilesHandler.PostProfilesTokenHandler)
 
-		private.GET("/airconditioners", acsHandler.GetACsHandler)
-		//private.POST("/airconditioners", acsHandler.PostACHandler)
-		//private.PUT("/airconditioners/:id", acsHandler.PutACHandler)
-		private.DELETE("/airconditioners/:id", acsHandler.DeleteACHandler)
+		private.GET("/devices", devicesHandler.GetDevicesHandler)
+		private.DELETE("/devices/:id", devicesHandler.DeleteDeviceHandler)
+
+		private.POST("/devices/:id/values/onoff", devicesHandler.PostOnOffDeviceHandler)
+		private.POST("/devices/:id/values/temperature", devicesHandler.PostTemperatureDeviceHandler)
+		private.POST("/devices/:id/values/mode", devicesHandler.PostModeDeviceHandler)
+		private.POST("/devices/:id/values/fanmode", devicesHandler.PostFanModeDeviceHandler)
+		private.POST("/devices/:id/values/fanswing", devicesHandler.PostFanSwingDeviceHandler)
 	}
 
 	err := router.Run(":8082")

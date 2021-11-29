@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package register;
+
+option go_package = "github.com/Ks89/air-conditioner/api-server/register";
+
+service Registration {
+  rpc Register (RegisterRequest) returns (RegisterReply) {}
+}
+
+message RegisterRequest {
+  string id = 1;
+  string mac = 2;
+  string name = 3;
+  string manufacturer = 4;
+  string model = 5;
+  string profileOwnerId = 6;
+  string apiToken = 7;
+}
+
+message RegisterReply {
+  string status = 1;
+  string message = 2;
+}

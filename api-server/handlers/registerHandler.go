@@ -3,15 +3,21 @@ package handlers
 import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
+	"log"
 	"net/http"
 	"time"
 
-	"air-conditioner/models"
+	"api-server/models"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
+
+	pb "api-server/register"
+	"google.golang.org/grpc"
 )
+
+const address = "localhost:50051"
 
 type DeviceRequest struct {
 	//swagger:ignore
@@ -22,7 +28,6 @@ type DeviceRequest struct {
 	Type         string `json:"type"`
 	APIToken     string `json:"apiToken"`
 }
-
 
 type RegisterHandler struct {
 	collection         *mongo.Collection
@@ -59,10 +64,10 @@ func (handler *RegisterHandler) PostRegisterHandler(c *gin.Context) {
 	}
 
 	// search and skip db add if already exists
-	var ac models.AirConditioner
+	var device models.Device
 	err := handler.collection.FindOne(handler.ctx, bson.M{
 		"mac": registerBody.Mac,
-	}).Decode(&ac)
+	}).Decode(&device)
 	if err == nil {
 		// if err == nil => ac found in db (already exists)
 		// skip register process returning "already registered"
@@ -70,16 +75,16 @@ func (handler *RegisterHandler) PostRegisterHandler(c *gin.Context) {
 		return
 	}
 
-	ac = models.AirConditioner{}
-	ac.ID = primitive.NewObjectID()
-	ac.Mac = registerBody.Mac
-	ac.Name = registerBody.Name
-	ac.Manufacturer = registerBody.Manufacturer
-	ac.Model = registerBody.Model
-	ac.CreatedAt = time.Now()
-	ac.ModifiedAt = time.Now()
+	device = models.Device{}
+	device.ID = primitive.NewObjectID()
+	device.Mac = registerBody.Mac
+	device.Name = registerBody.Name
+	device.Manufacturer = registerBody.Manufacturer
+	device.Model = registerBody.Model
+	device.CreatedAt = time.Now()
+	device.ModifiedAt = time.Now()
 
-	_, err2 := handler.collection.InsertOne(handler.ctx, ac)
+	_, err2 := handler.collection.InsertOne(handler.ctx, device)
 	if err2 != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new ac"})
 		return
@@ -89,13 +94,37 @@ func (handler *RegisterHandler) PostRegisterHandler(c *gin.Context) {
 	result, errUpd := handler.collectionProfiles.UpdateOne(
 		handler.ctx,
 		bson.M{"_id": profileFound.ID},
-		bson.M{"$push": bson.M{"devices": ac.ID}},
+		bson.M{"$push": bson.M{"devices": device.ID}},
 	)
 
 	fmt.Println("result: ", result)
 	fmt.Println("errUpd: ", errUpd)
 
-	// call devices-server to add AC to its DB
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	client := pb.NewRegistrationClient(conn)
 
-	c.JSON(http.StatusOK, ac)
+	// Contact the server and print out its response.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	r, err := client.Register(ctx, &pb.RegisterRequest{
+		Id:             device.ID.Hex(),
+		Mac:            device.Mac,
+		Name:           device.Name,
+		Manufacturer:   device.Manufacturer,
+		Model:          device.Model,
+		ProfileOwnerId: profileFound.ID.Hex(),
+		ApiToken:       profileFound.ApiToken,
+	})
+	if err != nil {
+		log.Fatalf("could not register: %v", err)
+	}
+	fmt.Println("Register status: ", r.GetStatus())
+	fmt.Println("Register message: ", r.GetMessage())
+
+	c.JSON(http.StatusOK, device)
 }
