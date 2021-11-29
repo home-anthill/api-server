@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 import './Devices.css';
+import Values from '../../components/Values';
 
 const DEFAULT_HOME = {name: '---', rooms: []};
 const DEFAULT_ROOM = {name: '---'};
@@ -39,7 +40,7 @@ export default function DeviceDetails() {
         let roomFound;
         homes.forEach(home => {
           home.rooms.forEach(room => {
-            if (room && room.airConditioners && room.airConditioners.find(ac => ac === device.id)) {
+            if (room && room.devices && room.devices.find(dev => dev === device.id)) {
               homeFound = home;
               roomFound = room;
             }
@@ -92,10 +93,10 @@ export default function DeviceDetails() {
       'Authorization': 'Bearer ' + token
     };
     const newRoom = Object.assign({}, selectedRoom);
-    if (!newRoom.airConditioners) {
-      newRoom.airConditioners = [device.id];
+    if (!newRoom.devices) {
+      newRoom.devices = [device.id];
     } else {
-      newRoom.airConditioners.push(device.id);
+      newRoom.devices.push(device.id);
     }
     try {
       await axios.put(`http://localhost:8082/api/homes/${selectedHome.id}/rooms/${selectedRoom.id}`,
@@ -107,7 +108,7 @@ export default function DeviceDetails() {
       // navigate back
       navigate(-1);
     } catch (err) {
-      console.error('Cannot save AC assigning it to this room');
+      console.error('Cannot save device assigning it to this room');
     }
   }
 
@@ -119,7 +120,7 @@ export default function DeviceDetails() {
       'Authorization': 'Bearer ' + token
     };
     try {
-      await axios.delete(`http://localhost:8082/api/airconditioners/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`,
+      await axios.delete(`http://localhost:8082/api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`,
         {
           headers
         }
@@ -127,7 +128,7 @@ export default function DeviceDetails() {
       // navigate back
       navigate(-1);
     } catch (err) {
-      console.error('Cannot remove AC');
+      console.error('Cannot remove device');
     }
   }
 
@@ -153,7 +154,10 @@ export default function DeviceDetails() {
       }
       <br/>
       <br/>
-      <button onClick={() => onRemove()}>Remove this AC</button>
+      <button onClick={() => onRemove()}>Remove this Device</button>
+      <br/>
+      <br/>
+      <Values device={device}/>
     </div>
   )
 }

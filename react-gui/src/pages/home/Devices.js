@@ -16,7 +16,7 @@ export default function Devices() {
         'Authorization': 'Bearer ' + token
       };
       try {
-        const response = await axios.get('http://localhost:8082/api/airconditioners', {
+        const response = await axios.get('http://localhost:8082/api/devices', {
           headers
         })
         const data = response.data;
