@@ -5,6 +5,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"api-server/models"
@@ -16,8 +17,6 @@ import (
 	pb "api-server/register"
 	"google.golang.org/grpc"
 )
-
-const address = "localhost:50051"
 
 type DeviceRequest struct {
 	//swagger:ignore
@@ -33,13 +32,17 @@ type RegisterHandler struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
 	ctx                context.Context
+	grpcTarget         string
 }
 
 func NewRegisterHandler(ctx context.Context, collection *mongo.Collection, collectionProfiles *mongo.Collection) *RegisterHandler {
+	grpcPort := os.Getenv("GRPC_PORT")
+
 	return &RegisterHandler{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		ctx:                ctx,
+		grpcTarget:         "localhost:" + grpcPort,
 	}
 }
 
@@ -101,7 +104,7 @@ func (handler *RegisterHandler) PostRegisterHandler(c *gin.Context) {
 	fmt.Println("errUpd: ", errUpd)
 
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}

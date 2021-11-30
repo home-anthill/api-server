@@ -23,11 +23,14 @@ import (
 	"api-server/ws"
 	"context"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"log"
+	"os"
 	"path"
 	"path/filepath"
 )
@@ -42,6 +45,17 @@ var registerHandler *handlers.RegisterHandler
 var collectionProfiles *mongo.Collection
 
 func init() {
+	//Load the .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("error: failed to load the env file")
+	}
+
+	// read ENV property from .env
+	if os.Getenv("ENV") == "prod" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	ctx := context.Background()
 	log.Println("Connecting to MongoDB...")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017/"))
@@ -82,6 +96,8 @@ func main() {
 	config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:8082"}
 	// config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
 	router.Use(cors.New(config))
+
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// GIN is terrible with SPA, because you can configure static.serve
 	// but if you refresh the SPA it will return an error and you cannot add something like /*
@@ -148,7 +164,9 @@ func main() {
 		private.POST("/devices/:id/values/fanspeed", devicesHandler.PostFanSpeedDeviceHandler)
 	}
 
-	err := router.Run(":8082")
+	port := os.Getenv("HTTP_PORT")
+
+	err := router.Run(":" + port)
 	if err != nil {
 		panic(err)
 	}

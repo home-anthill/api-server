@@ -14,6 +14,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"net/http"
+	"os"
 	"reflect"
 	"time"
 )
@@ -23,17 +24,22 @@ type DevicesHandler struct {
 	collectionProfiles *mongo.Collection
 	collectionHomes    *mongo.Collection
 	ctx                context.Context
+	grpcTarget         string
 }
 
 func NewDevicesHandler(ctx context.Context,
 	collection *mongo.Collection,
 	collectionProfiles *mongo.Collection,
 	collectionHomes *mongo.Collection) *DevicesHandler {
+
+	grpcPort := os.Getenv("GRPC_PORT")
+
 	return &DevicesHandler{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		collectionHomes:    collectionHomes,
 		ctx:                ctx,
+		grpcTarget:         "localhost:" + grpcPort,
 	}
 }
 
@@ -181,7 +187,7 @@ func (handler *DevicesHandler) GetValuesDeviceHandler(c *gin.Context) {
 	}
 
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		fmt.Println("Cannot connect via GRPC", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get values - connection error"})
@@ -402,7 +408,7 @@ func (handler *DevicesHandler) PostFanSpeedDeviceHandler(c *gin.Context) {
 
 func (handler *DevicesHandler) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		fmt.Println("Cannot connect via GRPC", err)
 		return errors.SendGrpcError{
