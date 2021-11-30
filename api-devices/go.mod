@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.3.5
+	github.com/joho/godotenv v1.4.0
 	github.com/rabbitmq/amqp091-go v1.1.0
 	go.mongodb.org/mongo-driver v1.4.5
 	google.golang.org/grpc v1.42.0

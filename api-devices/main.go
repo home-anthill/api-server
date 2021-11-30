@@ -7,12 +7,14 @@ import (
 	mqttClient "api-devices/mqtt-client"
 	pbr "api-devices/register"
 	"context"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"google.golang.org/grpc"
 	"log"
 	"net"
+	"os"
 )
 
 //var devicesHandler *handlers.DevicesHandler
@@ -20,9 +22,14 @@ var registerGrpcHandler *handlers.RegisterGrpcHandler
 var devicesGrpcHandler *handlers.DevicesGrpcHandler
 
 const DbName = "api-devices"
-const port = ":50051"
 
 func init() {
+	//Load the .env file
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatal("error: failed to load the env file")
+	}
+
 	ctx := context.Background()
 	log.Println("Connecting to MongoDB...")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017/"))
@@ -41,8 +48,10 @@ func main() {
 	amqpPublisher.InitAmqpPublisher()
 	mqttClient.InitMqtt()
 
+	port := os.Getenv("GRPC_PORT")
+
 	// Start listener, 50051 is the default gRPC port
-	lis, errGrpc := net.Listen("tcp", port)
+	lis, errGrpc := net.Listen("tcp", ":" + port)
 	if errGrpc != nil {
 		log.Fatalf("failed to listen: %v", errGrpc)
 	}
