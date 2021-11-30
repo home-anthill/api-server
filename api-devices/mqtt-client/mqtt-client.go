@@ -32,13 +32,13 @@ func SendMode(uuid string, messageJSON []byte) mqtt.Token {
 	fmt.Println("SendMode - publishing message...")
 	return c.Publish("devices/"+uuid+"/mode", qos, false, messageJSON)
 }
-func SendFan(uuid string, messageJSON []byte) mqtt.Token {
-	fmt.Println("SendFan - publishing message...")
-	return c.Publish("devices/"+uuid+"/fan", qos, false, messageJSON)
+func SendFanMode(uuid string, messageJSON []byte) mqtt.Token {
+	fmt.Println("SendFanMode - publishing message...")
+	return c.Publish("devices/"+uuid+"/fanMode", qos, false, messageJSON)
 }
-func SendSwing(uuid string, messageJSON []byte) mqtt.Token {
-	fmt.Println("SendSwing - publishing message...")
-	return c.Publish("devices/"+uuid+"/swing", qos, false, messageJSON)
+func SendFanSpeed(uuid string, messageJSON []byte) mqtt.Token {
+	fmt.Println("SendFanSpeed - publishing message...")
+	return c.Publish("devices/"+uuid+"/fanSpeed", qos, false, messageJSON)
 }
 
 func PublishMessage(msg mqtt.Message) {
@@ -72,10 +72,10 @@ func InitMqtt() {
 	c.Subscribe("devices/+/mode", qos, func(client mqtt.Client, msg mqtt.Message) {
 		PublishMessage(msg)
 	})
-	c.Subscribe("devices/+/fan", qos, func(client mqtt.Client, msg mqtt.Message) {
+	c.Subscribe("devices/+/fanMode", qos, func(client mqtt.Client, msg mqtt.Message) {
 		PublishMessage(msg)
 	})
-	c.Subscribe("devices/+/swing", qos, func(client mqtt.Client, msg mqtt.Message) {
+	c.Subscribe("devices/+/fanSpeed", qos, func(client mqtt.Client, msg mqtt.Message) {
 		PublishMessage(msg)
 	})
 	time.Sleep(6 * time.Second)

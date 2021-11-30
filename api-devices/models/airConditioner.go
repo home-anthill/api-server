@@ -13,10 +13,10 @@ type Fan struct {
 
 // swagger:parameters acs newAC
 type Status struct {
-	On                bool    `json:"on" bson:"on"`
-	Mode              int     `json:"mode" bson:"mode"`
-	TargetTemperature float32 `json:"targetTemperature" bson:"targetTemperature"`
-	Fan               Fan     `json:"fan" bson:"fan"`
+	On          bool    `json:"on" bson:"on"`
+	Mode        int     `json:"mode" bson:"mode"`
+	Temperature float32 `json:"temperature" bson:"temperature"`
+	Fan         Fan     `json:"fan" bson:"fan"`
 }
 
 // swagger:parameters acs newAC
