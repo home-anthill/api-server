@@ -14,6 +14,27 @@ cd server
 go mod tidy
 ```
 
+## Re-generate gRPC from proto files
+
+From air-conditioner root folder run:
+
+```
+protoc --go_out=. --go_opt=paths=source_relative \
+--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+api-server/device/device.proto
+
+protoc --go_out=. --go_opt=paths=source_relative \
+--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+api-server/register/register.proto
+
+protoc --go_out=. --go_opt=paths=source_relative \
+--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+api-devices/device/device.proto
+
+protoc --go_out=. --go_opt=paths=source_relative \
+--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+api-devices/register/register.proto
+```
 
 ## RabbitMQ
 Run rabbitmq via Docker:

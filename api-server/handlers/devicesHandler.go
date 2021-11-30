@@ -26,9 +26,9 @@ type DevicesHandler struct {
 }
 
 func NewDevicesHandler(ctx context.Context,
-		collection *mongo.Collection,
-		collectionProfiles *mongo.Collection,
-		collectionHomes *mongo.Collection) *DevicesHandler {
+	collection *mongo.Collection,
+	collectionProfiles *mongo.Collection,
+	collectionHomes *mongo.Collection) *DevicesHandler {
 	return &DevicesHandler{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
@@ -155,6 +155,62 @@ func (handler *DevicesHandler) DeleteDeviceHandler(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "device has been deleted"})
+}
+
+func (handler *DevicesHandler) GetValuesDeviceHandler(c *gin.Context) {
+	id := c.Param("id")
+	objectId, _ := primitive.ObjectIDFromHex(id)
+
+	session := sessions.Default(c)
+	// get profile from db by user id from session
+	profile, err := handler.getProfile(&session)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
+		return
+	}
+	// check if device is in profile (device owned by profile)
+	if !handler.isDeviceInProfile(&profile, objectId) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "This device is not in your profile"})
+		return
+	}
+	// get device from db
+	device, err := handler.getDevice(objectId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
+		return
+	}
+
+	// Set up a connection to the server.
+	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
+	if err != nil {
+		fmt.Println("Cannot connect via GRPC", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get values - connection error"})
+		return
+	}
+	defer conn.Close()
+	client := pbd.NewDeviceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	response, errSend := client.GetStatus(ctx, &pbd.StatusRequest{
+		Id:           device.ID.Hex(),
+		Mac:          device.Mac,
+		ProfileToken: profile.ApiToken, // RENAME TO ApiToken in proto3
+	})
+
+	if errSend != nil {
+		fmt.Println("Cannot get values via GRPC", errSend)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get values"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"on":          response.On,
+		"temperature": response.Temperature,
+		"mode":        response.Mode,
+		"fanMode":     response.FanMode,
+		"fanSpeed":    response.FanSpeed,
+	})
 }
 
 func (handler *DevicesHandler) PostOnOffDeviceHandler(c *gin.Context) {
@@ -306,11 +362,11 @@ func (handler *DevicesHandler) PostFanModeDeviceHandler(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
-func (handler *DevicesHandler) PostFanSwingDeviceHandler(c *gin.Context) {
+func (handler *DevicesHandler) PostFanSpeedDeviceHandler(c *gin.Context) {
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
-	var value models.FanSwingValue
+	var value models.FanSpeedValue
 	if err := c.ShouldBindJSON(&value); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -394,17 +450,17 @@ func (handler *DevicesHandler) sendViaGrpc(device *models.Device, value interfac
 		response, errSend := client.SetFanMode(ctx, &pbd.FanModeValueRequest{
 			Id:           device.ID.Hex(),
 			Mac:          device.Mac,
-			Fan:          int32(value.(*models.FanModeValue).Fan),
+			FanMode:      int32(value.(*models.FanModeValue).FanMode),
 			ProfileToken: apiToken, // RENAME TO ApiToken in proto3
 		})
 		fmt.Println("Device set value status: ", response.GetStatus())
 		fmt.Println("Device set value message: ", response.GetMessage())
 		return errSend
-	case "*FanSwingValue":
-		response, errSend := client.SetFanSwing(ctx, &pbd.FanSwingValueRequest{
+	case "*FanSpeedValue":
+		response, errSend := client.SetFanSpeed(ctx, &pbd.FanSpeedValueRequest{
 			Id:           device.ID.Hex(),
 			Mac:          device.Mac,
-			Swing:        value.(*models.FanSwingValue).Swing,
+			FanSpeed:     int32(value.(*models.FanSpeedValue).FanSpeed),
 			ProfileToken: apiToken, // RENAME TO ApiToken in proto3
 		})
 		fmt.Println("Device set value status: ", response.GetStatus())
@@ -435,10 +491,12 @@ func (handler *DevicesHandler) isDeviceInProfile(profile *models.Profile, device
 }
 
 func (handler *DevicesHandler) getDevice(deviceId primitive.ObjectID) (models.Device, error) {
+	fmt.Println("Searching device with objectId: ", deviceId)
 	var device models.Device
 	err := handler.collection.FindOne(handler.ctx, bson.M{
 		"_id": deviceId,
 	}).Decode(&device)
+	fmt.Println("Device found: ", device)
 	return device, err
 }
 

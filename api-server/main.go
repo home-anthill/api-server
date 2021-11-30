@@ -140,11 +140,12 @@ func main() {
 		private.GET("/devices", devicesHandler.GetDevicesHandler)
 		private.DELETE("/devices/:id", devicesHandler.DeleteDeviceHandler)
 
+		private.GET("/devices/:id/values", devicesHandler.GetValuesDeviceHandler)
 		private.POST("/devices/:id/values/onoff", devicesHandler.PostOnOffDeviceHandler)
 		private.POST("/devices/:id/values/temperature", devicesHandler.PostTemperatureDeviceHandler)
 		private.POST("/devices/:id/values/mode", devicesHandler.PostModeDeviceHandler)
 		private.POST("/devices/:id/values/fanmode", devicesHandler.PostFanModeDeviceHandler)
-		private.POST("/devices/:id/values/fanswing", devicesHandler.PostFanSwingDeviceHandler)
+		private.POST("/devices/:id/values/fanspeed", devicesHandler.PostFanSpeedDeviceHandler)
 	}
 
 	err := router.Run(":8082")

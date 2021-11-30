@@ -1,5 +1,13 @@
 package models
 
+type StatusValue struct {
+  On bool `json:"on"`
+  Temperature int `json:"temperature"`
+  Mode int `json:"mode"`
+  FanMode int `json:"fanMode"`
+  FanSpeed int `json:"fanSpeed"`
+}
+
 type OnOffValue struct {
   On bool `json:"on"`
 }
@@ -13,9 +21,9 @@ type ModeValue struct {
 }
 
 type FanModeValue struct {
-  Fan int `json:"fan"`
+  FanMode int `json:"fanMode"`
 }
 
-type FanSwingValue struct {
-  Swing bool `json:"swing"`
+type FanSpeedValue struct {
+  FanSpeed int `json:"fanSpeed"`
 }

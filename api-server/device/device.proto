@@ -5,11 +5,18 @@ package device;
 option go_package = "github.com/Ks89/air-conditioner/api-server/device";
 
 service Device {
+  rpc GetStatus (StatusRequest) returns (StatusResponse) {}
   rpc SetOnOff (OnOffValueRequest) returns (OnOffValueResponse) {}
   rpc SetTemperature (TemperatureValueRequest) returns (TemperatureValueResponse) {}
   rpc SetMode (ModeValueRequest) returns (ModeValueResponse) {}
   rpc SetFanMode (FanModeValueRequest) returns (FanModeValueResponse) {}
-  rpc SetFanSwing (FanSwingValueRequest) returns (FanSwingValueResponse) {}
+  rpc SetFanSpeed (FanSpeedValueRequest) returns (FanSpeedValueResponse) {}
+}
+
+message StatusRequest {
+  string  id = 1;
+  string          mac = 2;
+  string  profile_token = 3;
 }
 
 message OnOffValueRequest {
@@ -37,14 +44,22 @@ message FanModeValueRequest {
   string  id = 1;
   string          mac = 2;
   string  profile_token = 3;
-  int32          fan = 4;
+  int32          fan_mode = 4;
 }
 
-message FanSwingValueRequest {
+message FanSpeedValueRequest {
   string  id = 1;
   string          mac = 2;
   string  profile_token = 3;
-  bool        swing = 4;
+  int32        fan_speed = 4;
+}
+
+message StatusResponse {
+  bool on = 1;
+  int32 temperature = 2;
+  int32 mode = 3;
+  int32 fan_mode = 4;
+  int32 fan_speed = 5;
 }
 
 message OnOffValueResponse {
@@ -67,7 +82,7 @@ message FanModeValueResponse {
   string message = 2;
 }
 
-message FanSwingValueResponse {
+message FanSpeedValueResponse {
   string status = 1;
   string message = 2;
 }
