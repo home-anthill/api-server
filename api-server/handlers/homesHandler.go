@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/contrib/sessions"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 
@@ -19,13 +20,15 @@ type HomesHandler struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
 	ctx                context.Context
+	logger             *zap.SugaredLogger
 }
 
-func NewHomesHandler(ctx context.Context, collection *mongo.Collection, collectionProfiles *mongo.Collection) *HomesHandler {
+func NewHomesHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *HomesHandler {
 	return &HomesHandler{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		ctx:                ctx,
+		logger:             logger,
 	}
 }
 
@@ -38,6 +41,8 @@ func NewHomesHandler(ctx context.Context, collection *mongo.Collection, collecti
 //     '200':
 //         description: Successful operation
 func (handler *HomesHandler) GetHomesHandler(c *gin.Context) {
+	handler.logger.Debug("GetHomesHandler called")
+
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
 	fmt.Println("GetHomesHandler with profileID = ", profileSession.ID)
@@ -82,6 +87,8 @@ func (handler *HomesHandler) GetHomesHandler(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *HomesHandler) PostHomeHandler(c *gin.Context) {
+	handler.logger.Debug("PostHomeHandler called")
+
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
 	fmt.Println("PostHomeHandler with profileID = ", profileSession.ID)
@@ -137,6 +144,8 @@ func (handler *HomesHandler) PostHomeHandler(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *HomesHandler) PutHomeHandler(c *gin.Context) {
+	handler.logger.Debug("PutHomeHandler called")
+
 	id := c.Param("id")
 	var home models.Home
 	if err := c.ShouldBindJSON(&home); err != nil {
@@ -186,6 +195,8 @@ func (handler *HomesHandler) PutHomeHandler(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *HomesHandler) DeleteHomeHandler(c *gin.Context) {
+	handler.logger.Debug("DeleteHomeHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -251,6 +262,8 @@ func (handler *HomesHandler) DeleteHomeHandler(c *gin.Context) {
 //     '200':
 //         description: Successful operation
 func (handler *HomesHandler) GetRoomsHandler(c *gin.Context) {
+	handler.logger.Debug("GetRoomsHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -285,6 +298,8 @@ func (handler *HomesHandler) GetRoomsHandler(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *HomesHandler) PostRoomHandler(c *gin.Context) {
+	handler.logger.Debug("PostRoomHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -349,6 +364,8 @@ func (handler *HomesHandler) PostRoomHandler(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *HomesHandler) PutRoomHandler(c *gin.Context) {
+	handler.logger.Debug("PutRoomHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -401,10 +418,10 @@ func (handler *HomesHandler) PutRoomHandler(c *gin.Context) {
 	}
 	update := bson.M{
 		"$set": bson.M{
-			"rooms.$[x].name":            room.Name,
-			"rooms.$[x].floor":           room.Floor,
-			"rooms.$[x].devices": room.Devices,
-			"rooms.$[x].modifiedAt":      time.Now(),
+			"rooms.$[x].name":       room.Name,
+			"rooms.$[x].floor":      room.Floor,
+			"rooms.$[x].devices":    room.Devices,
+			"rooms.$[x].modifiedAt": time.Now(),
 		},
 	}
 	_, err2 := handler.collection.UpdateOne(handler.ctx, filter, update, &opts)
@@ -427,6 +444,8 @@ func (handler *HomesHandler) PutRoomHandler(c *gin.Context) {
 //     '404':
 //         description: Invalid room ID
 func (handler *HomesHandler) DeleteRoomHandler(c *gin.Context) {
+	handler.logger.Debug("DeleteRoomHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 

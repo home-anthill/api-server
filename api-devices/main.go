@@ -17,34 +17,39 @@ import (
 	"os"
 )
 
-//var devicesHandler *handlers.DevicesHandler
 var registerGrpcHandler *handlers.RegisterGrpcHandler
 var devicesGrpcHandler *handlers.DevicesGrpcHandler
 
 const DbName = "api-devices"
 
-func init() {
+func main() {
+	logger := InitLogger()
+	defer logger.Sync()
+
+	logger.Info("Starting application...)")
+
 	//Load the .env file
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal("error: failed to load the env file")
+		logger.Error("failed to load the env file")
 	}
 
+	logger.Info("GRPC PORT = " + os.Getenv("GRPC_PORT"))
+
 	ctx := context.Background()
-	log.Println("Connecting to MongoDB...")
+
+	logger.Info("Connecting to MongoDB...")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017/"))
 	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Connected to MongoDB")
+	logger.Info("Connected to MongoDB")
+
 	collectionACs := client.Database(DbName).Collection("airconditioners")
 
-	//devicesHandler = handlers.NewDevicesHandler(ctx, collectionHomes)
-	registerGrpcHandler = handlers.NewRegisterGrpcHandler(ctx, collectionACs)
-	devicesGrpcHandler = handlers.NewDevicesGrpcHandler(ctx, collectionACs)
-}
+	registerGrpcHandler = handlers.NewRegisterGrpcHandler(ctx, logger, collectionACs)
+	devicesGrpcHandler = handlers.NewDevicesGrpcHandler(ctx, logger, collectionACs)
 
-func main() {
 	amqpPublisher.InitAmqpPublisher()
 	mqttClient.InitMqtt()
 
@@ -53,7 +58,7 @@ func main() {
 	// Start listener, 50051 is the default gRPC port
 	lis, errGrpc := net.Listen("tcp", ":" + port)
 	if errGrpc != nil {
-		log.Fatalf("failed to listen: %v", errGrpc)
+		logger.Fatalf("failed to listen: %v", errGrpc)
 	}
 	// Create new gRPC server with (blank) options
 	s := grpc.NewServer()
@@ -61,8 +66,8 @@ func main() {
 	pbr.RegisterRegistrationServer(s, registerGrpcHandler)
 	pbd.RegisterDeviceServer(s, devicesGrpcHandler)
 
-	log.Printf("server listening at %v", lis.Addr())
+	logger.Infof("server listening at %v", lis.Addr())
 	if errGrpc := s.Serve(lis); errGrpc != nil {
-		log.Fatalf("failed to serve: %v", errGrpc)
+		logger.Fatalf("failed to serve: %v", errGrpc)
 	}
 }

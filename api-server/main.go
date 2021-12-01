@@ -44,11 +44,16 @@ var profilesHandler *handlers.ProfilesHandler
 var registerHandler *handlers.RegisterHandler
 var collectionProfiles *mongo.Collection
 
-func init() {
+func main() {
+	logger := InitLogger()
+	defer logger.Sync()
+
+	logger.Info("Starting application...)")
+
 	//Load the .env file
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal("error: failed to load the env file")
+		logger.Error("failed to load the env file")
 	}
 
 	// read ENV property from .env
@@ -56,25 +61,29 @@ func init() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
+	logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
+	logger.Info("HTTP PORT = " + os.Getenv("HTTP_PORT"))
+	logger.Info("GRPC PORT = " + os.Getenv("GRPC_PORT"))
+
 	ctx := context.Background()
-	log.Println("Connecting to MongoDB...")
+
+	logger.Info("Connecting to MongoDB...")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017/"))
 	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Connected to MongoDB")
+	logger.Info("Connected to MongoDB")
+
 	collectionProfiles = client.Database(DbName).Collection("profiles")
 	collectionHomes := client.Database(DbName).Collection("homes")
 	collectionDevices := client.Database(DbName).Collection("devices")
 
-	authHandler = handlers.NewAuthHandler(ctx, collectionProfiles)
-	homesHandler = handlers.NewHomesHandler(ctx, collectionHomes, collectionProfiles)
-	devicesHandler = handlers.NewDevicesHandler(ctx, collectionDevices, collectionProfiles, collectionHomes)
-	profilesHandler = handlers.NewProfilesHandler(ctx, collectionProfiles)
-	registerHandler = handlers.NewRegisterHandler(ctx, collectionDevices, collectionProfiles)
-}
+	authHandler = handlers.NewAuthHandler(ctx, logger, collectionProfiles)
+	homesHandler = handlers.NewHomesHandler(ctx, logger, collectionHomes, collectionProfiles)
+	devicesHandler = handlers.NewDevicesHandler(ctx, logger, collectionDevices, collectionProfiles, collectionHomes)
+	profilesHandler = handlers.NewProfilesHandler(ctx, logger, collectionProfiles)
+	registerHandler = handlers.NewRegisterHandler(ctx, logger, collectionDevices, collectionProfiles)
 
-func main() {
 	amqpSubscriber.InitAmqpSubscriber()
 
 	hubInstance := ws.GetInstance()
@@ -166,8 +175,9 @@ func main() {
 
 	port := os.Getenv("HTTP_PORT")
 
-	err := router.Run(":" + port)
+	err = router.Run(":" + port)
 	if err != nil {
+		logger.Error("Cannot start HTTP server", err)
 		panic(err)
 	}
 }

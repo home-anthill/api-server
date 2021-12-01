@@ -11,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"net/http"
@@ -24,10 +25,12 @@ type DevicesHandler struct {
 	collectionProfiles *mongo.Collection
 	collectionHomes    *mongo.Collection
 	ctx                context.Context
+	logger             *zap.SugaredLogger
 	grpcTarget         string
 }
 
 func NewDevicesHandler(ctx context.Context,
+	logger *zap.SugaredLogger,
 	collection *mongo.Collection,
 	collectionProfiles *mongo.Collection,
 	collectionHomes *mongo.Collection) *DevicesHandler {
@@ -39,6 +42,7 @@ func NewDevicesHandler(ctx context.Context,
 		collectionProfiles: collectionProfiles,
 		collectionHomes:    collectionHomes,
 		ctx:                ctx,
+		logger:             logger,
 		grpcTarget:         "localhost:" + grpcPort,
 	}
 }
@@ -52,6 +56,7 @@ func NewDevicesHandler(ctx context.Context,
 //     '200':
 //         description: Successful operation
 func (handler *DevicesHandler) GetDevicesHandler(c *gin.Context) {
+	handler.logger.Debug("GetDevicesHandler called")
 	// retrieve current profile ID from session
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
@@ -96,6 +101,7 @@ func (handler *DevicesHandler) GetDevicesHandler(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *DevicesHandler) DeleteDeviceHandler(c *gin.Context) {
+	handler.logger.Debug("DeleteDeviceHandler called")
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 	homeId := c.Query("homeId")
@@ -164,6 +170,7 @@ func (handler *DevicesHandler) DeleteDeviceHandler(c *gin.Context) {
 }
 
 func (handler *DevicesHandler) GetValuesDeviceHandler(c *gin.Context) {
+	handler.logger.Debug("GetValuesDeviceHandler called")
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -220,6 +227,7 @@ func (handler *DevicesHandler) GetValuesDeviceHandler(c *gin.Context) {
 }
 
 func (handler *DevicesHandler) PostOnOffDeviceHandler(c *gin.Context) {
+	handler.logger.Debug("PostOnOffDeviceHandler called")
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -258,6 +266,8 @@ func (handler *DevicesHandler) PostOnOffDeviceHandler(c *gin.Context) {
 }
 
 func (handler *DevicesHandler) PostTemperatureDeviceHandler(c *gin.Context) {
+	handler.logger.Debug("PostTemperatureDeviceHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -295,6 +305,8 @@ func (handler *DevicesHandler) PostTemperatureDeviceHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 func (handler *DevicesHandler) PostModeDeviceHandler(c *gin.Context) {
+	handler.logger.Debug("PostModeDeviceHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -332,6 +344,8 @@ func (handler *DevicesHandler) PostModeDeviceHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 func (handler *DevicesHandler) PostFanModeDeviceHandler(c *gin.Context) {
+	handler.logger.Debug("PostFanModeDeviceHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -369,6 +383,8 @@ func (handler *DevicesHandler) PostFanModeDeviceHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 func (handler *DevicesHandler) PostFanSpeedDeviceHandler(c *gin.Context) {
+	handler.logger.Debug("PostFanSpeedDeviceHandler called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -407,6 +423,8 @@ func (handler *DevicesHandler) PostFanSpeedDeviceHandler(c *gin.Context) {
 }
 
 func (handler *DevicesHandler) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
+	handler.logger.Debug("sendViaGrpc called")
+
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/contrib/sessions"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 
@@ -29,16 +30,20 @@ type GithubResponse struct {
 type ProfilesHandler struct {
 	collection *mongo.Collection
 	ctx        context.Context
+	logger     *zap.SugaredLogger
 }
 
-func NewProfilesHandler(ctx context.Context, collection *mongo.Collection) *ProfilesHandler {
+func NewProfilesHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *ProfilesHandler {
 	return &ProfilesHandler{
 		collection: collection,
 		ctx:        ctx,
+		logger:     logger,
 	}
 }
 
 func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
+	handler.logger.Debug("GetProfileHandler called")
+
 	var profile models.Profile
 	var ok bool
 	session := sessions.Default(c).Get("profile")
@@ -69,6 +74,8 @@ func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *ProfilesHandler) PostProfilesTokenHandler(c *gin.Context) {
+	handler.logger.Debug("PostProfilesTokenHandler called")
+
 	id := c.Param("id")
 	var profile models.Profile
 	if err := c.ShouldBindJSON(&profile); err != nil {

@@ -7,23 +7,27 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 	"time"
 )
 
 type RegisterGrpcHandler struct {
 	pb.UnimplementedRegistrationServer
 	airConditionerCollection *mongo.Collection
-	contextRef               context.Context
+	ctx               context.Context
+	logger     *zap.SugaredLogger
 }
 
-func NewRegisterGrpcHandler(ctx context.Context, collection *mongo.Collection) *RegisterGrpcHandler {
+func NewRegisterGrpcHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *RegisterGrpcHandler {
 	return &RegisterGrpcHandler{
 		airConditionerCollection: collection,
-		contextRef:               ctx,
+		ctx:               ctx,
+		logger:     logger,
 	}
 }
 
 func (handler *RegisterGrpcHandler) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
+	handler.logger.Info("gRPC Register called")
 	fmt.Println("Received: ", in)
 
 	// update ac
@@ -31,7 +35,7 @@ func (handler *RegisterGrpcHandler) Register(ctx context.Context, in *pb.Registe
 	opts := options.UpdateOptions{
 		Upsert: &upsert,
 	}
-	_, err := handler.airConditionerCollection.UpdateOne(handler.contextRef, bson.M{
+	_, err := handler.airConditionerCollection.UpdateOne(handler.ctx, bson.M{
 		"mac": in.Mac,
 	}, bson.M{
 		"$set": bson.M{

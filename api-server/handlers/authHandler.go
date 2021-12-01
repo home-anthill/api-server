@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 	"net/http"
 	"net/url"
 	"time"
@@ -15,6 +16,7 @@ import (
 type AuthHandler struct {
 	collection *mongo.Collection
 	ctx        context.Context
+	logger     *zap.SugaredLogger
 }
 
 // Create a struct that will be encoded to a JWT.
@@ -30,21 +32,24 @@ type Claims struct {
 // and validating.
 var jwtKey = []byte("secretkey")
 
-func NewAuthHandler(ctx context.Context, collection *mongo.Collection) *AuthHandler {
+func NewAuthHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *AuthHandler {
 	return &AuthHandler{
 		collection: collection,
 		ctx:        ctx,
+		logger:     logger,
 	}
 }
 
 func (handler *AuthHandler) LoginCallbackHandler(c *gin.Context) {
+	handler.logger.Info("LoginCallbackHandler called")
+
 	var profile = c.Value("profile").(models.Profile)
 	fmt.Println("LoginCallbackHandler with profile = ", profile)
 
 	expirationTime := time.Now().Add(20 * time.Minute)
 
 	claims := &Claims{
-		ID: profile.Github.ID,
+		ID:   profile.Github.ID,
 		Name: profile.Github.Name,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),

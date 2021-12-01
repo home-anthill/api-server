@@ -3,6 +3,7 @@
 
 tmp/
 build/
+logs/
 
 public
 public-old

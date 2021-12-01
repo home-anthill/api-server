@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
@@ -32,21 +33,25 @@ type RegisterHandler struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
 	ctx                context.Context
+	logger             *zap.SugaredLogger
 	grpcTarget         string
 }
 
-func NewRegisterHandler(ctx context.Context, collection *mongo.Collection, collectionProfiles *mongo.Collection) *RegisterHandler {
+func NewRegisterHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *RegisterHandler {
 	grpcPort := os.Getenv("GRPC_PORT")
 
 	return &RegisterHandler{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		ctx:                ctx,
+		logger:             logger,
 		grpcTarget:         "localhost:" + grpcPort,
 	}
 }
 
 func (handler *RegisterHandler) PostRegisterHandler(c *gin.Context) {
+	handler.logger.Debug("PostRegisterHandler called")
+
 	// receive a payload from devices with
 	var registerBody DeviceRequest
 	if err := c.ShouldBindJSON(&registerBody); err != nil {
