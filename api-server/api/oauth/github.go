@@ -1,4 +1,4 @@
-package github
+package oauth
 
 import (
 	"api-server/models"
@@ -68,7 +68,7 @@ func Session(name string) gin.HandlerFunc {
 	return sessions.Sessions(name, store)
 }
 
-func GetLoginURLHandler(c *gin.Context) {
+func GetLoginURL(c *gin.Context) {
 	state = randToken()
 	session := sessions.Default(c)
 	session.Set("state", state)
@@ -81,7 +81,7 @@ func GetLoginURLHandler(c *gin.Context) {
 	})
 }
 
-func Auth() gin.HandlerFunc {
+func OauthAuth() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// read current profile from session.
 		// if available save it in the context
@@ -139,8 +139,8 @@ func Auth() gin.HandlerFunc {
 
 			// populate cookie
 			session.Set("profile", profileFound)
-			if err := session.Save(); err != nil {
-				glog.Errorf("Failed to save profile in session: %v", err)
+			if errSet := session.Save(); errSet != nil {
+				glog.Errorf("Failed to save profile in session: %v", errSet)
 			}
 
 			//ctxUser2 := ctx.Value("profile").(models.Profile)
@@ -164,8 +164,8 @@ func Auth() gin.HandlerFunc {
 
 				// populate cookie
 				session.Set("profile", newProfile)
-				if err := session.Save(); err != nil {
-					glog.Errorf("Failed to save profile in session: %v", err)
+				if errSave := session.Save(); errSave != nil {
+					glog.Errorf("Failed to save profile in session: %v", errSave)
 				}
 
 				//ctxUser2 := ctx.Value("profile").(models.Profile)

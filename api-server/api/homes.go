@@ -1,4 +1,4 @@
-package handlers
+package api
 
 import (
 	"fmt"
@@ -16,15 +16,15 @@ import (
 	"golang.org/x/net/context"
 )
 
-type HomesHandler struct {
+type Homes struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
 	ctx                context.Context
 	logger             *zap.SugaredLogger
 }
 
-func NewHomesHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *HomesHandler {
-	return &HomesHandler{
+func NewHomes(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *Homes {
+	return &Homes{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		ctx:                ctx,
@@ -40,12 +40,12 @@ func NewHomesHandler(ctx context.Context, logger *zap.SugaredLogger, collection 
 // responses:
 //     '200':
 //         description: Successful operation
-func (handler *HomesHandler) GetHomesHandler(c *gin.Context) {
-	handler.logger.Debug("GetHomesHandler called")
+func (handler *Homes) GetHomes(c *gin.Context) {
+	handler.logger.Debug("GetHomes called")
 
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
-	fmt.Println("GetHomesHandler with profileID = ", profileSession.ID)
+	fmt.Println("GetHomes with profileID = ", profileSession.ID)
 
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 	var profile models.Profile
@@ -86,12 +86,12 @@ func (handler *HomesHandler) GetHomesHandler(c *gin.Context) {
 //         description: Successful operation
 //     '400':
 //         description: Invalid input
-func (handler *HomesHandler) PostHomeHandler(c *gin.Context) {
-	handler.logger.Debug("PostHomeHandler called")
+func (handler *Homes) PostHome(c *gin.Context) {
+	handler.logger.Debug("PostHome called")
 
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
-	fmt.Println("PostHomeHandler with profileID = ", profileSession.ID)
+	fmt.Println("PostHome with profileID = ", profileSession.ID)
 
 	var home models.Home
 	if err := c.ShouldBindJSON(&home); err != nil {
@@ -143,8 +143,8 @@ func (handler *HomesHandler) PostHomeHandler(c *gin.Context) {
 //         description: Invalid input
 //     '404':
 //         description: Invalid home ID
-func (handler *HomesHandler) PutHomeHandler(c *gin.Context) {
-	handler.logger.Debug("PutHomeHandler called")
+func (handler *Homes) PutHome(c *gin.Context) {
+	handler.logger.Debug("PutHome called")
 
 	id := c.Param("id")
 	var home models.Home
@@ -194,8 +194,8 @@ func (handler *HomesHandler) PutHomeHandler(c *gin.Context) {
 //         description: Successful operation
 //     '404':
 //         description: Invalid home ID
-func (handler *HomesHandler) DeleteHomeHandler(c *gin.Context) {
-	handler.logger.Debug("DeleteHomeHandler called")
+func (handler *Homes) DeleteHome(c *gin.Context) {
+	handler.logger.Debug("DeleteHome called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -211,7 +211,7 @@ func (handler *HomesHandler) DeleteHomeHandler(c *gin.Context) {
 
 	// remove home from profile.homes
 	profileSession := session.Get("profile").(models.Profile)
-	fmt.Println("DeleteHomeHandler with profileID = ", profileSession.ID)
+	fmt.Println("DeleteHome with profileID = ", profileSession.ID)
 
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 	var profile models.Profile
@@ -261,8 +261,8 @@ func (handler *HomesHandler) DeleteHomeHandler(c *gin.Context) {
 // responses:
 //     '200':
 //         description: Successful operation
-func (handler *HomesHandler) GetRoomsHandler(c *gin.Context) {
-	handler.logger.Debug("GetRoomsHandler called")
+func (handler *Homes) GetRooms(c *gin.Context) {
+	handler.logger.Debug("GetRooms called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -297,8 +297,8 @@ func (handler *HomesHandler) GetRoomsHandler(c *gin.Context) {
 //         description: Successful operation
 //     '400':
 //         description: Invalid input
-func (handler *HomesHandler) PostRoomHandler(c *gin.Context) {
-	handler.logger.Debug("PostRoomHandler called")
+func (handler *Homes) PostRoom(c *gin.Context) {
+	handler.logger.Debug("PostRoom called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -363,8 +363,8 @@ func (handler *HomesHandler) PostRoomHandler(c *gin.Context) {
 //         description: Invalid input
 //     '404':
 //         description: Invalid home ID
-func (handler *HomesHandler) PutRoomHandler(c *gin.Context) {
-	handler.logger.Debug("PutRoomHandler called")
+func (handler *Homes) PutRoom(c *gin.Context) {
+	handler.logger.Debug("PutRoom called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -443,8 +443,8 @@ func (handler *HomesHandler) PutRoomHandler(c *gin.Context) {
 //         description: Successful operation
 //     '404':
 //         description: Invalid room ID
-func (handler *HomesHandler) DeleteRoomHandler(c *gin.Context) {
-	handler.logger.Debug("DeleteRoomHandler called")
+func (handler *Homes) DeleteRoom(c *gin.Context) {
+	handler.logger.Debug("DeleteRoom called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -508,7 +508,7 @@ func contains(s []primitive.ObjectID, objToFind primitive.ObjectID) bool {
 	return false
 }
 
-func (handler *HomesHandler) isHomeOwnedBy(session sessions.Session, objectId primitive.ObjectID) bool {
+func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectId primitive.ObjectID) bool {
 	profileSessionId := session.Get("profile").(models.Profile).ID
 	// you can update a home only if you are the owner of that home
 	fmt.Println("isHomeOwnedBy profileSessionId = ", profileSessionId)

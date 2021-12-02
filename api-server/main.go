@@ -18,8 +18,8 @@ package main
 
 import (
 	amqpSubscriber "api-server/amqp-subscriber"
-	"api-server/github"
-	"api-server/handlers"
+	"api-server/api"
+	"api-server/api/oauth"
 	"api-server/ws"
 	"context"
 	"github.com/gin-contrib/cors"
@@ -37,11 +37,11 @@ import (
 
 const DbName = "api-server"
 
-var authHandler *handlers.AuthHandler
-var homesHandler *handlers.HomesHandler
-var devicesHandler *handlers.DevicesHandler
-var profilesHandler *handlers.ProfilesHandler
-var registerHandler *handlers.RegisterHandler
+var auth *api.Auth
+var homes *api.Homes
+var devices *api.Devices
+var profiles *api.Profiles
+var register *api.Register
 var collectionProfiles *mongo.Collection
 
 func main() {
@@ -78,11 +78,11 @@ func main() {
 	collectionHomes := client.Database(DbName).Collection("homes")
 	collectionDevices := client.Database(DbName).Collection("devices")
 
-	authHandler = handlers.NewAuthHandler(ctx, logger, collectionProfiles)
-	homesHandler = handlers.NewHomesHandler(ctx, logger, collectionHomes, collectionProfiles)
-	devicesHandler = handlers.NewDevicesHandler(ctx, logger, collectionDevices, collectionProfiles, collectionHomes)
-	profilesHandler = handlers.NewProfilesHandler(ctx, logger, collectionProfiles)
-	registerHandler = handlers.NewRegisterHandler(ctx, logger, collectionDevices, collectionProfiles)
+	auth = api.NewAuth(ctx, logger, collectionProfiles)
+	homes = api.NewHomes(ctx, logger, collectionHomes, collectionProfiles)
+	devices = api.NewDevices(ctx, logger, collectionDevices, collectionProfiles, collectionHomes)
+	profiles = api.NewProfiles(ctx, logger, collectionProfiles)
+	register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles)
 
 	amqpSubscriber.InitAmqpSubscriber()
 
@@ -92,7 +92,7 @@ func main() {
 	router := gin.Default()
 
 	// implement websocket to receive realtime events from rabbitmq via amqp
-	// this service should be protected by authHandler
+	// this service should be protected by auth
 	router.GET("/ws", func(c *gin.Context) {
 		ws.ServeWs(c.Writer, c.Request)
 	})
@@ -131,46 +131,46 @@ func main() {
 	// You have to select your own scope from here -> https://developer.github.com/v3/oauth/#scopes
 	scopes := []string{"repo"}
 	secret := []byte("secret")
-	github.Setup(redirectURL, credFile, scopes, secret, collectionProfiles)
+	oauth.Setup(redirectURL, credFile, scopes, secret, collectionProfiles)
 	sessionName := "session"
-	router.Use(github.Session(sessionName))
+	router.Use(oauth.Session(sessionName))
 
-	router.GET("/api/login", github.GetLoginURLHandler)
+	router.GET("/api/login", oauth.GetLoginURL)
 
-	router.POST("/api/register", registerHandler.PostRegisterHandler)
+	router.POST("/api/register", register.PostRegister)
 
 	// protected url group
 	authorized := router.Group("/auth")
-	authorized.Use(github.Auth())
+	authorized.Use(oauth.OauthAuth())
 	{
-		authorized.GET("", authHandler.LoginCallbackHandler)
+		authorized.GET("", auth.LoginCallback)
 	}
 
 	// protected url group
 	private := router.Group("/api")
-	private.Use(authHandler.JWTMiddleware())
+	private.Use(auth.JWTMiddleware())
 	{
-		private.GET("/homes", homesHandler.GetHomesHandler)
-		private.POST("/homes", homesHandler.PostHomeHandler)
-		private.PUT("/homes/:id", homesHandler.PutHomeHandler)
-		private.DELETE("/homes/:id", homesHandler.DeleteHomeHandler)
-		private.GET("/homes/:id/rooms", homesHandler.GetRoomsHandler)
-		private.POST("/homes/:id/rooms", homesHandler.PostRoomHandler)
-		private.PUT("/homes/:id/rooms/:rid", homesHandler.PutRoomHandler)
-		private.DELETE("/homes/:id/rooms/:rid", homesHandler.DeleteRoomHandler)
+		private.GET("/homes", homes.GetHomes)
+		private.POST("/homes", homes.PostHome)
+		private.PUT("/homes/:id", homes.PutHome)
+		private.DELETE("/homes/:id", homes.DeleteHome)
+		private.GET("/homes/:id/rooms", homes.GetRooms)
+		private.POST("/homes/:id/rooms", homes.PostRoom)
+		private.PUT("/homes/:id/rooms/:rid", homes.PutRoom)
+		private.DELETE("/homes/:id/rooms/:rid", homes.DeleteRoom)
 
-		private.GET("/profile", profilesHandler.GetProfileHandler)
-		private.POST("/profiles/:id/tokens", profilesHandler.PostProfilesTokenHandler)
+		private.GET("/profile", profiles.GetProfile)
+		private.POST("/profiles/:id/tokens", profiles.PostProfilesToken)
 
-		private.GET("/devices", devicesHandler.GetDevicesHandler)
-		private.DELETE("/devices/:id", devicesHandler.DeleteDeviceHandler)
+		private.GET("/devices", devices.GetDevices)
+		private.DELETE("/devices/:id", devices.DeleteDevice)
 
-		private.GET("/devices/:id/values", devicesHandler.GetValuesDeviceHandler)
-		private.POST("/devices/:id/values/onoff", devicesHandler.PostOnOffDeviceHandler)
-		private.POST("/devices/:id/values/temperature", devicesHandler.PostTemperatureDeviceHandler)
-		private.POST("/devices/:id/values/mode", devicesHandler.PostModeDeviceHandler)
-		private.POST("/devices/:id/values/fanmode", devicesHandler.PostFanModeDeviceHandler)
-		private.POST("/devices/:id/values/fanspeed", devicesHandler.PostFanSpeedDeviceHandler)
+		private.GET("/devices/:id/values", devices.GetValuesDevice)
+		private.POST("/devices/:id/values/onoff", devices.PostOnOffDevice)
+		private.POST("/devices/:id/values/temperature", devices.PostTemperatureDevice)
+		private.POST("/devices/:id/values/mode", devices.PostModeDevice)
+		private.POST("/devices/:id/values/fanmode", devices.PostFanModeDevice)
+		private.POST("/devices/:id/values/fanspeed", devices.PostFanSpeedDevice)
 	}
 
 	port := os.Getenv("HTTP_PORT")

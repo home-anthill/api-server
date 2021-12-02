@@ -26,7 +26,7 @@ func Subscribe() {
 		false,
 		false,
 		nil,
-		)
+	)
 
 	if err != nil {
 		log.Printf("cannot consume from: %q, %v", "device", err)
@@ -41,7 +41,6 @@ func Subscribe() {
 		json.Unmarshal(msg.Body, &p2)
 		m := p2.(map[string]interface{})
 		fmt.Println(m)
-
 
 		go ws.Send()
 		//go ws.Send(msg.Body)

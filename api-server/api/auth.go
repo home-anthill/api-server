@@ -1,4 +1,4 @@
-package handlers
+package api
 
 import (
 	"api-server/models"
@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-type AuthHandler struct {
+type Auth struct {
 	collection *mongo.Collection
 	ctx        context.Context
 	logger     *zap.SugaredLogger
@@ -32,19 +32,19 @@ type Claims struct {
 // and validating.
 var jwtKey = []byte("secretkey")
 
-func NewAuthHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *AuthHandler {
-	return &AuthHandler{
+func NewAuth(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *Auth {
+	return &Auth{
 		collection: collection,
 		ctx:        ctx,
 		logger:     logger,
 	}
 }
 
-func (handler *AuthHandler) LoginCallbackHandler(c *gin.Context) {
-	handler.logger.Info("LoginCallbackHandler called")
+func (handler *Auth) LoginCallback(c *gin.Context) {
+	handler.logger.Info("LoginCallback called")
 
 	var profile = c.Value("profile").(models.Profile)
-	fmt.Println("LoginCallbackHandler with profile = ", profile)
+	fmt.Println("LoginCallback with profile = ", profile)
 
 	expirationTime := time.Now().Add(20 * time.Minute)
 
@@ -80,7 +80,7 @@ func (handler *AuthHandler) LoginCallbackHandler(c *gin.Context) {
 	//})
 }
 
-func (handler *AuthHandler) JWTMiddleware() gin.HandlerFunc {
+func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		const BEARER_SCHEMA = "Bearer"
 		authHeader := c.GetHeader("Authorization")

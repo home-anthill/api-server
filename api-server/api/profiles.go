@@ -1,4 +1,4 @@
-package handlers
+package api
 
 import (
 	"github.com/gin-gonic/contrib/sessions"
@@ -27,22 +27,22 @@ type GithubResponse struct {
 	AvatarURL string `json:"avatarURL"`
 }
 
-type ProfilesHandler struct {
+type Profiles struct {
 	collection *mongo.Collection
 	ctx        context.Context
 	logger     *zap.SugaredLogger
 }
 
-func NewProfilesHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *ProfilesHandler {
-	return &ProfilesHandler{
+func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *Profiles {
+	return &Profiles{
 		collection: collection,
 		ctx:        ctx,
 		logger:     logger,
 	}
 }
 
-func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
-	handler.logger.Debug("GetProfileHandler called")
+func (handler *Profiles) GetProfile(c *gin.Context) {
+	handler.logger.Debug("GetProfile called")
 
 	var profile models.Profile
 	var ok bool
@@ -73,8 +73,8 @@ func (handler *ProfilesHandler) GetProfileHandler(c *gin.Context) {
 //         description: Successful operation
 //     '400':
 //         description: Invalid input
-func (handler *ProfilesHandler) PostProfilesTokenHandler(c *gin.Context) {
-	handler.logger.Debug("PostProfilesTokenHandler called")
+func (handler *Profiles) PostProfilesToken(c *gin.Context) {
+	handler.logger.Debug("PostProfilesToken called")
 
 	id := c.Param("id")
 	var profile models.Profile

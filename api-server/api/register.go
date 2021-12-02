@@ -1,6 +1,7 @@
-package handlers
+package api
 
 import (
+	"api-server/api/register"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
@@ -15,7 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
 
-	pb "api-server/register"
 	"google.golang.org/grpc"
 )
 
@@ -29,7 +29,7 @@ type DeviceRequest struct {
 	APIToken     string `json:"apiToken"`
 }
 
-type RegisterHandler struct {
+type Register struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
 	ctx                context.Context
@@ -37,10 +37,10 @@ type RegisterHandler struct {
 	grpcTarget         string
 }
 
-func NewRegisterHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *RegisterHandler {
+func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *Register {
 	grpcPort := os.Getenv("GRPC_PORT")
 
-	return &RegisterHandler{
+	return &Register{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		ctx:                ctx,
@@ -49,8 +49,8 @@ func NewRegisterHandler(ctx context.Context, logger *zap.SugaredLogger, collecti
 	}
 }
 
-func (handler *RegisterHandler) PostRegisterHandler(c *gin.Context) {
-	handler.logger.Debug("PostRegisterHandler called")
+func (handler *Register) PostRegister(c *gin.Context) {
+	handler.logger.Debug("PostRegister called")
 
 	// receive a payload from devices with
 	var registerBody DeviceRequest
@@ -114,12 +114,12 @@ func (handler *RegisterHandler) PostRegisterHandler(c *gin.Context) {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	client := pb.NewRegistrationClient(conn)
+	client := register.NewRegistrationClient(conn)
 
 	// Contact the server and print out its response.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	r, err := client.Register(ctx, &pb.RegisterRequest{
+	r, err := client.Register(ctx, &register.RegisterRequest{
 		Id:             device.ID.Hex(),
 		Mac:            device.Mac,
 		Name:           device.Name,

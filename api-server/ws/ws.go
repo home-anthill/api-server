@@ -41,8 +41,8 @@ func ServeWs(w http.ResponseWriter, r *http.Request) {
 	newId := uuid.NewString()
 	ids = append(ids, newId)
 	client := &Client{
-		ID: newId,
-		Hub: hub,
+		ID:   newId,
+		Hub:  hub,
 		Conn: conn,
 		Send: make(chan []byte, 256),
 	}
