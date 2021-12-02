@@ -14,7 +14,7 @@ var c mqtt.Client
 
 var defaultHandler mqtt.MessageHandler = func(client mqtt.Client, msg mqtt.Message) {
 	fmt.Printf("---UNKNOWN TOPIC---")
-	fmt.Printf("MessageID: %s\n", msg.MessageID())
+	fmt.Printf("MessageID: %d\n", msg.MessageID())
 	fmt.Printf("Topic: %s\n", msg.Topic())
 	fmt.Printf("Payload: %s\n", msg.Payload())
 	fmt.Printf("------------------")
@@ -42,7 +42,7 @@ func SendFanSpeed(uuid string, messageJSON []byte) mqtt.Token {
 }
 
 func PublishMessage(msg mqtt.Message) {
-	fmt.Printf("MessageID: %s\n", msg.MessageID())
+	fmt.Printf("MessageID: %d\n", msg.MessageID())
 	fmt.Printf("Topic: %s\n", msg.Topic())
 	fmt.Printf("Payload: %s\n", msg.Payload())
 

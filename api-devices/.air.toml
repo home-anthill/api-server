@@ -16,7 +16,7 @@ tmp_dir = "tmp"
   # Watch these filename extensions.
   include_ext = ["go"]
   # Ignore these filename extensions or directories.
-  exclude_dir = ["tmp", "public", ".idea"]
+  exclude_dir = ["tmp", "logs", "public", ".idea"]
   # Watch these directories if you specified.
   include_dir = []
   # Exclude files.

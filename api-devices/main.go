@@ -2,10 +2,10 @@ package main
 
 import (
 	amqpPublisher "api-devices/amqp-publisher"
-	pbd "api-devices/device"
-	"api-devices/handlers"
+	"api-devices/api"
+	pbd "api-devices/api/device"
+	pbr "api-devices/api/register"
 	mqttClient "api-devices/mqtt-client"
-	pbr "api-devices/register"
 	"context"
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -17,8 +17,8 @@ import (
 	"os"
 )
 
-var registerGrpcHandler *handlers.RegisterGrpcHandler
-var devicesGrpcHandler *handlers.DevicesGrpcHandler
+var registerGrpc *api.RegisterGrpc
+var devicesGrpc *api.DevicesGrpc
 
 const DbName = "api-devices"
 
@@ -47,8 +47,8 @@ func main() {
 
 	collectionACs := client.Database(DbName).Collection("airconditioners")
 
-	registerGrpcHandler = handlers.NewRegisterGrpcHandler(ctx, logger, collectionACs)
-	devicesGrpcHandler = handlers.NewDevicesGrpcHandler(ctx, logger, collectionACs)
+	registerGrpc = api.NewRegisterGrpc(ctx, logger, collectionACs)
+	devicesGrpc = api.NewDevicesGrpc(ctx, logger, collectionACs)
 
 	amqpPublisher.InitAmqpPublisher()
 	mqttClient.InitMqtt()
@@ -56,15 +56,15 @@ func main() {
 	port := os.Getenv("GRPC_PORT")
 
 	// Start listener, 50051 is the default gRPC port
-	lis, errGrpc := net.Listen("tcp", ":" + port)
+	lis, errGrpc := net.Listen("tcp", ":"+port)
 	if errGrpc != nil {
 		logger.Fatalf("failed to listen: %v", errGrpc)
 	}
 	// Create new gRPC server with (blank) options
 	s := grpc.NewServer()
 	// Register the service with the server
-	pbr.RegisterRegistrationServer(s, registerGrpcHandler)
-	pbd.RegisterDeviceServer(s, devicesGrpcHandler)
+	pbr.RegisterRegistrationServer(s, registerGrpc)
+	pbd.RegisterDeviceServer(s, devicesGrpc)
 
 	logger.Infof("server listening at %v", lis.Addr())
 	if errGrpc := s.Serve(lis); errGrpc != nil {

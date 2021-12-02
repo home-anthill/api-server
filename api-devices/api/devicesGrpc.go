@@ -1,7 +1,7 @@
-package handlers
+package api
 
 import (
-	pb "api-devices/device"
+	"api-devices/api/device"
 	"api-devices/models"
 	"context"
 	"fmt"
@@ -11,22 +11,22 @@ import (
 	"time"
 )
 
-type DevicesGrpcHandler struct {
-	pb.UnimplementedDeviceServer
+type DevicesGrpc struct {
+	device.UnimplementedDeviceServer
 	airConditionerCollection *mongo.Collection
 	contextRef               context.Context
 	logger                   *zap.SugaredLogger
 }
 
-func NewDevicesGrpcHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *DevicesGrpcHandler {
-	return &DevicesGrpcHandler{
+func NewDevicesGrpc(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *DevicesGrpc {
+	return &DevicesGrpc{
 		airConditionerCollection: collection,
 		contextRef:               ctx,
 		logger:                   logger,
 	}
 }
 
-func (handler *DevicesGrpcHandler) GetStatus(ctx context.Context, in *pb.StatusRequest) (*pb.StatusResponse, error) {
+func (handler *DevicesGrpc) GetStatus(ctx context.Context, in *device.StatusRequest) (*device.StatusResponse, error) {
 	handler.logger.Info("gRPC GetStatus called")
 	fmt.Println("Received: ", in)
 
@@ -37,7 +37,7 @@ func (handler *DevicesGrpcHandler) GetStatus(ctx context.Context, in *pb.StatusR
 	if err != nil {
 		fmt.Println("Cannot get AC with specified mac ", in.Mac)
 	}
-	return &pb.StatusResponse{
+	return &device.StatusResponse{
 		On:          ac.Status.On,
 		Temperature: int32(ac.Status.Temperature),
 		Mode:        int32(ac.Status.Mode),
@@ -45,7 +45,7 @@ func (handler *DevicesGrpcHandler) GetStatus(ctx context.Context, in *pb.StatusR
 		FanSpeed:    int32(ac.Status.Fan.Speed),
 	}, err
 }
-func (handler *DevicesGrpcHandler) SetOnOff(ctx context.Context, in *pb.OnOffValueRequest) (*pb.OnOffValueResponse, error) {
+func (handler *DevicesGrpc) SetOnOff(ctx context.Context, in *device.OnOffValueRequest) (*device.OnOffValueResponse, error) {
 	handler.logger.Info("gRPC SetOnOff called")
 	fmt.Println("Received: ", in)
 
@@ -60,9 +60,9 @@ func (handler *DevicesGrpcHandler) SetOnOff(ctx context.Context, in *pb.OnOffVal
 	if err != nil {
 		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
 	}
-	return &pb.OnOffValueResponse{Status: "200", Message: "Updated"}, err
+	return &device.OnOffValueResponse{Status: "200", Message: "Updated"}, err
 }
-func (handler *DevicesGrpcHandler) SetTemperature(ctx context.Context, in *pb.TemperatureValueRequest) (*pb.TemperatureValueResponse, error) {
+func (handler *DevicesGrpc) SetTemperature(ctx context.Context, in *device.TemperatureValueRequest) (*device.TemperatureValueResponse, error) {
 	handler.logger.Info("gRPC SetTemperature called")
 	fmt.Println("Received: ", in)
 
@@ -77,9 +77,9 @@ func (handler *DevicesGrpcHandler) SetTemperature(ctx context.Context, in *pb.Te
 	if err != nil {
 		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
 	}
-	return &pb.TemperatureValueResponse{Status: "200", Message: "Updated"}, err
+	return &device.TemperatureValueResponse{Status: "200", Message: "Updated"}, err
 }
-func (handler *DevicesGrpcHandler) SetMode(ctx context.Context, in *pb.ModeValueRequest) (*pb.ModeValueResponse, error) {
+func (handler *DevicesGrpc) SetMode(ctx context.Context, in *device.ModeValueRequest) (*device.ModeValueResponse, error) {
 	handler.logger.Info("gRPC SetMode called")
 	fmt.Println("Received: ", in)
 
@@ -94,9 +94,9 @@ func (handler *DevicesGrpcHandler) SetMode(ctx context.Context, in *pb.ModeValue
 	if err != nil {
 		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
 	}
-	return &pb.ModeValueResponse{Status: "200", Message: "Updated"}, err
+	return &device.ModeValueResponse{Status: "200", Message: "Updated"}, err
 }
-func (handler *DevicesGrpcHandler) SetFanMode(ctx context.Context, in *pb.FanModeValueRequest) (*pb.FanModeValueResponse, error) {
+func (handler *DevicesGrpc) SetFanMode(ctx context.Context, in *device.FanModeValueRequest) (*device.FanModeValueResponse, error) {
 	handler.logger.Info("gRPC SetFanMode called")
 	fmt.Println("Received: ", in)
 
@@ -111,9 +111,9 @@ func (handler *DevicesGrpcHandler) SetFanMode(ctx context.Context, in *pb.FanMod
 	if err != nil {
 		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
 	}
-	return &pb.FanModeValueResponse{Status: "200", Message: "Updated"}, err
+	return &device.FanModeValueResponse{Status: "200", Message: "Updated"}, err
 }
-func (handler *DevicesGrpcHandler) SetFanSpeed(ctx context.Context, in *pb.FanSpeedValueRequest) (*pb.FanSpeedValueResponse, error) {
+func (handler *DevicesGrpc) SetFanSpeed(ctx context.Context, in *device.FanSpeedValueRequest) (*device.FanSpeedValueResponse, error) {
 	handler.logger.Info("gRPC SetFanSpeed called")
 	fmt.Println("Received: ", in)
 
@@ -128,5 +128,5 @@ func (handler *DevicesGrpcHandler) SetFanSpeed(ctx context.Context, in *pb.FanSp
 	if err != nil {
 		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
 	}
-	return &pb.FanSpeedValueResponse{Status: "200", Message: "Updated"}, err
+	return &device.FanSpeedValueResponse{Status: "200", Message: "Updated"}, err
 }

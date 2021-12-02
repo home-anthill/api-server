@@ -1,7 +1,7 @@
-package handlers
+package api
 
 import (
-	pb "api-devices/register"
+	"api-devices/api/register"
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,22 +11,22 @@ import (
 	"time"
 )
 
-type RegisterGrpcHandler struct {
-	pb.UnimplementedRegistrationServer
+type RegisterGrpc struct {
+	register.UnimplementedRegistrationServer
 	airConditionerCollection *mongo.Collection
-	ctx               context.Context
-	logger     *zap.SugaredLogger
+	ctx                      context.Context
+	logger                   *zap.SugaredLogger
 }
 
-func NewRegisterGrpcHandler(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *RegisterGrpcHandler {
-	return &RegisterGrpcHandler{
+func NewRegisterGrpc(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *RegisterGrpc {
+	return &RegisterGrpc{
 		airConditionerCollection: collection,
-		ctx:               ctx,
-		logger:     logger,
+		ctx:                      ctx,
+		logger:                   logger,
 	}
 }
 
-func (handler *RegisterGrpcHandler) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
+func (handler *RegisterGrpc) Register(ctx context.Context, in *register.RegisterRequest) (*register.RegisterReply, error) {
 	handler.logger.Info("gRPC Register called")
 	fmt.Println("Received: ", in)
 
@@ -54,5 +54,5 @@ func (handler *RegisterGrpcHandler) Register(ctx context.Context, in *pb.Registe
 		fmt.Println("Cannot update db with the registered AC with id " + in.Id)
 	}
 
-	return &pb.RegisterReply{Status: "200", Message: "Inserted"}, err
+	return &register.RegisterReply{Status: "200", Message: "Inserted"}, err
 }
