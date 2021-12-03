@@ -12,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"google.golang.org/grpc"
-	"log"
 	"net"
 	"os"
 )
@@ -41,7 +40,8 @@ func main() {
 	logger.Info("Connecting to MongoDB...")
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017/"))
 	if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
-		log.Fatal(err)
+		logger.Fatal("Cannot connect to MongoDB", err)
+		return
 	}
 	logger.Info("Connected to MongoDB")
 
