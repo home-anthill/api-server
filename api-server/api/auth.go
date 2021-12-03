@@ -41,7 +41,7 @@ func NewAuth(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.C
 }
 
 func (handler *Auth) LoginCallback(c *gin.Context) {
-	handler.logger.Info("LoginCallback called")
+	handler.logger.Debug("REST - GET - LoginCallback called")
 
 	var profile = c.Value("profile").(models.Profile)
 	fmt.Println("LoginCallback with profile = ", profile)

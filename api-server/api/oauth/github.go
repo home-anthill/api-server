@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	oauth2gh "golang.org/x/oauth2/github"
 	"io/ioutil"
@@ -32,13 +33,15 @@ var conf *oauth2.Config
 var state string
 var store sessions.CookieStore
 var collection *mongo.Collection
+var logger *zap.SugaredLogger
 
 func init() {
 	gob.Register(models.Profile{})
 }
 
-func Setup(redirectURL string, credFile string, scopes []string, secret []byte, profilesCollection *mongo.Collection) {
+func Setup(redirectURL string, credFile string, scopes []string, secret []byte, log *zap.SugaredLogger, profilesCollection *mongo.Collection) {
 	// init some global vars
+	logger = log
 	collection = profilesCollection
 	store = sessions.NewCookieStore(secret)
 
@@ -69,13 +72,15 @@ func Session(name string) gin.HandlerFunc {
 }
 
 func GetLoginURL(c *gin.Context) {
+	logger.Debug("REST - GET - GetLoginURL called")
+
 	state = randToken()
 	session := sessions.Default(c)
 	session.Set("state", state)
 	session.Save()
 	loginURL := conf.AuthCodeURL(state)
 	noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
-	fmt.Println("noUnicodeString", noUnicodeString)
+	logger.Info("noUnicodeString", noUnicodeString)
 	c.JSON(http.StatusOK, gin.H{
 		"loginURL": noUnicodeString,
 	})
@@ -87,7 +92,7 @@ func OauthAuth() gin.HandlerFunc {
 		// if available save it in the context
 		session := sessions.Default(ctx)
 		if dbProfile, ok := session.Get("profile").(models.Profile); ok {
-			fmt.Println("***** Already in session **** - dbProfile: ", dbProfile)
+			logger.Info("***** Already in session **** - dbProfile: ", dbProfile)
 			ctx.Set("profile", dbProfile)
 			ctx.Next()
 			return
@@ -103,7 +108,6 @@ func OauthAuth() gin.HandlerFunc {
 		// TODO: oauth2.NoContext -> context.Context from stdlib
 		// read the "code"
 		tok, err := conf.Exchange(oauth2.NoContext, ctx.Query("code"))
-		fmt.Println("===== tok =====", tok)
 		if err != nil {
 			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to do exchange: %v", err))
 			return
@@ -117,7 +121,6 @@ func OauthAuth() gin.HandlerFunc {
 			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
 			return
 		}
-		fmt.Println("----------user: ", githubClientUser)
 		dbGithubUser := models.Github{
 			ID:        *githubClientUser.ID,
 			Login:     *githubClientUser.Login,
@@ -133,24 +136,17 @@ func OauthAuth() gin.HandlerFunc {
 		}).Decode(&profileFound)
 
 		if err == nil {
-			fmt.Println("Profile found!")
 			// profile found
 			ctx.Set("profile", profileFound)
-
 			// populate cookie
 			session.Set("profile", profileFound)
 			if errSet := session.Save(); errSet != nil {
 				glog.Errorf("Failed to save profile in session: %v", errSet)
 			}
-
-			//ctxUser2 := ctx.Value("profile").(models.Profile)
-			//fmt.Println("ctx get user - ctxUser2: ", ctxUser2)
-			//sessionUser := session.Get("profile").(models.Profile)
-			//fmt.Println("session profile - sessionUser: ", sessionUser)
 		} else {
 			// there is an error
 			if err == mongo.ErrNoDocuments {
-				fmt.Println("Profile not found, adding a new one...")
+				logger.Info("Profile not found, creating a new one...")
 				// profile not found, so create a new profile
 				var newProfile models.Profile
 				newProfile.ID = primitive.NewObjectID()
@@ -168,21 +164,16 @@ func OauthAuth() gin.HandlerFunc {
 					glog.Errorf("Failed to save profile in session: %v", errSave)
 				}
 
-				//ctxUser2 := ctx.Value("profile").(models.Profile)
-				//fmt.Println("ctx get user - ctxUser2: ", ctxUser2)
-				//sessionUser := session.Get("profile").(models.Profile)
-				//fmt.Println("session profile - sessionUser: ", sessionUser)
-
 				// ad profile to db
 				_, err2 := collection.InsertOne(ctx, newProfile)
 				if err2 != nil {
 					ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("cannot save new profile on db: %v", err2))
 					return
 				}
-				fmt.Println("New profile added to db!")
+				logger.Info("New profile added to db!")
 			} else {
 				// other error
-				fmt.Println("Cannot find profile on db. Unknown reason: ", err)
+				logger.Error("Cannot find profile on db. Unknown reason: ", err)
 				ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("cannot find profile in db: %v", err))
 			}
 		}

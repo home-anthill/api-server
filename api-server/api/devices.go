@@ -1,7 +1,7 @@
 package api
 
 import (
-	device2 "api-server/api/device"
+	device3 "api-server/api/gRPC/device"
 	"api-server/errors"
 	"api-server/models"
 	"fmt"
@@ -56,7 +56,8 @@ func NewDevices(ctx context.Context,
 //     '200':
 //         description: Successful operation
 func (handler *Devices) GetDevices(c *gin.Context) {
-	handler.logger.Debug("GetDevices called")
+	handler.logger.Debug("REST - GET - GetDevices called")
+
 	// retrieve current profile ID from session
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
@@ -101,7 +102,8 @@ func (handler *Devices) GetDevices(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Devices) DeleteDevice(c *gin.Context) {
-	handler.logger.Debug("DeleteDevice called")
+	handler.logger.Debug("REST - DELETE - DeleteDevice called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 	homeId := c.Query("homeId")
@@ -170,7 +172,8 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 }
 
 func (handler *Devices) GetValuesDevice(c *gin.Context) {
-	handler.logger.Debug("GetValuesDevice called")
+	handler.logger.Debug("REST - GET - GetValuesDevice called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -201,11 +204,11 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
 		return
 	}
 	defer conn.Close()
-	client := device2.NewDeviceClient(conn)
+	client := device3.NewDeviceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	response, errSend := client.GetStatus(ctx, &device2.StatusRequest{
+	response, errSend := client.GetStatus(ctx, &device3.StatusRequest{
 		Id:           device.ID.Hex(),
 		Mac:          device.Mac,
 		ProfileToken: profile.ApiToken, // RENAME TO ApiToken in proto3
@@ -227,7 +230,8 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
 }
 
 func (handler *Devices) PostOnOffDevice(c *gin.Context) {
-	handler.logger.Debug("PostOnOffDevice called")
+	handler.logger.Debug("REST - POST - PostOnOffDevice called")
+
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
 
@@ -266,7 +270,7 @@ func (handler *Devices) PostOnOffDevice(c *gin.Context) {
 }
 
 func (handler *Devices) PostTemperatureDevice(c *gin.Context) {
-	handler.logger.Debug("PostTemperatureDevice called")
+	handler.logger.Debug("REST - POST - PostTemperatureDevice called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -305,7 +309,7 @@ func (handler *Devices) PostTemperatureDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 func (handler *Devices) PostModeDevice(c *gin.Context) {
-	handler.logger.Debug("PostModeDevice called")
+	handler.logger.Debug("REST - POST - PostModeDevice called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -344,7 +348,7 @@ func (handler *Devices) PostModeDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 func (handler *Devices) PostFanModeDevice(c *gin.Context) {
-	handler.logger.Debug("PostFanModeDevice called")
+	handler.logger.Debug("REST - POST - PostFanModeDevice called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -383,7 +387,7 @@ func (handler *Devices) PostFanModeDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
 }
 func (handler *Devices) PostFanSpeedDevice(c *gin.Context) {
-	handler.logger.Debug("PostFanSpeedDevice called")
+	handler.logger.Debug("REST - POST - PostFanSpeedDevice called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -423,25 +427,25 @@ func (handler *Devices) PostFanSpeedDevice(c *gin.Context) {
 }
 
 func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
-	handler.logger.Debug("sendViaGrpc called")
+	handler.logger.Debug("Sending device via gRPC...")
 
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		fmt.Println("Cannot connect via GRPC", err)
-		return errors.SendGrpcError{
+		return errors.GrpcSendError{
 			Status:  errors.ConnectionError,
 			Message: "Cannot connect to api-devices",
 		}
 	}
 	defer conn.Close()
-	client := device2.NewDeviceClient(conn)
+	client := device3.NewDeviceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	switch getType(value) {
 	case "*OnOffValue":
-		response, errSend := client.SetOnOff(ctx, &device2.OnOffValueRequest{
+		response, errSend := client.SetOnOff(ctx, &device3.OnOffValueRequest{
 			Id:           device.ID.Hex(),
 			Mac:          device.Mac,
 			On:           value.(*models.OnOffValue).On,
@@ -451,7 +455,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 		fmt.Println("Device set value message: ", response.GetMessage())
 		return errSend
 	case "*TemperatureValue":
-		response, errSend := client.SetTemperature(ctx, &device2.TemperatureValueRequest{
+		response, errSend := client.SetTemperature(ctx, &device3.TemperatureValueRequest{
 			Id:           device.ID.Hex(),
 			Mac:          device.Mac,
 			Temperature:  int32(value.(*models.TemperatureValue).Temperature),
@@ -461,7 +465,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 		fmt.Println("Device set value message: ", response.GetMessage())
 		return errSend
 	case "*ModeValue":
-		response, errSend := client.SetMode(ctx, &device2.ModeValueRequest{
+		response, errSend := client.SetMode(ctx, &device3.ModeValueRequest{
 			Id:           device.ID.Hex(),
 			Mac:          device.Mac,
 			Mode:         int32(value.(*models.ModeValue).Mode),
@@ -471,7 +475,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 		fmt.Println("Device set value message: ", response.GetMessage())
 		return errSend
 	case "*FanModeValue":
-		response, errSend := client.SetFanMode(ctx, &device2.FanModeValueRequest{
+		response, errSend := client.SetFanMode(ctx, &device3.FanModeValueRequest{
 			Id:           device.ID.Hex(),
 			Mac:          device.Mac,
 			FanMode:      int32(value.(*models.FanModeValue).FanMode),
@@ -481,7 +485,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 		fmt.Println("Device set value message: ", response.GetMessage())
 		return errSend
 	case "*FanSpeedValue":
-		response, errSend := client.SetFanSpeed(ctx, &device2.FanSpeedValueRequest{
+		response, errSend := client.SetFanSpeed(ctx, &device3.FanSpeedValueRequest{
 			Id:           device.ID.Hex(),
 			Mac:          device.Mac,
 			FanSpeed:     int32(value.(*models.FanSpeedValue).FanSpeed),
@@ -491,7 +495,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 		fmt.Println("Device set value message: ", response.GetMessage())
 		return errSend
 	default:
-		return errors.SendGrpcError{
+		return errors.GrpcSendError{
 			Status:  errors.BadParams,
 			Message: "Cannot cast value",
 		}

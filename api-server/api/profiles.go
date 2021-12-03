@@ -1,18 +1,17 @@
 package api
 
 import (
-	"github.com/gin-gonic/contrib/sessions"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.uber.org/zap"
-	"net/http"
-	"time"
-
 	"api-server/models"
+	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
+	"net/http"
+	"time"
 )
 
 type ProfileResponse struct {
@@ -42,12 +41,10 @@ func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, collection *mon
 }
 
 func (handler *Profiles) GetProfile(c *gin.Context) {
-	handler.logger.Debug("GetProfile called")
+	handler.logger.Debug("REST - GET - GetProfile called")
 
-	var profile models.Profile
-	var ok bool
 	session := sessions.Default(c).Get("profile")
-	if profile, ok = session.(models.Profile); ok {
+	if profile, ok := session.(models.Profile); ok {
 		var profileToReturn ProfileResponse
 		profileToReturn.ID = profile.ID
 		profileToReturn.Github = GithubResponse{
@@ -59,7 +56,7 @@ func (handler *Profiles) GetProfile(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"profile": profileToReturn})
 		return
 	}
-
+	handler.logger.Error("REST - GET - GetProfile - Cannot get user profile")
 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get user profile"})
 }
 
@@ -74,22 +71,22 @@ func (handler *Profiles) GetProfile(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *Profiles) PostProfilesToken(c *gin.Context) {
-	handler.logger.Debug("PostProfilesToken called")
+	handler.logger.Debug("REST - POST - ProfilesToken called")
+	session := sessions.Default(c)
 
 	id := c.Param("id")
 	var profile models.Profile
 	if err := c.ShouldBindJSON(&profile); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - ProfilesToken - Cannot bind request body", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
 	// check it the profile you are trying to update is your profile
-	session := sessions.Default(c)
-	profileSessionId := session.Get("profile").(models.Profile).ID
-
 	profileId, _ := primitive.ObjectIDFromHex(id)
-
+	profileSessionId := session.Get("profile").(models.Profile).ID
 	if profileSessionId != profileId {
+		handler.logger.Error("REST - POST - ProfilesToken - Current profileId is different than profileId in session")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot re-generate ApiToken for a different profile then yours"})
 		return
 	}
@@ -105,6 +102,7 @@ func (handler *Profiles) PostProfilesToken(c *gin.Context) {
 		},
 	})
 	if err != nil {
+		handler.logger.Error("REST - POST - ProfilesToken - Cannot update profile with the new apiToken")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

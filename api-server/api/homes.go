@@ -1,19 +1,17 @@
 package api
 
 import (
-	"fmt"
-	"github.com/gin-gonic/contrib/sessions"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.uber.org/zap"
-	"net/http"
-	"time"
-
 	"api-server/models"
+	"github.com/gin-gonic/contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
 	"golang.org/x/net/context"
+	"net/http"
+	"time"
 )
 
 type Homes struct {
@@ -41,11 +39,10 @@ func NewHomes(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.
 //     '200':
 //         description: Successful operation
 func (handler *Homes) GetHomes(c *gin.Context) {
-	handler.logger.Debug("GetHomes called")
+	handler.logger.Debug("REST - GET - GetHomes called")
 
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
-	fmt.Println("GetHomes with profileID = ", profileSession.ID)
 
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 	var profile models.Profile
@@ -53,7 +50,8 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
+		handler.logger.Error("REST - GET - GetHomes - Cannot find profile in DB", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot find profile"})
 		return
 	}
 
@@ -61,11 +59,12 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 	cur, err := handler.collection.Find(handler.ctx, bson.M{
 		"_id": bson.M{"$in": profile.Homes},
 	})
+	defer cur.Close(handler.ctx)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - GET - GetHomes - Cannot get homes of profile in session", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get your homes"})
 		return
 	}
-	defer cur.Close(handler.ctx)
 
 	homes := make([]models.Home, 0)
 	for cur.Next(handler.ctx) {
@@ -73,6 +72,7 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 		cur.Decode(&home)
 		homes = append(homes, home)
 	}
+
 	c.JSON(http.StatusOK, homes)
 }
 
@@ -87,18 +87,19 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *Homes) PostHome(c *gin.Context) {
-	handler.logger.Debug("PostHome called")
+	handler.logger.Debug("REST - POST - PostHome called")
 
 	session := sessions.Default(c)
 	profileSession := session.Get("profile").(models.Profile)
-	fmt.Println("PostHome with profileID = ", profileSession.ID)
 
 	var home models.Home
 	if err := c.ShouldBindJSON(&home); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostHome - Cannot bind request body", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
+	// update home object adding other fields before save it in DB
 	home.ID = primitive.NewObjectID()
 	home.CreatedAt = time.Now()
 	home.ModifiedAt = time.Now()
@@ -110,7 +111,8 @@ func (handler *Homes) PostHome(c *gin.Context) {
 
 	_, err := handler.collection.InsertOne(handler.ctx, home)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new home"})
+		handler.logger.Error("REST - POST - PostHome - Cannot insert new home in DB", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot add the new home"})
 		return
 	}
 
@@ -121,7 +123,8 @@ func (handler *Homes) PostHome(c *gin.Context) {
 		bson.M{"$push": bson.M{"homes": home.ID}},
 	)
 	if errUpd != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot push new home into profile"})
+		handler.logger.Error("REST - POST - PostHome - Cannot add new home to profile in DB", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot add the new home to profile"})
 		return
 	}
 
@@ -144,9 +147,11 @@ func (handler *Homes) PostHome(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Homes) PutHome(c *gin.Context) {
-	handler.logger.Debug("PutHome called")
+	handler.logger.Debug("REST - PUT - PutHome called")
 
 	id := c.Param("id")
+	objectId, _ := primitive.ObjectIDFromHex(id)
+
 	var home models.Home
 	if err := c.ShouldBindJSON(&home); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -157,7 +162,6 @@ func (handler *Homes) PutHome(c *gin.Context) {
 		return
 	}
 
-	objectId, _ := primitive.ObjectIDFromHex(id)
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
@@ -195,7 +199,7 @@ func (handler *Homes) PutHome(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Homes) DeleteHome(c *gin.Context) {
-	handler.logger.Debug("DeleteHome called")
+	handler.logger.Debug("REST - DELETE - DeleteHome called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -211,7 +215,6 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 
 	// remove home from profile.homes
 	profileSession := session.Get("profile").(models.Profile)
-	fmt.Println("DeleteHome with profileID = ", profileSession.ID)
 
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 	var profile models.Profile
@@ -222,14 +225,12 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
-	fmt.Print("BEFORE profile.Homes ", profile.Homes)
 	var newHomes []primitive.ObjectID
 	for _, homeId := range profile.Homes {
 		if homeId != objectId {
 			newHomes = append(newHomes, homeId)
 		}
 	}
-	fmt.Print("AFTER profile.Homes - newHomes ", newHomes)
 
 	_, errUpd := handler.collectionProfiles.UpdateOne(handler.ctx, bson.M{
 		"_id": profileSession.ID,
@@ -262,7 +263,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 //     '200':
 //         description: Successful operation
 func (handler *Homes) GetRooms(c *gin.Context) {
-	handler.logger.Debug("GetRooms called")
+	handler.logger.Debug("REST - GET - GetRooms called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -298,7 +299,7 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *Homes) PostRoom(c *gin.Context) {
-	handler.logger.Debug("PostRoom called")
+	handler.logger.Debug("REST - POST - PostRoom called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -364,7 +365,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Homes) PutRoom(c *gin.Context) {
-	handler.logger.Debug("PutRoom called")
+	handler.logger.Debug("REST - PUT - PutRoom called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -444,7 +445,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 //     '404':
 //         description: Invalid room ID
 func (handler *Homes) DeleteRoom(c *gin.Context) {
-	handler.logger.Debug("DeleteRoom called")
+	handler.logger.Debug("REST - DELETE - DeleteRoom called")
 
 	id := c.Param("id")
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -511,21 +512,18 @@ func contains(s []primitive.ObjectID, objToFind primitive.ObjectID) bool {
 func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectId primitive.ObjectID) bool {
 	profileSessionId := session.Get("profile").(models.Profile).ID
 	// you can update a home only if you are the owner of that home
-	fmt.Println("isHomeOwnedBy profileSessionId = ", profileSessionId)
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 	var profile models.Profile
 	err := handler.collectionProfiles.FindOne(handler.ctx, bson.M{
 		"_id": profileSessionId,
 	}).Decode(&profile)
 	if err != nil {
-		//c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
-		fmt.Println("cannot find profile")
+		handler.logger.Error("Cannot find profile")
 		return false
 	}
 	found := contains(profile.Homes, objectId)
 	if !found {
-		//c.JSON(http.StatusBadRequest, gin.H{"error": "cannot update a home that is not in your profile"})
-		fmt.Println("cannot update a home that is not in your profile")
+		handler.logger.Error("Cannot update a home that is not in your profile")
 		return false
 	}
 	return true

@@ -1,22 +1,18 @@
 package api
 
 import (
-	"api-server/api/register"
-	"fmt"
+	"api-server/api/gRPC/register"
+	"api-server/models"
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"log"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"net/http"
 	"os"
 	"time"
-
-	"api-server/models"
-	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"golang.org/x/net/context"
-
-	"google.golang.org/grpc"
 )
 
 type DeviceRequest struct {
@@ -39,7 +35,6 @@ type Register struct {
 
 func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *Register {
 	grpcPort := os.Getenv("GRPC_PORT")
-
 	return &Register{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
@@ -50,12 +45,12 @@ func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mon
 }
 
 func (handler *Register) PostRegister(c *gin.Context) {
-	handler.logger.Debug("PostRegister called")
+	handler.logger.Debug("REST - POST - PostRegister called")
 
 	// receive a payload from devices with
 	var registerBody DeviceRequest
 	if err := c.ShouldBindJSON(&registerBody); err != nil {
-		fmt.Println(err)
+		handler.logger.Error("REST - POST - PostRegister - Cannot bind request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
@@ -66,7 +61,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 		"apiToken": registerBody.APIToken,
 	}).Decode(&profileFound)
 	if errProfile != nil {
-		fmt.Println("Cannot find profile with that apiToken", errProfile)
+		handler.logger.Error("REST - POST - PostRegister - Cannot find profile with that apiToken", errProfile)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot register, profile token missing or not valid"})
 		return
 	}
@@ -77,9 +72,10 @@ func (handler *Register) PostRegister(c *gin.Context) {
 		"mac": registerBody.Mac,
 	}).Decode(&device)
 	if err == nil {
+		handler.logger.Debug("REST - POST - PostRegister - Device already registered")
 		// if err == nil => ac found in db (already exists)
 		// skip register process returning "already registered"
-		c.JSON(http.StatusOK, gin.H{"message": "already registered"})
+		c.JSON(http.StatusOK, gin.H{"message": "Already registered"})
 		return
 	}
 
@@ -92,26 +88,30 @@ func (handler *Register) PostRegister(c *gin.Context) {
 	device.CreatedAt = time.Now()
 	device.ModifiedAt = time.Now()
 
-	_, err2 := handler.collection.InsertOne(handler.ctx, device)
-	if err2 != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error while inserting a new ac"})
+	_, errInsert := handler.collection.InsertOne(handler.ctx, device)
+	if errInsert != nil {
+		handler.logger.Error("REST - POST - PostRegister - Cannot insert the new device")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot insert the new device"})
 		return
 	}
 
 	// push AC.ID to profile.devices
-	result, errUpd := handler.collectionProfiles.UpdateOne(
+	_, errUpd := handler.collectionProfiles.UpdateOne(
 		handler.ctx,
 		bson.M{"_id": profileFound.ID},
 		bson.M{"$push": bson.M{"devices": device.ID}},
 	)
+	if errUpd != nil {
+		handler.logger.Error("REST - POST - PostRegister - Cannot update profile with the new device")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update your profile with the new device"})
+		return
+	}
 
-	fmt.Println("result: ", result)
-	fmt.Println("errUpd: ", errUpd)
-
+	// TODO TODO TODO TODO If here it fails, I should remove the paired device, otherwise I won't be able to register it again
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		handler.logger.Errorf("Cannot connect via gRPC: %v", err)
 	}
 	defer conn.Close()
 	client := register.NewRegistrationClient(conn)
@@ -129,10 +129,10 @@ func (handler *Register) PostRegister(c *gin.Context) {
 		ApiToken:       profileFound.ApiToken,
 	})
 	if err != nil {
-		log.Fatalf("could not register: %v", err)
+		handler.logger.Fatalf("Could not execute gRPC register: %v", err)
 	}
-	fmt.Println("Register status: ", r.GetStatus())
-	fmt.Println("Register message: ", r.GetMessage())
+	handler.logger.Debug("Register status: ", r.GetStatus())
+	handler.logger.Debug("Register message: ", r.GetMessage())
 
 	c.JSON(http.StatusOK, device)
 }
