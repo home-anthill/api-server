@@ -3,7 +3,9 @@ package api
 import (
 	"api-server/api/gRPC/register"
 	"api-server/models"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -81,6 +83,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
 	device = models.Device{}
 	device.ID = primitive.NewObjectID()
+	device.UUID = uuid.NewString()
 	device.Mac = registerBody.Mac
 	device.Name = registerBody.Name
 	device.Manufacturer = registerBody.Manufacturer
@@ -121,6 +124,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 	defer cancel()
 	r, err := client.Register(ctx, &register.RegisterRequest{
 		Id:             device.ID.Hex(),
+		Uuid:           device.UUID,
 		Mac:            device.Mac,
 		Name:           device.Name,
 		Manufacturer:   device.Manufacturer,
@@ -133,6 +137,8 @@ func (handler *Register) PostRegister(c *gin.Context) {
 	}
 	handler.logger.Debug("Register status: ", r.GetStatus())
 	handler.logger.Debug("Register message: ", r.GetMessage())
+	fmt.Println("r", r)
+	fmt.Println("device", device)
 
 	c.JSON(http.StatusOK, device)
 }

@@ -154,20 +154,22 @@ func (handler *Homes) PutHome(c *gin.Context) {
 
 	var home models.Home
 	if err := c.ShouldBindJSON(&home); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - PUT - PutHome - Cannot bind request body", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 	if home.Rooms != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot pass rooms. This API is made to change only the home object"})
+		handler.logger.Error("REST - PUT - PutHome - Request payload cannot contain Rooms. This API is made to change only the home object.")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Request payload cannot contain Rooms. This API is made to change only the home object"})
 		return
 	}
-
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
 	isOwned := handler.isHomeOwnedBy(session, objectId)
 	if !isOwned {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot update a home that is not in your profile"})
+		handler.logger.Error("REST - PUT - PutHome - Request payload cannot contain Rooms. This API is made to change only the home object.")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot update a home that is not in your profile"})
 		return
 	}
 
@@ -181,7 +183,8 @@ func (handler *Homes) PutHome(c *gin.Context) {
 		},
 	})
 	if errUpd != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": errUpd.Error()})
+		handler.logger.Error("REST - PUT - PutHome - Cannot update home in DB.")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update home in Db"})
 		return
 	}
 
@@ -209,11 +212,11 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 	isOwned := handler.isHomeOwnedBy(session, objectId)
 
 	if !isOwned {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete a home that is not in your profile"})
+		handler.logger.Error("REST - DELETE - DeleteHome - Cannot delete a home that is not in your profile")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete a home that is not in your profile"})
 		return
 	}
 
-	// remove home from profile.homes
 	profileSession := session.Get("profile").(models.Profile)
 
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
@@ -222,7 +225,8 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
+		handler.logger.Error("REST - DELETE - DeleteHome - Cannot find profile from DB")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot find profile"})
 		return
 	}
 	var newHomes []primitive.ObjectID
@@ -240,7 +244,8 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 		},
 	})
 	if errUpd != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove home from profile"})
+		handler.logger.Error("REST - DELETE - DeleteHome - Cannot remove home from profile in DB")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot remove home from profile"})
 		return
 	}
 
@@ -248,7 +253,8 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 		"_id": objectId,
 	})
 	if errDel != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": errDel.Error()})
+		handler.logger.Error("REST - DELETE - DeleteHome - Cannot remove home from DB")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot delete home"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Home has been deleted"})
@@ -273,7 +279,8 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 	isOwned := handler.isHomeOwnedBy(session, objectId)
 
 	if !isOwned {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot get rooms of an home that is not in your profile"})
+		handler.logger.Error("REST - GET - GetRooms - Cannot get rooms, because you aren't the owner of that house")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot get rooms of an home that is not in your profile"})
 		return
 	}
 
@@ -282,7 +289,8 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 		"_id": objectId,
 	}).Decode(&home)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - GET - GetRooms - Cannot find rooms of the home with that id")
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find rooms for that house"})
 		return
 	}
 	c.JSON(http.StatusOK, home.Rooms)
@@ -306,7 +314,8 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 
 	var room models.Room
 	if err := c.ShouldBindJSON(&room); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostRoom - Cannot bind request body", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
@@ -315,7 +324,8 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 	isOwned := handler.isHomeOwnedBy(session, objectId)
 
 	if !isOwned {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot create a room into an home that is not in your profile"})
+		handler.logger.Error("REST - POST - PostRoom - Cannot create a room in an home that is not in session profile")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot create a room in an home that is not in your profile"})
 		return
 	}
 
@@ -324,7 +334,8 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 		"_id": objectId,
 	}).Decode(&home)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostRoom - Cannot find rooms of the home with that id")
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find rooms for that house"})
 		return
 	}
 
@@ -333,7 +344,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 	room.ModifiedAt = time.Now()
 	home.Rooms = append(home.Rooms, room)
 
-	_, err2 := handler.collection.UpdateOne(handler.ctx, bson.M{
+	_, errUpd := handler.collection.UpdateOne(handler.ctx, bson.M{
 		"_id": objectId,
 	}, bson.M{
 		"$set": bson.M{
@@ -341,8 +352,9 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 			"modifiedAt": time.Now(),
 		},
 	})
-	if err2 != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if errUpd != nil {
+		handler.logger.Error("REST - POST - PostRoom - Cannot update home with the new rooms")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update home with the new rooms"})
 		return
 	}
 
@@ -375,7 +387,8 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 
 	var room models.Room
 	if err := c.ShouldBindJSON(&room); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - PUT - PutRoom - Cannot bind request body", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
 
@@ -384,7 +397,8 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 		"_id": objectId,
 	}).Decode(&home)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Home not found"})
+		handler.logger.Error("REST - PUT - PutRoom - Cannot find rooms of the home with that id")
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find rooms for that house"})
 		return
 	}
 
@@ -396,6 +410,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 		}
 	}
 	if !roomFound {
+		handler.logger.Error("REST - PUT - PutRoom - Cannot find room with id: " + rid)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
 		return
 	}
@@ -405,7 +420,8 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 	isOwned := handler.isHomeOwnedBy(session, objectId)
 
 	if !isOwned {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot update a room of an home that is not in your profile"})
+		handler.logger.Error("REST - PUT - PutRoom - Cannot update a room in an home that is not in session profile")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot update a room in an home that is not in your profile"})
 		return
 	}
 
@@ -427,6 +443,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 	}
 	_, err2 := handler.collection.UpdateOne(handler.ctx, filter, update, &opts)
 	if err2 != nil {
+		handler.logger.Error("REST - PUT - PutRoom - Cannot update a room in DB")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update room"})
 		return
 	}
@@ -458,6 +475,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 		"_id": objectId,
 	}).Decode(&home)
 	if err != nil {
+		handler.logger.Error("REST - DELETE - DeleteRoom - Cannot find home")
 		c.JSON(http.StatusNotFound, gin.H{"error": "Home not found"})
 		return
 	}
@@ -467,7 +485,8 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 	isOwned := handler.isHomeOwnedBy(session, objectId)
 
 	if !isOwned {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete a room of an home that is not in your profile"})
+		handler.logger.Error("REST - DELETE - DeleteRoom - Cannot delete a room in an home that is not in session profile")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot delete a room in an home that is not in your profile"})
 		return
 	}
 
@@ -479,6 +498,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 		}
 	}
 	if !roomFound {
+		handler.logger.Error("REST - DELETE - DeleteRoom - Cannot find room with id: " + rid)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
 		return
 	}
@@ -493,7 +513,8 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 	_, err2 := handler.collection.UpdateOne(handler.ctx, filter, update)
 
 	if err2 != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update room"})
+		handler.logger.Error("REST - PUT - PutRoom - Cannot delete room in DB")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot delete room"})
 		return
 	}
 

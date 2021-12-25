@@ -447,6 +447,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 	case "*OnOffValue":
 		response, errSend := client.SetOnOff(ctx, &device3.OnOffValueRequest{
 			Id:           device.ID.Hex(),
+			Uuid:         device.UUID,
 			Mac:          device.Mac,
 			On:           value.(*models.OnOffValue).On,
 			ProfileToken: apiToken, // RENAME TO ApiToken in proto3
@@ -457,6 +458,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 	case "*TemperatureValue":
 		response, errSend := client.SetTemperature(ctx, &device3.TemperatureValueRequest{
 			Id:           device.ID.Hex(),
+			Uuid:         device.UUID,
 			Mac:          device.Mac,
 			Temperature:  int32(value.(*models.TemperatureValue).Temperature),
 			ProfileToken: apiToken, // RENAME TO ApiToken in proto3
@@ -467,6 +469,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 	case "*ModeValue":
 		response, errSend := client.SetMode(ctx, &device3.ModeValueRequest{
 			Id:           device.ID.Hex(),
+			Uuid:         device.UUID,
 			Mac:          device.Mac,
 			Mode:         int32(value.(*models.ModeValue).Mode),
 			ProfileToken: apiToken, // RENAME TO ApiToken in proto3
@@ -477,6 +480,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 	case "*FanModeValue":
 		response, errSend := client.SetFanMode(ctx, &device3.FanModeValueRequest{
 			Id:           device.ID.Hex(),
+			Uuid:         device.UUID,
 			Mac:          device.Mac,
 			FanMode:      int32(value.(*models.FanModeValue).FanMode),
 			ProfileToken: apiToken, // RENAME TO ApiToken in proto3
@@ -487,6 +491,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 	case "*FanSpeedValue":
 		response, errSend := client.SetFanSpeed(ctx, &device3.FanSpeedValueRequest{
 			Id:           device.ID.Hex(),
+			Uuid:         device.UUID,
 			Mac:          device.Mac,
 			FanSpeed:     int32(value.(*models.FanSpeedValue).FanSpeed),
 			ProfileToken: apiToken, // RENAME TO ApiToken in proto3

@@ -3,13 +3,17 @@ package api
 import (
 	"api-devices/api/device"
 	"api-devices/models"
+	mqtt_client "api-devices/mqtt-client"
 	"context"
+	"encoding/json"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"time"
 )
+
+const TIMEOUT = 3 * time.Second
 
 type DevicesGrpc struct {
 	device.UnimplementedDeviceServer
@@ -46,9 +50,8 @@ func (handler *DevicesGrpc) GetStatus(ctx context.Context, in *device.StatusRequ
 	}, err
 }
 func (handler *DevicesGrpc) SetOnOff(ctx context.Context, in *device.OnOffValueRequest) (*device.OnOffValueResponse, error) {
-	handler.logger.Info("gRPC SetOnOff called")
+	handler.logger.Info("gRPC - SetOnOff - method called")
 	fmt.Println("Received: ", in)
-
 	_, err := handler.airConditionerCollection.UpdateOne(handler.contextRef, bson.M{
 		"mac": in.Mac,
 	}, bson.M{
@@ -58,14 +61,34 @@ func (handler *DevicesGrpc) SetOnOff(ctx context.Context, in *device.OnOffValueR
 		},
 	})
 	if err != nil {
-		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
+		fmt.Println("gRPC - SetOnOff - Cannot update db with the registered AC with mac ", in.Mac)
+		return nil, err
 	}
-	return &device.OnOffValueResponse{Status: "200", Message: "Updated"}, err
+
+	onOffValue := models.OnOffValue{
+		Uuid:         in.Uuid,
+		ProfileToken: in.ProfileToken,
+		On:           in.On,
+	}
+	messageJSON, err := json.Marshal(onOffValue)
+	if err != nil {
+		fmt.Println("gRPC - SetOnOff - cannot create mqtt payload")
+		return nil, err
+	}
+	t := mqtt_client.SendOnOff(onOffValue.Uuid, messageJSON)
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		fmt.Println("gRPC - SetOnOff - cannot send data via mqtt")
+		return nil, t.Error()
+	} else {
+		fmt.Println("sending response")
+		return &device.OnOffValueResponse{Status: "200", Message: "Updated"}, err
+	}
 }
 func (handler *DevicesGrpc) SetTemperature(ctx context.Context, in *device.TemperatureValueRequest) (*device.TemperatureValueResponse, error) {
-	handler.logger.Info("gRPC SetTemperature called")
+	handler.logger.Info("gRPC - SetTemperature - method called")
 	fmt.Println("Received: ", in)
-
 	_, err := handler.airConditionerCollection.UpdateOne(handler.contextRef, bson.M{
 		"mac": in.Mac,
 	}, bson.M{
@@ -75,14 +98,34 @@ func (handler *DevicesGrpc) SetTemperature(ctx context.Context, in *device.Tempe
 		},
 	})
 	if err != nil {
-		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
+		fmt.Println("gRPC - SetTemperature - Cannot update db with the registered AC with mac ", in.Mac)
+		return nil, err
 	}
-	return &device.TemperatureValueResponse{Status: "200", Message: "Updated"}, err
+
+	temperatureValue := models.TemperatureValue{
+		Uuid:         in.Uuid,
+		ProfileToken: in.ProfileToken,
+		Temperature:  int(in.Temperature),
+	}
+	messageJSON, err := json.Marshal(temperatureValue)
+	if err != nil {
+		fmt.Println("gRPC - SetTemperature - cannot create mqtt payload")
+		return nil, err
+	}
+	t := mqtt_client.SendTemperature(temperatureValue.Uuid, messageJSON)
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		fmt.Println("gRPC - SetTemperature - cannot send data via mqtt")
+		return nil, t.Error()
+	} else {
+		fmt.Println("sending response")
+		return &device.TemperatureValueResponse{Status: "200", Message: "Updated"}, err
+	}
 }
 func (handler *DevicesGrpc) SetMode(ctx context.Context, in *device.ModeValueRequest) (*device.ModeValueResponse, error) {
-	handler.logger.Info("gRPC SetMode called")
+	handler.logger.Info("gRPC - SetMode - method called")
 	fmt.Println("Received: ", in)
-
 	_, err := handler.airConditionerCollection.UpdateOne(handler.contextRef, bson.M{
 		"mac": in.Mac,
 	}, bson.M{
@@ -92,14 +135,34 @@ func (handler *DevicesGrpc) SetMode(ctx context.Context, in *device.ModeValueReq
 		},
 	})
 	if err != nil {
-		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
+		fmt.Println("gRPC - SetMode - Cannot update db with the registered AC with mac ", in.Mac)
+		return nil, err
 	}
-	return &device.ModeValueResponse{Status: "200", Message: "Updated"}, err
+
+	modeValue := models.ModeValue{
+		Uuid:         in.Uuid,
+		ProfileToken: in.ProfileToken,
+		Mode:         int(in.Mode),
+	}
+	messageJSON, err := json.Marshal(modeValue)
+	if err != nil {
+		fmt.Println("gRPC - SetMode - cannot create mqtt payload")
+		return nil, err
+	}
+	t := mqtt_client.SendTemperature(modeValue.Uuid, messageJSON)
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		fmt.Println("gRPC - SetMode - cannot send data via mqtt")
+		return nil, t.Error()
+	} else {
+		fmt.Println("sending response")
+		return &device.ModeValueResponse{Status: "200", Message: "Updated"}, err
+	}
 }
 func (handler *DevicesGrpc) SetFanMode(ctx context.Context, in *device.FanModeValueRequest) (*device.FanModeValueResponse, error) {
-	handler.logger.Info("gRPC SetFanMode called")
+	handler.logger.Info("gRPC - SetFanMode - method called")
 	fmt.Println("Received: ", in)
-
 	_, err := handler.airConditionerCollection.UpdateOne(handler.contextRef, bson.M{
 		"mac": in.Mac,
 	}, bson.M{
@@ -109,14 +172,34 @@ func (handler *DevicesGrpc) SetFanMode(ctx context.Context, in *device.FanModeVa
 		},
 	})
 	if err != nil {
-		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
+		fmt.Println("gRPC - SetFanMode - Cannot update db with the registered AC with mac ", in.Mac)
+		return nil, err
 	}
-	return &device.FanModeValueResponse{Status: "200", Message: "Updated"}, err
+
+	fanModeValue := models.FanModeValue{
+		Uuid:         in.Uuid,
+		ProfileToken: in.ProfileToken,
+		FanMode:      int(in.FanMode),
+	}
+	messageJSON, err := json.Marshal(fanModeValue)
+	if err != nil {
+		fmt.Println("gRPC - SetFanMode - cannot create mqtt payload")
+		return nil, err
+	}
+	t := mqtt_client.SendFanMode(fanModeValue.Uuid, messageJSON)
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		fmt.Println("gRPC - SetFanMode - cannot send data via mqtt")
+		return nil, t.Error()
+	} else {
+		fmt.Println("sending response")
+		return &device.FanModeValueResponse{Status: "200", Message: "Updated"}, err
+	}
 }
 func (handler *DevicesGrpc) SetFanSpeed(ctx context.Context, in *device.FanSpeedValueRequest) (*device.FanSpeedValueResponse, error) {
-	handler.logger.Info("gRPC SetFanSpeed called")
+	handler.logger.Info("gRPC - SetFanSpeed - method called")
 	fmt.Println("Received: ", in)
-
 	_, err := handler.airConditionerCollection.UpdateOne(handler.contextRef, bson.M{
 		"mac": in.Mac,
 	}, bson.M{
@@ -126,7 +209,28 @@ func (handler *DevicesGrpc) SetFanSpeed(ctx context.Context, in *device.FanSpeed
 		},
 	})
 	if err != nil {
-		fmt.Println("Cannot update db with the registered AC with mac ", in.Mac)
+		fmt.Println("gRPC - SetFanSpeed - Cannot update db with the registered AC with mac ", in.Mac)
+		return nil, err
 	}
-	return &device.FanSpeedValueResponse{Status: "200", Message: "Updated"}, err
+
+	fanSpeedValue := models.FanSpeedValue{
+		Uuid:         in.Uuid,
+		ProfileToken: in.ProfileToken,
+		FanSpeed:     int(in.FanSpeed),
+	}
+	messageJSON, err := json.Marshal(fanSpeedValue)
+	if err != nil {
+		fmt.Println("gRPC - SetFanSpeed - cannot create mqtt payload")
+		return nil, err
+	}
+	t := mqtt_client.SendFanSpeed(fanSpeedValue.Uuid, messageJSON)
+	timeoutResult := t.WaitTimeout(TIMEOUT)
+	if t.Error() != nil || !timeoutResult {
+		fmt.Println(t.Error())
+		fmt.Println("gRPC - SetFanSpeed - cannot send data via mqtt")
+		return nil, t.Error()
+	} else {
+		fmt.Println("sending response")
+		return &device.FanSpeedValueResponse{Status: "200", Message: "Updated"}, err
+	}
 }

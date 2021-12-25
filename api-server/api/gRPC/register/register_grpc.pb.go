@@ -97,5 +97,5 @@ var Registration_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/register/register.proto",
+	Metadata: "api/gRPC/register/register.proto",
 }

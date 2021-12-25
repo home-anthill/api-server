@@ -152,6 +152,7 @@ func OauthAuth() gin.HandlerFunc {
 				newProfile.ID = primitive.NewObjectID()
 				newProfile.Github = dbGithubUser
 				newProfile.ApiToken = uuid.NewString()
+				newProfile.Homes = []primitive.ObjectID{}   // empty slice of ObjectIDs
 				newProfile.Devices = []primitive.ObjectID{} // empty slice of ObjectIDs
 				newProfile.CreatedAt = time.Now()
 				newProfile.ModifiedAt = time.Now()

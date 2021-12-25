@@ -10,12 +10,13 @@ service Registration {
 
 message RegisterRequest {
   string id = 1;
-  string mac = 2;
-  string name = 3;
-  string manufacturer = 4;
-  string model = 5;
-  string profileOwnerId = 6;
-  string apiToken = 7;
+  string uuid = 2;
+  string mac = 3;
+  string name = 4;
+  string manufacturer = 5;
+  string model = 6;
+  string profileOwnerId = 7;
+  string apiToken = 8;
 }
 
 message RegisterReply {

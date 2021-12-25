@@ -40,6 +40,7 @@ func (handler *RegisterGrpc) Register(ctx context.Context, in *register.Register
 	}, bson.M{
 		"$set": bson.M{
 			"mac":            in.Mac,
+			"uuid":           in.Uuid,
 			"name":           in.Name,
 			"manufacturer":   in.Manufacturer,
 			"model":          in.Model,
