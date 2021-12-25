@@ -1,5 +1,7 @@
 // include the WiFi library
 #include <WiFi.h>
+#include <HTTPClient.h>
+
 // include json library (https://github.com/bblanchon/ArduinoJson)
 #include <ArduinoJson.h>
 #include "secrets.h"
@@ -8,7 +10,7 @@
 /*
  * Define macros for input and output pin etc.
  */
-// #include "PinDefinitionsAndMore.h"
+#include "PinDefinitionsAndMore.h"
 
 #define IR_RECEIVE_PIN          15  // D15
 #define IR_SEND_PIN              4  // D4
@@ -20,44 +22,58 @@
 
 #include <IRremote.h>
 
+// eeprom lib has been deprecated for esp32, the recommended way is to use Preferences
+#include <Preferences.h>
 
 // -------------------------------------------------------
 // ---------------------- others -------------------------
-// const int serverPort = 3000;
-// const int serverIp[4] = {192, 168, 1, 71};
-// const int serverPortMqtt = 1883;
-// IPAddress serverMqtt(192, 168, 1, 71);
+const int serverPort = 3000;
+const int serverIp[4] = {192, 168, 178, 128};
+const int serverPortMqtt = 1883;
+IPAddress serverMqtt(192, 168, 178, 128);
 
 // -------------------------------------------------------
 // -------------------------------------------------------
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
 char ssid[] = SECRET_SSID;        // your network SSID (name)
 char password[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
-// int keyIndex = 0;            // your network key Index number (needed only for WEP)
-// int status = WL_IDLE_STATUS;
-// if you don't want to use DNS (and reduce your sketch size)
-// use the numeric IP instead of the name for the server:
-// IPAddress server(serverIp[0],serverIp[1],serverIp[2],serverIp[3]);  // numeric IP (no DNS)
-//char server[] = "35.206.99.222";    // name address (using DNS)
-// Initialize the Ethernet client library
-// with the IP address and port of the server
-// that you want to connect to (port 80 is default for HTTP):
+const char* serverName = "http://192.168.178.128:8082/api/register";
 WiFiClient client;
 
 PubSubClient mqttClient(client);
 
-void reconnect() {
+#define IR_RECEIVE_PIN 15
+
+String savedUuid;
+Preferences preferences;
+
+void subscribeDevices(const char* command) {
+  const char* devices = "devices/";
+  const uint devicesLen = strlen(devices);
+  const uint savedUuidLen = savedUuid.length();
+  const uint commandLen = strlen(command);
+  char* topic = (char*)malloc(sizeof(char) * ( devicesLen + savedUuidLen + commandLen + 1 ));
+  strcpy(topic,devices);
+  strcat(topic,savedUuid.c_str());
+  strcat(topic,command);
+  Serial.println(topic);
+  mqttClient.subscribe(topic);
+}
+
+void reconnect() { 
   // Loop until we're reconnected
   while (!mqttClient.connected()) {
-    Serial.print("Attempting MQTT connection...");
+    Serial.println("Attempting MQTT connection...");
     // Attempt to connect
     mqttClient.setBufferSize(4096);
     if (mqttClient.connect("arduinoClient")) {
-      Serial.println("connected");
-      // Once connected, publish an announcement...
-      // mqttClient.publish("topic/state","hello world");
-      // ... and resubscribe
-      mqttClient.subscribe("devices/uuid1/onoff");
+      Serial.print("Connected and subscribing with savedUuid: ");
+      Serial.println(savedUuid);
+      // subscribe
+      subscribeDevices("/onoff");
+      subscribeDevices("/temperature");
+      subscribeDevices("/mode");
+      subscribeDevices("/fanMode");
+      subscribeDevices("/fanSpeed");
     } else {
       Serial.print("failed, rc=");
       Serial.print(mqttClient.state());
@@ -168,58 +184,153 @@ void callback(char* topic, byte* payload, unsigned int length) {
         break;
     }
   }
-  if(doc.containsKey("fan")) {
-    const int fan = doc["fan"];
-    Serial.println(fan);
-    Serial.print("fan: ");
-    Serial.println(fan);
-    Serial.flush();
-    switch(fan) {
-      case 0:
-        IrSender.sendRaw(irFanSpeedOff, sizeof(irFanSpeedOff) / sizeof(irFanSpeedOff[0]), NEC_KHZ);
-        break;
-      case 1:
-        IrSender.sendRaw(irFanSpeedLow, sizeof(irFanSpeedLow) / sizeof(irFanSpeedLow[0]), NEC_KHZ);
-        break;
-      case 2:
-        IrSender.sendRaw(irFanSpeedMid, sizeof(irFanSpeedMid) / sizeof(irFanSpeedMid[0]), NEC_KHZ);
-        break;
-      case 3:
-        IrSender.sendRaw(irFanSpeedMax, sizeof(irFanSpeedMax) / sizeof(irFanSpeedMax[0]), NEC_KHZ);
-        break;
-      default:
-        Serial.println("Unsupported fan value");
-        break;
-    }
-  }
-  if(doc.containsKey("swing")) {
-    const int swing = doc["swing"];
-    Serial.println(swing);
-    Serial.print("swing: ");
-    Serial.println(swing);
-    Serial.flush();
-  }
+  // if(doc.containsKey("fan")) {
+  //   const int fan = doc["fan"];
+  //   Serial.println(fan);
+  //   Serial.print("fan: ");
+  //   Serial.println(fan);
+  //   Serial.flush();
+  //   switch(fan) {
+  //     case 0:
+  //       IrSender.sendRaw(irFanSpeedOff, sizeof(irFanSpeedOff) / sizeof(irFanSpeedOff[0]), NEC_KHZ);
+  //       break;
+  //     case 1:
+  //       IrSender.sendRaw(irFanSpeedLow, sizeof(irFanSpeedLow) / sizeof(irFanSpeedLow[0]), NEC_KHZ);
+  //       break;
+  //     case 2:
+  //       IrSender.sendRaw(irFanSpeedMid, sizeof(irFanSpeedMid) / sizeof(irFanSpeedMid[0]), NEC_KHZ);
+  //       break;
+  //     case 3:
+  //       IrSender.sendRaw(irFanSpeedMax, sizeof(irFanSpeedMax) / sizeof(irFanSpeedMax[0]), NEC_KHZ);
+  //       break;
+  //     default:
+  //       Serial.println("Unsupported fan value");
+  //       break;
+  //   }
+  // }
+  // if(doc.containsKey("swing")) {
+  //   const int swing = doc["swing"];
+  //   Serial.println(swing);
+  //   Serial.print("swing: ");
+  //   Serial.println(swing);
+  //   Serial.flush();
+  // }
   Serial.println("--------------------------");
 }
 
-   #define IR_RECEIVE_PIN      15
+void registerServer() {
+  HTTPClient http;
+  http.begin(client, serverName);
+  http.addHeader("Content-Type", "application/json; charset=utf-8");
+  http.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NjA1NzIwNywibmFtZSI6IlN0ZWZhbm8gQ2FwcGEiLCJleHAiOjE2Mzc3MDk3MDF9.1Du9-D-zmbyblmrpxM9Lw-MUPJkdE99s7p68yHFHvQo");
+  String macAddress = WiFi.macAddress();
+  String httpRequestData = "{\"mac\": \"" + WiFi.macAddress() + 
+    "\",\"name\": \"" + NAME + 
+    "\",\"manufacturer\": \"" + MANUFACTURER +
+    "\",\"model\": \"" + MODEL +
+    "\",\"type\": \"" + TYPE +
+    "\",\"apiToken\": \"" + API_TOKEN + "\"}";
+  int httpResponseCode = http.POST(httpRequestData);
+  if (httpResponseCode>0) {
+    // String response = http.getString();
+    Serial.println(httpResponseCode); 
+    // Serial.println(response);
+    StaticJsonDocument<2048> staticDoc;
+    const char* uuidValue;
+    const char* macValue;
+    const char* nameValue;
+    const char* manufacturerValue;
+    const char* modelValue;
+    DeserializationError err = deserializeJson(staticDoc, http.getStream());
+    switch (err.code()) {
+      case DeserializationError::Ok:
+          Serial.println(F("Deserialization succeeded with uuid"));
+          uuidValue = staticDoc["uuid"];
+          macValue = staticDoc["mac"];
+          nameValue = staticDoc["name"];
+          manufacturerValue = staticDoc["manufacturer"];
+          modelValue = staticDoc["model"];
+          Serial.print("uuidValue: ");
+          Serial.println(uuidValue);
+          Serial.print("macValue: ");
+          Serial.println(macValue);
+          Serial.print("nameValue: ");
+          Serial.println(nameValue);
+          Serial.print("manufacturerValue: ");
+          Serial.println(manufacturerValue);
+          Serial.print("modelValue: ");
+          Serial.println(modelValue);
+          // if (strcmp(macAddress.c_str(), macValue) != 0) {
+              // strcmp(NAME, nameValue) != 0 ||
+              // strcmp(MANUFACTURER, manufacturerValue) != 0 ||
+              // strcmp(MODEL, modelValue) != 0) {
+          //   Serial.println("--- ERROR : Request and response data don't match ---");
+          //   return;
+          // }
+          // if (!macAddress.equals(macValue) || nameValue != NAME || manufacturerValue != MANUFACTURER || modelValue != MODEL) {
+          //   Serial.println("--- ERROR : Request and response data don't match ---");
+          //   return;
+          // }
+
+          preferences.begin("ac", false); 
+          preferences.putString("uuid", uuidValue);
+          preferences.end();
+
+          break;
+      case DeserializationError::InvalidInput:
+          Serial.print(F("Invalid input!"));
+          break;
+      case DeserializationError::NoMemory:
+          Serial.print(F("Not enough memory"));
+          break;
+      default:
+          Serial.print(F("Deserialization failed"));
+          break;
+    }
+  } else {
+    Serial.print("Error on sending POST: ");
+    Serial.println(httpResponseCode);
+    http.end();
+
+    Serial.println("Retrying in 3 seconds...");
+    delay(3000);
+    registerServer();
+ }
+}
 
 void setup() {
   Serial.begin(115200);
   delay(4000); // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
- 
+
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
+    delay(500);
+    Serial.print(".");
   }
 
   Serial.println("");
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
   Serial.println(WiFi.localIP());
+  Serial.println("MAC address: ");
+  Serial.println(WiFi.macAddress());
 
+  Serial.println("Registering this device...");
+  registerServer();
+  Serial.println("Registration success!");
+
+  preferences.begin("ac", false); 
+  savedUuid = preferences.getString("uuid", "");
+  preferences.end();
+
+  if (savedUuid.equals("")) {
+    Serial.println("************* ERROR **************");
+    Serial.println("Cannot read UUID from Preferences");
+    Serial.println("**********************************");
+    return;
+  }
  
+
   // Just to know which program is running on my Arduino
   Serial.println(F("START " __FILE__ " from " __DATE__ "\r\nUsing library version " VERSION_IRREMOTE));
   // arduino mega PWM pins
@@ -232,33 +343,16 @@ void setup() {
   // Digital pins 11, 12, 13 for SPI communication (both WiFi and SD). Even if optional 6-pin SPI header is used, these pins are unavailable for other use. 
 
   IrSender.begin(4, DISABLE_LED_FEEDBACK); // Specify send pin and enable feedback LED at default feedback LED pin
-  Serial.print(F("Ready to send IR signals at pin 4"));
+  Serial.println(F("Ready to send IR signals at pin 4"));
 
-  // mqttClient.setServer(serverMqtt, serverPortMqtt);
-  // mqttClient.setCallback(callback);
+  mqttClient.setServer(serverMqtt, serverPortMqtt);
+  mqttClient.setCallback(callback);
   
   // Allow the hardware to sort itself out
   delay(1500);
 }
 
 void loop() {
-  const uint8_t NEC_KHZ = 38; // 38kHz carrier frequency for the NEC protocol
-
-
-  /*
-  * Send hand crafted data from RAM
-  * The values are NOT multiple of 50, but are taken from the NEC timing definitions
-  */
-  //Serial.println(F("Send NEC 8 bit address 0xFB04, 0x08 with exact timing (16 bit array format)"));
-  //Serial.flush();
-
-  //const uint16_t on[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 }; // Using exact NEC timing
-
-  // const uint16_t off[] = {4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550};
-  
-  // const uint8_t NEC_KHZ = 38;
-  // IrSender.sendRaw(off, sizeof(off) / sizeof(off[0]), NEC_KHZ); // Note the approach used to automatically calculate the size of the array.
-
   if (!mqttClient.connected()) {
     Serial.println("RECONNECTING...");
     reconnect();
