@@ -42,10 +42,8 @@ func SendFanSpeed(uuid string, messageJSON []byte) mqtt.Token {
 }
 
 func PublishMessage(msg mqtt.Message) {
-	fmt.Printf("MessageID: %d\n", msg.MessageID())
 	fmt.Printf("Topic: %s\n", msg.Topic())
 	fmt.Printf("Payload: %s\n", msg.Payload())
-
 	uuid := strings.Split(msg.Topic(), "/")[1]
 	amqpPublisher.Publish(uuid, msg.Payload())
 }
@@ -63,19 +61,25 @@ func InitMqtt() {
 		panic(token.Error())
 	}
 
-	c.Subscribe("devices/+/onoff", qos, func(client mqtt.Client, msg mqtt.Message) {
+	// Subscribe to devices notification with new values
+	c.Subscribe("devices/+/notify/onoff", qos, func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Println("Received a onOff message via MQTT")
 		PublishMessage(msg)
 	})
-	c.Subscribe("devices/+/temperature", qos, func(client mqtt.Client, msg mqtt.Message) {
+	c.Subscribe("devices/+/notify/temperature", qos, func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Println("Received a temperature message via MQTT")
 		PublishMessage(msg)
 	})
-	c.Subscribe("devices/+/mode", qos, func(client mqtt.Client, msg mqtt.Message) {
+	c.Subscribe("devices/+/notify/mode", qos, func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Println("Received a mode message via MQTT")
 		PublishMessage(msg)
 	})
-	c.Subscribe("devices/+/fanMode", qos, func(client mqtt.Client, msg mqtt.Message) {
+	c.Subscribe("devices/+/notify/fanMode", qos, func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Println("Received a fanMode message via MQTT")
 		PublishMessage(msg)
 	})
-	c.Subscribe("devices/+/fanSpeed", qos, func(client mqtt.Client, msg mqtt.Message) {
+	c.Subscribe("devices/+/notify/fanSpeed", qos, func(client mqtt.Client, msg mqtt.Message) {
+		fmt.Println("Received a fanSpeed message via MQTT")
 		PublishMessage(msg)
 	})
 	time.Sleep(6 * time.Second)

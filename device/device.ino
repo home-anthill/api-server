@@ -20,20 +20,17 @@
 #define TONE_PIN                42 // Dummy for examples using it
 #define APPLICATION_PIN         16 // RX2 pin
 
-
-// -------------------------------------------------------
-// ---------------------- others -------------------------
-const int serverPort = 3000;
-const int serverIp[4] = {192, 168, 178, 128};
-const int serverPortMqtt = 1883;
-IPAddress serverMqtt(192, 168, 178, 128);
-
 // -------------------------------------------------------
 // -------------------------------------------------------
 char ssid[] = SECRET_SSID;        // your network SSID (name)
 char password[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
 const char* serverName = "http://192.168.178.128:8082/api/register";
 WiFiClient client;
+
+// -------------------------------------------------------
+// ---------------------- MQTT -------------------------
+const int serverPortMqtt = 1883;
+IPAddress serverMqtt(192, 168, 178, 128);
 
 PubSubClient mqttClient(client);
 
@@ -45,10 +42,10 @@ void subscribeDevices(const char* command) {
   const uint devicesLen = strlen(devices);
   const uint savedUuidLen = savedUuid.length();
   const uint commandLen = strlen(command);
-  char* topic = (char*)malloc(sizeof(char) * ( devicesLen + savedUuidLen + commandLen + 1 ));
-  strcpy(topic,devices);
-  strcat(topic,savedUuid.c_str());
-  strcat(topic,command);
+  char* topic = (char*)malloc(sizeof(char) * (devicesLen + savedUuidLen + commandLen + 1));
+  strcpy(topic, devices);
+  strcat(topic, savedUuid.c_str());
+  strcat(topic, command);
   Serial.println(topic);
   mqttClient.subscribe(topic);
 }
@@ -77,6 +74,27 @@ void reconnect() {
     }
   }
 }
+
+// void notifyValue(char* type, char* uuid) {
+//   char payloadToSend[20];
+//   DynamicJsonDocument payloadMsg(256);
+//   switch(type) {
+//     case "onoff":
+//       payloadMsg["on"] = true;
+//       break;
+//     case "temperature":
+//       break;
+//     case "mode":
+//       break;
+//     case "fanspeed":
+//       break;
+//     case "fanmode":
+//       break;
+//   }
+//   serializeJson(payloadMsg, payloadToSend);
+
+//   mqttClient.publish("devices/4d28731c-fd5a-420e-9e46-8816de6d053d/notify/onoff", payloadToSend);
+// }
 
 void callback(char* topic, byte* payload, unsigned int length) {
   const uint8_t NEC_KHZ = 38;
