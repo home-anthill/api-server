@@ -149,7 +149,7 @@ func (handler *DevicesGrpc) SetMode(ctx context.Context, in *device.ModeValueReq
 		fmt.Println("gRPC - SetMode - cannot create mqtt payload")
 		return nil, err
 	}
-	t := mqtt_client.SendTemperature(modeValue.Uuid, messageJSON)
+	t := mqtt_client.SendMode(modeValue.Uuid, messageJSON)
 	timeoutResult := t.WaitTimeout(TIMEOUT)
 	if t.Error() != nil || !timeoutResult {
 		fmt.Println(t.Error())
