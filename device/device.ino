@@ -1,15 +1,16 @@
-// include the WiFi library
+// include the WiFi library and HTTPClient
 #include <WiFi.h>
 #include <HTTPClient.h>
-
 // include json library (https://github.com/bblanchon/ArduinoJson)
 #include <ArduinoJson.h>
-#include "secrets.h"
-
+// include MQTT library
 #include <PubSubClient.h>
-/*
- * Define macros for input and output pin etc.
- */
+// eeprom lib has been deprecated for esp32, the recommended way is to use Preferences
+#include <Preferences.h>
+// IR library
+#include <IRremote.h>
+
+#include "secrets.h"
 #include "PinDefinitionsAndMore.h"
 
 #define IR_RECEIVE_PIN          15  // D15
@@ -18,12 +19,7 @@
 #define noTone(a) void()
 #define TONE_PIN                42 // Dummy for examples using it
 #define APPLICATION_PIN         16 // RX2 pin
-#undef LED_BUILTIN
 
-#include <IRremote.h>
-
-// eeprom lib has been deprecated for esp32, the recommended way is to use Preferences
-#include <Preferences.h>
 
 // -------------------------------------------------------
 // ---------------------- others -------------------------
@@ -40,8 +36,6 @@ const char* serverName = "http://192.168.178.128:8082/api/register";
 WiFiClient client;
 
 PubSubClient mqttClient(client);
-
-#define IR_RECEIVE_PIN 15
 
 String savedUuid;
 Preferences preferences;
@@ -184,37 +178,37 @@ void callback(char* topic, byte* payload, unsigned int length) {
         break;
     }
   }
-  // if(doc.containsKey("fan")) {
-  //   const int fan = doc["fan"];
-  //   Serial.println(fan);
-  //   Serial.print("fan: ");
-  //   Serial.println(fan);
-  //   Serial.flush();
-  //   switch(fan) {
-  //     case 0:
-  //       IrSender.sendRaw(irFanSpeedOff, sizeof(irFanSpeedOff) / sizeof(irFanSpeedOff[0]), NEC_KHZ);
-  //       break;
-  //     case 1:
-  //       IrSender.sendRaw(irFanSpeedLow, sizeof(irFanSpeedLow) / sizeof(irFanSpeedLow[0]), NEC_KHZ);
-  //       break;
-  //     case 2:
-  //       IrSender.sendRaw(irFanSpeedMid, sizeof(irFanSpeedMid) / sizeof(irFanSpeedMid[0]), NEC_KHZ);
-  //       break;
-  //     case 3:
-  //       IrSender.sendRaw(irFanSpeedMax, sizeof(irFanSpeedMax) / sizeof(irFanSpeedMax[0]), NEC_KHZ);
-  //       break;
-  //     default:
-  //       Serial.println("Unsupported fan value");
-  //       break;
-  //   }
-  // }
-  // if(doc.containsKey("swing")) {
-  //   const int swing = doc["swing"];
-  //   Serial.println(swing);
-  //   Serial.print("swing: ");
-  //   Serial.println(swing);
-  //   Serial.flush();
-  // }
+  if(doc.containsKey("fanSpeed")) {
+    const int fanSpeed = doc["fanSpeed"];
+    Serial.println(fanSpeed);
+    Serial.print("fanSpeed: ");
+    Serial.println(fanSpeed);
+    Serial.flush();
+    switch(fanSpeed) {
+      case 0:
+        IrSender.sendRaw(irFanSpeedOff, sizeof(irFanSpeedOff) / sizeof(irFanSpeedOff[0]), NEC_KHZ);
+        break;
+      case 1:
+        IrSender.sendRaw(irFanSpeedLow, sizeof(irFanSpeedLow) / sizeof(irFanSpeedLow[0]), NEC_KHZ);
+        break;
+      case 2:
+        IrSender.sendRaw(irFanSpeedMid, sizeof(irFanSpeedMid) / sizeof(irFanSpeedMid[0]), NEC_KHZ);
+        break;
+      case 3:
+        IrSender.sendRaw(irFanSpeedMax, sizeof(irFanSpeedMax) / sizeof(irFanSpeedMax[0]), NEC_KHZ);
+        break;
+      default:
+        Serial.println("Unsupported fan value");
+        break;
+    }
+  }
+  if(doc.containsKey("fanMode")) {
+    const int fanMode = doc["fanMode"];
+    Serial.println(fanMode);
+    Serial.print("fanMode: ");
+    Serial.println(fanMode);
+    Serial.flush();
+  }
   Serial.println("--------------------------");
 }
 
@@ -361,26 +355,3 @@ void loop() {
 
   delay(1000);
 }
-
-// ------------------------------
-// ----------- Wifi -------------
-// ------------------------------
-// void printWiFiStatus() {
-//   // print the SSID of the network you're attached to:
-//   Serial.print("SSID: ");
-//   Serial.println(WiFi.SSID());
-
-//   // print your WiFi shield's IP address:
-//   IPAddress ip = WiFi.localIP();
-//   Serial.print("IP Address: ");
-//   Serial.println(ip);
-
-//   // print the received signal strength:
-//   long rssi = WiFi.RSSI();
-//   Serial.print("signal strength (RSSI):");
-//   Serial.print(rssi);
-//   Serial.println(" dBm");
-// }
-// ------------------------------
-// ------------------------------
-// ------------------------------
