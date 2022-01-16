@@ -69,6 +69,7 @@ func (handler *Devices) GetDevices(c *gin.Context) {
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	if err != nil {
+		handler.logger.Error("REST - GET - GetDevices - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
@@ -77,7 +78,8 @@ func (handler *Devices) GetDevices(c *gin.Context) {
 		"_id": bson.M{"$in": profile.Devices},
 	})
 	if errDevices != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": errDevices.Error()})
+		handler.logger.Error("REST - GET - GetDevices - cannot find device in profile")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot find device in profile"})
 		return
 	}
 	defer cur.Close(handler.ctx)
@@ -122,12 +124,14 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	if err != nil {
+		handler.logger.Error("REST - DELETE - DeleteDevices - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// check if the profile contains that device -> if profile is the owner of that device
 	found := contains(profile.Devices, objectId)
 	if !found {
+		handler.logger.Error("REST - DELETE - DeleteDevices - cannot delete device, because it is not in your profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete device, because it is not in your profile"})
 		return
 	}
@@ -145,6 +149,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 	}
 	_, err2 := handler.collectionHomes.UpdateOne(handler.ctx, filter, update, &opts)
 	if err2 != nil {
+		handler.logger.Error("REST - DELETE - DeleteDevices - cannot update room")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update room"})
 		return
 	}
@@ -156,6 +161,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 		bson.M{"$pull": bson.M{"devices": objectId}},
 	)
 	if errUpd != nil {
+		handler.logger.Error("REST - DELETE - DeleteDevices - cannot remove device from profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove device from profile"})
 		return
 	}
@@ -165,7 +171,8 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 		"_id": objectId,
 	})
 	if errDel != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": errDel.Error()})
+		handler.logger.Error("REST - DELETE - DeleteDevices - cannot remove device")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot remove device"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "device has been deleted"})
@@ -181,17 +188,20 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
 	// get profile from db by user id from session
 	profile, err := handler.getProfile(&session)
 	if err != nil {
+		handler.logger.Error("REST - GET - GetValuesDevice - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// check if device is in profile (device owned by profile)
 	if !handler.isDeviceInProfile(&profile, objectId) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "This device is not in your profile"})
+		handler.logger.Error("REST - GET - GetValuesDevice - this device is not in your profile")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
+		handler.logger.Error("REST - GET - GetValuesDevice - cannot find device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
@@ -199,8 +209,8 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		fmt.Println("Cannot connect via GRPC", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get values - connection error"})
+		handler.logger.Error("REST - GET - GetValuesDevice - cannot establish gRPC connection")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values - connection error"})
 		return
 	}
 	defer conn.Close()
@@ -215,8 +225,8 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
 	})
 
 	if errSend != nil {
-		fmt.Println("Cannot get values via GRPC", errSend)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get values"})
+		handler.logger.Error("REST - GET - GetValuesDevice - cannot get values via gRPC")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values"})
 		return
 	}
 
@@ -237,36 +247,40 @@ func (handler *Devices) PostOnOffDevice(c *gin.Context) {
 
 	var value models.OnOffValue
 	if err := c.ShouldBindJSON(&value); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostOnOffDevice - invalid request payload")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 	session := sessions.Default(c)
 	// get profile from db by user id from session
 	profile, err := handler.getProfile(&session)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostOnOffDevice - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// check if device is in profile (device owned by profile)
 	if !handler.isDeviceInProfile(&profile, objectId) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "This device is not in your profile"})
+		handler.logger.Error("REST - POST - PostOnOffDevice - this is not your device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostOnOffDevice - cannot find device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
 	err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
 	if err != nil {
-		fmt.Println("Cannot set value via GRPC", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot set value"})
+		handler.logger.Error("REST - POST - PostOnOffDevice - cannot set value via gRPC")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
+	c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 
 func (handler *Devices) PostTemperatureDevice(c *gin.Context) {
@@ -277,36 +291,40 @@ func (handler *Devices) PostTemperatureDevice(c *gin.Context) {
 
 	var value models.TemperatureValue
 	if err := c.ShouldBindJSON(&value); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostTemperatureDevice - invalid request payload")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 	session := sessions.Default(c)
 	// get profile from db by user id from session
 	profile, err := handler.getProfile(&session)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostTemperatureDevice - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// check if device is in profile (device owned by profile)
 	if !handler.isDeviceInProfile(&profile, objectId) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "This device is not in your profile"})
+		handler.logger.Error("REST - POST - PostTemperatureDevice - this is not your device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostTemperatureDevice - cannot find device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
 	err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
 	if err != nil {
-		fmt.Println("Cannot set value via GRPC", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot set value"})
+		handler.logger.Error("REST - POST - PostTemperatureDevice - cannot set value via gRPC")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
+	c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 func (handler *Devices) PostModeDevice(c *gin.Context) {
 	handler.logger.Debug("REST - POST - PostModeDevice called")
@@ -316,36 +334,40 @@ func (handler *Devices) PostModeDevice(c *gin.Context) {
 
 	var value models.ModeValue
 	if err := c.ShouldBindJSON(&value); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostModeDevice - invalid request payload")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 	session := sessions.Default(c)
 	// get profile from db by user id from session
 	profile, err := handler.getProfile(&session)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostModeDevice - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// check if device is in profile (device owned by profile)
 	if !handler.isDeviceInProfile(&profile, objectId) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "This device is not in your profile"})
+		handler.logger.Error("REST - POST - PostModeDevice - this is not your device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostModeDevice - cannot find device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
 	err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
 	if err != nil {
-		fmt.Println("Cannot set value via GRPC", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot set value"})
+		handler.logger.Error("REST - POST - PostModeDevice - cannot set value via gRPC")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
+	c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 func (handler *Devices) PostFanModeDevice(c *gin.Context) {
 	handler.logger.Debug("REST - POST - PostFanModeDevice called")
@@ -355,24 +377,28 @@ func (handler *Devices) PostFanModeDevice(c *gin.Context) {
 
 	var value models.FanModeValue
 	if err := c.ShouldBindJSON(&value); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostFanModeDevice - invalid request payload")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 	session := sessions.Default(c)
 	// get profile from db by user id from session
 	profile, err := handler.getProfile(&session)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostFanModeDevice - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// check if device is in profile (device owned by profile)
 	if !handler.isDeviceInProfile(&profile, objectId) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "This device is not in your profile"})
+		handler.logger.Error("REST - POST - PostFanModeDevice - this is not your device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostFanModeDevice - cannot find device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
@@ -380,11 +406,12 @@ func (handler *Devices) PostFanModeDevice(c *gin.Context) {
 	err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
 	if err != nil {
 		fmt.Println("Cannot set value via GRPC", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot set value"})
+		handler.logger.Error("REST - POST - PostFanModeDevice - cannot set value via gRPC")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
+	c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 func (handler *Devices) PostFanSpeedDevice(c *gin.Context) {
 	handler.logger.Debug("REST - POST - PostFanSpeedDevice called")
@@ -394,45 +421,49 @@ func (handler *Devices) PostFanSpeedDevice(c *gin.Context) {
 
 	var value models.FanSpeedValue
 	if err := c.ShouldBindJSON(&value); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		handler.logger.Error("REST - POST - PostFanSpeedDevice - invalid request payload")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 	session := sessions.Default(c)
 	// get profile from db by user id from session
 	profile, err := handler.getProfile(&session)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostFanSpeedDevice - cannot find profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// check if device is in profile (device owned by profile)
 	if !handler.isDeviceInProfile(&profile, objectId) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "This device is not in your profile"})
+		handler.logger.Error("REST - POST - PostFanSpeedDevice - this is not your device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
 	device, err := handler.getDevice(objectId)
 	if err != nil {
+		handler.logger.Error("REST - POST - PostFanSpeedDevice - cannot find device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
 	err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
 	if err != nil {
-		fmt.Println("Cannot set value via GRPC", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot set value"})
+		handler.logger.Error("REST - POST - PostFanSpeedDevice - cannot set value via gRPC")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Set value success"})
+	c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 
 func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
-	handler.logger.Debug("Sending device via gRPC...")
+	handler.logger.Debug("gRPC - sendViaGrpc - Sending device via gRPC...")
 
 	// Set up a connection to the server.
 	conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		fmt.Println("Cannot connect via GRPC", err)
+		handler.logger.Error("gRPC - sendViaGrpc - cannot connect via gRPC", err)
 		return errors.GrpcSendError{
 			Status:  errors.ConnectionError,
 			Message: "Cannot connect to api-devices",
@@ -500,6 +531,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
 		fmt.Println("Device set value message: ", response.GetMessage())
 		return errSend
 	default:
+		handler.logger.Error("gRPC - sendViaGrpc - unknown type")
 		return errors.GrpcSendError{
 			Status:  errors.BadParams,
 			Message: "Cannot cast value",
@@ -524,12 +556,12 @@ func (handler *Devices) isDeviceInProfile(profile *models.Profile, deviceId prim
 }
 
 func (handler *Devices) getDevice(deviceId primitive.ObjectID) (models.Device, error) {
-	fmt.Println("Searching device with objectId: ", deviceId)
+	handler.logger.Debug("gRPC - getDevice - searching device with objectId: ", deviceId)
 	var device models.Device
 	err := handler.collection.FindOne(handler.ctx, bson.M{
 		"_id": deviceId,
 	}).Decode(&device)
-	fmt.Println("Device found: ", device)
+	handler.logger.Debug("Device found: ", device)
 	return device, err
 }
 

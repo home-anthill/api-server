@@ -3,7 +3,6 @@ package api
 import (
 	"api-server/api/gRPC/register"
 	"api-server/models"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
@@ -137,8 +136,6 @@ func (handler *Register) PostRegister(c *gin.Context) {
 	}
 	handler.logger.Debug("Register status: ", r.GetStatus())
 	handler.logger.Debug("Register message: ", r.GetMessage())
-	fmt.Println("r", r)
-	fmt.Println("device", device)
 
 	c.JSON(http.StatusOK, device)
 }

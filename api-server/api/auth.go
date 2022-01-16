@@ -44,7 +44,7 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
 	handler.logger.Debug("REST - GET - LoginCallback called")
 
 	var profile = c.Value("profile").(models.Profile)
-	fmt.Println("LoginCallback with profile = ", profile)
+	//fmt.Println("LoginCallback with profile = ", profile)
 
 	expirationTime := time.Now().Add(20 * time.Minute)
 
@@ -59,6 +59,7 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
 	tokenString, err := token.SignedString(jwtKey)
 
 	if err != nil {
+		handler.logger.Error("REST - GET - LoginCallback - cannot generate JWT")
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Cannot generate JWT"})
 		return
 	}
@@ -86,19 +87,20 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 		authHeader := c.GetHeader("Authorization")
 
 		if authHeader == "" {
+			handler.logger.Error("JWTMiddleware - authorization header not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Authorization header not found",
+				"message": "authorization header not found",
 			})
 			c.Abort()
 			return
 		}
 
 		tokenString := authHeader[(len(BEARER_SCHEMA) + 1):]
-		fmt.Println("tokenString ", tokenString, len(tokenString))
 
 		if tokenString == "" {
+			handler.logger.Error("JWTMiddleware - bearer token not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "Bearer token not found",
+				"message": "bearer token not found",
 			})
 			c.Abort()
 			return
@@ -121,24 +123,25 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 		if !token.Valid {
 			if ve, ok := err.(*jwt.ValidationError); ok {
 				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-					fmt.Println("That's not even a token")
+					handler.logger.Error("JWTMiddleware - that's not even a token")
 					c.JSON(http.StatusBadRequest, gin.H{
-						"message": "That's not even a token",
+						"message": "that's not even a token",
 					})
 					c.Abort()
 					return
 				} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
 					// Token is either expired or not active yet
-					fmt.Println("Timing is everything")
+					handler.logger.Error("JWTMiddleware - JWT token expired")
 					c.JSON(http.StatusUnauthorized, gin.H{
-						"message": "Timing is everything",
+						"message": "JWT token is expired",
 					})
 					c.Abort()
 					return
 				}
 
+				handler.logger.Error("JWTMiddleware - not logged, token is not valid")
 				c.JSON(http.StatusForbidden, gin.H{
-					"message": "Not logged, token is not valud",
+					"message": "not logged, token is not valid",
 				})
 				c.Abort()
 				return
@@ -146,22 +149,23 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 		}
 
 		if err != nil {
-			fmt.Println("err != nil", err)
 			if err == jwt.ErrSignatureInvalid {
+				handler.logger.Error("JWTMiddleware - cannot login", err)
 				c.JSON(http.StatusUnauthorized, gin.H{
-					"message": "Cannot login",
+					"message": "cannot login",
 				})
 				c.Abort()
 				return
 			}
+			handler.logger.Error("JWTMiddleware - bad request while login", err)
 			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Bad request while login",
+				"message": "bad request while login",
 			})
 			c.Abort()
 			return
 		}
 
-		fmt.Println("Valid token: ", claims.ID, claims.Name, claims.ExpiresAt)
+		//fmt.Println("Valid token: ", claims.ID, claims.Name, claims.ExpiresAt)
 
 		c.Next()
 	}
