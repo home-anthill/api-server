@@ -27,7 +27,7 @@ func NewRegisterGrpc(ctx context.Context, logger *zap.SugaredLogger, collection 
 }
 
 func (handler *RegisterGrpc) Register(ctx context.Context, in *register.RegisterRequest) (*register.RegisterReply, error) {
-	handler.logger.Info("gRPC Register called")
+	handler.logger.Info("gRPC - Register - Called")
 	fmt.Println("Received: ", in)
 
 	// update ac
@@ -52,7 +52,7 @@ func (handler *RegisterGrpc) Register(ctx context.Context, in *register.Register
 	}, &opts)
 
 	if err != nil {
-		fmt.Println("Cannot update db with the registered AC with id " + in.Id)
+		handler.logger.Error("gRPC - Register - Cannot update db with the registered AC with id " + in.Id)
 	}
 
 	return &register.RegisterReply{Status: "200", Message: "Inserted"}, err
