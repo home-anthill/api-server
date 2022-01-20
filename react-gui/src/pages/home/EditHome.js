@@ -28,8 +28,8 @@ export default function EditHome() {
     try {
       const response = await axios.put(`http://localhost:8082/api/homes/${home.id}`, {
         name: home.name,
-        location: home.location,
-        rooms: rooms
+        location: home.location
+        // cannot change room with this api
       }, {
         headers
       });
@@ -43,7 +43,8 @@ export default function EditHome() {
 
   function onChangeRoom(index, newRoom) {
     const updated = [...rooms];
-    updated[index] = newRoom;
+    updated[index].name = newRoom.name;
+    updated[index].floor = newRoom.floor;
     setRooms(updated)
   }
 
@@ -52,10 +53,53 @@ export default function EditHome() {
     setRooms([...rooms, {name: '', floor: 0}]);
   }
 
-  function onRemoveRoom(index) {
-    let updated = [...rooms];
-    updated = updated.filter((room, i) => i !== index);
-    setRooms(updated)
+  async function onRemoveRoom(room) {
+    let token = localStorage.getItem('token');
+    let headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    };
+    try {
+      const response = await axios.delete(`http://localhost:8082/api/homes/${home.id}/rooms/${room.id}`, {
+        headers
+      });
+      console.log('response', response);
+      // navigate back
+      navigate(-1);
+    } catch (err) {
+      console.error('Cannot add a new home');
+    }
+  }
+
+  async function onSaveRoom(room) {
+    let token = localStorage.getItem('token');
+    let headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + token
+    };
+    try {
+      let response;
+      if (room.id) {
+        response = await axios.put(`http://localhost:8082/api/homes/${home.id}/rooms/${room.id}`, {
+          'name': room.name,
+          'floor': room.floor
+        }, {
+          headers
+        });
+      } else {
+        response = await axios.post(`http://localhost:8082/api/homes/${home.id}/rooms`, {
+          'name': room.name,
+          'floor': room.floor
+        }, {
+          headers
+        });
+      }
+      console.log('response', response);
+      // navigate back
+      navigate(-1);
+    } catch (err) {
+      console.error('Cannot add a new home');
+    }
   }
 
   return (
@@ -77,6 +121,9 @@ export default function EditHome() {
           required
         />
       </form>
+      <br/>
+      <button onClick={submit}>Save Home</button>
+      <br/>
 
       <p>Rooms</p>
       {rooms.map((room, index) => (
@@ -95,13 +142,15 @@ export default function EditHome() {
             placeholder="Room floor"
             required
           />
-          <button onClick={() => onRemoveRoom(index)}>X</button>
+          <button onClick={() => onSaveRoom(room)}>Save</button>
+          <button onClick={() => onRemoveRoom(room)}>Delete</button>
         </>
       ))}
+      <br/>
+      <br/>
       <button onClick={onAddRoom}>(+ add room)</button>
 
       <br/><br/>
-      <button onClick={submit}>Save Home</button>
     </div>
   )
 }
