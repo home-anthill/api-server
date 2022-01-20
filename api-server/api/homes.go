@@ -159,8 +159,8 @@ func (handler *Homes) PutHome(c *gin.Context) {
 		return
 	}
 	if home.Rooms != nil {
-		handler.logger.Error("REST - PUT - PutHome - Request payload cannot contain Rooms. This API is made to change only the home object.")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Request payload cannot contain Rooms. This API is made to change only the home object"})
+		handler.logger.Error("REST - PUT - PutHome - Request payload cannot contain Rooms. This API can change only the home object.")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Request payload cannot contain Rooms. This API can change only the home object"})
 		return
 	}
 

@@ -62,7 +62,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 		"apiToken": registerBody.APIToken,
 	}).Decode(&profileFound)
 	if errProfile != nil {
-		handler.logger.Error("REST - POST - PostRegister - Cannot find profile with that apiToken", errProfile)
+		handler.logger.Error("REST - POST - PostRegister - Cannot find profile with that apiToken: ", errProfile)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot register, profile token missing or not valid"})
 		return
 	}
