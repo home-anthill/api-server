@@ -8,29 +8,22 @@
 // eeprom lib has been deprecated for esp32, the recommended way is to use Preferences
 #include <Preferences.h>
 // IR library
+#include "PinDefinitionsAndMore.h"
 #include <IRremote.h>
 
 #include "secrets.h"
-#include "PinDefinitionsAndMore.h"
-
-#define IR_RECEIVE_PIN          15  // D15
-#define IR_SEND_PIN              4  // D4
-#define tone(a,b,c) void()      // no tone() available on ESP32
-#define noTone(a) void()
-#define TONE_PIN                42 // Dummy for examples using it
-#define APPLICATION_PIN         16 // RX2 pin
 
 // -------------------------------------------------------
 // -------------------------------------------------------
 char ssid[] = SECRET_SSID;        // your network SSID (name)
 char password[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
-const char* serverName = "http://192.168.178.128:8082/api/register";
+const char* serverName = "http://192.168.1.71:8082/api/register";
 WiFiClient client;
 
 // -------------------------------------------------------
 // ---------------------- MQTT -------------------------
 const int serverPortMqtt = 1883;
-IPAddress serverMqtt(192, 168, 178, 128);
+IPAddress serverMqtt(192, 168, 1, 71);
 
 PubSubClient mqttClient(client);
 
@@ -97,8 +90,6 @@ void reconnect() {
 // }
 
 void callback(char* topic, byte* payload, unsigned int length) {
-  const uint8_t NEC_KHZ = 38;
-
   const uint16_t irOn[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 };
   const uint16_t irOff[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550 };
   const uint16_t irTemperature24[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550 };
@@ -138,8 +129,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
     Serial.println(on);
     Serial.flush();
     if (on == 1) {
+      Serial.println("Sending ON");
       IrSender.sendRaw(irOn, sizeof(irOn) / sizeof(irOn[0]), NEC_KHZ);
     } else if (on == 0) {
+      Serial.println("Sending OFF");
       IrSender.sendRaw(irOff, sizeof(irOff) / sizeof(irOff[0]), NEC_KHZ);  
     }
   }
@@ -354,9 +347,10 @@ void setup() {
   // Digital pin 10: Chip Select for WiFi
   // Digital pins 11, 12, 13 for SPI communication (both WiFi and SD). Even if optional 6-pin SPI header is used, these pins are unavailable for other use. 
 
-  IrSender.begin(4, DISABLE_LED_FEEDBACK); // Specify send pin and enable feedback LED at default feedback LED pin
-  Serial.println(F("Ready to send IR signals at pin 4"));
-
+  // IrSender.begin(4, DISABLE_LED_FEEDBACK); // Specify send pin and enable feedback LED at default feedback LED pin
+  Serial.print(F("Ready to send IR signals at pin "));
+  Serial.println(IR_SEND_PIN);
+  
   mqttClient.setServer(serverMqtt, serverPortMqtt);
   mqttClient.setCallback(callback);
   
