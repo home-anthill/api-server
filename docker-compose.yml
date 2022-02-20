@@ -1,36 +1,72 @@
 version: "3.9"
 
 services:
-  api:
-    image: api
+  api-server:
+    image: api-server
     networks:
       - api_network
-    external_links:
+    ports:
+      - "8082:80"
+    depends_on:
+      - api-devices
       - mongodb
+      - rabbitmq
+    external_links:
+      - api-devices
+      - mongodb
+      - rabbitmq
+
+  api-devices:
+    image: api-devices
+    networks:
+      - api_network
+    depends_on:
+      - mongodb
+      - rabbitmq
+    external_links:
+      - api-server
+      - mongodb
+      - rabbitmq
+      - eclipse-mosquitto
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    networks:
+      - api_network
+
+  eclipse-mosquitto:
+    image: eclipse-mosquitto
+    networks:
+      - api_network
+    ports:
+      - "1883:1883"
+    volumes:
+      - $PWD/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - /mosquitto/data
+      - /mosquitto/log
 
   gui:
     image: gui
     networks:
       - api_network
+    ports:
+      - "8085:80"
+    # volumes:
+    #   - $PWD/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - api-server
+    external_links:
+      - api-server
 
   mongodb:
-    image: mongo:4.4.3
+    image: mongo:latest
     networks:
       - api_network
     ports:
-      - 27017:27017
-
-  nginx:
-    image: nginx
-    ports:
-      - 80:80
+      # useful to access via mongodb compass
+      - "27017:27017"
     volumes:
-      - $PWD/nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - api
-      - gui
-    networks:
-      - api_network
+      - ~/mongodb:/data/db
 
 networks:
   api_network:

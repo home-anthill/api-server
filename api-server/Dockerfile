@@ -1,11 +1,21 @@
-FROM golang:1.16
-WORKDIR /go/src/github.com/api
-COPY . .
-RUN go mod download
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+# syntax=docker/dockerfile:1
+FROM golang:1.17 as builder
+WORKDIR /app
+# pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
+COPY go.mod ./
+COPY go.sum ./
+RUN go mod download && go mod verify
 
-FROM alpine:latest  
-RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=0 /go/src/github.com/api/app .
-CMD ["./app"]  
+COPY . ./
+
+RUN go build -o /api-server .
+
+FROM gcr.io/distroless/base-debian10
+WORKDIR /
+COPY --from=builder /api-server /api-server
+COPY --from=builder /app/credentials.json /credentials.json
+COPY --from=builder /app/.env /.env
+
+EXPOSE 50051 80 27017 9001 1883 5672 8080 15672
+
+ENTRYPOINT ["/api-server"]

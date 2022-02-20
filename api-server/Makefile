@@ -23,9 +23,13 @@ proto:
 .PHONY: proto
 
 build: vet proto
-	go build -o air-conditioner main.go
+	go build -o ./build/api-server .
 .PHONY: build
 
 air: vet proto
 	air
 .PHONY: air
+
+test:
+	ENV=testing go test ./...
+.PHONY: test

@@ -55,6 +55,52 @@ docker run -it --name mosquitto -p 1883:1883 -p 9001:9001 --rm -v $PWD/mosquitto
 mosquitto_sub -t devices/+/onoff
 mosquitto_pub -m "{\"uuid\": \"uuid1\",\"profileToken\": \"profiletoken-1\",\"on\": false}" -t devices/uid1/onoff
 
+### Security
+
+1. Create Certificate Authority
+
+  openssl genrsa -out ca.key 2048
+  openssl req -x509 -new -key ca.key -days 3650 -out ca.crt
+
+  ```
+  -----
+  Country Name (2 letter code) []:IT
+  State or Province Name (full name) []:MILANO
+  Locality Name (eg, city) []:MILANO
+  Organization Name (eg, company) []:CERTIFICATE AUTHORITY
+  Organizational Unit Name (eg, section) []:
+  Common Name (eg, fully qualified host name) []:192.168.1.71
+  Email Address []:stefano.cappa.ks89@gmail.com
+  ```
+
+2. Create certificate for the Mosquitto server
+
+  openssl genrsa -out server.key 2048
+  openssl req -new -key server.key -out server.csr
+
+  ```
+  -----
+  Country Name (2 letter code) []:IT
+  State or Province Name (full name) []:MILANO
+  Locality Name (eg, city) []:MILANO
+  Organization Name (eg, company) []:MQTT SERVER
+  Organizational Unit Name (eg, section) []:MQTT
+  Common Name (eg, fully qualified host name) []:192.168.1.71
+  Email Address []:stefano.cappa.ks89@gmail.com
+  
+  Please enter the following 'extra' attributes
+  to be sent with your certificate request
+  A challenge password []:.
+  ```
+
+  openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 3650
+
+3. Kill mosquitto and resta it with this command:
+
+  docker run -it --name mosquitto -p 1883:1883 -p 9001:9001 --rm -v $PWD/mosquitto-certs/server/certificates:/mosquitto/certificates -v $PWD/mosquitto-certs/mosquitto.conf:/mosquitto/config/mosquitto.conf -v /mosquitto/data -v /mosquitto/log eclipse-mosquitto
+
+
+
 ## Mondogb
 
 Install mongodb in docker with:

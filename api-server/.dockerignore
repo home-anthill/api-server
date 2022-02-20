@@ -1,0 +1,6 @@
+build
+logs
+public
+tmp
+.dockerignore
+Dockerfile
