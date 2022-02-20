@@ -59,7 +59,7 @@ func main() {
 
   // 5. Connect to DB
   logger.Info("Connecting to MongoDB...")
-  mongoDBUrl := "mongodb://localhost:27017/"
+  mongoDBUrl := os.Getenv("MONGODB_URL")
   // mongoDBUrl := "mongodb+srv://ks89:XuF3Zw2omd9cUy7b6A4oVg@cluster0.4wies.mongodb.net"
   client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoDBUrl))
   if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {

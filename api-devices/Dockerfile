@@ -13,8 +13,10 @@ RUN go build -o /api-devices .
 FROM gcr.io/distroless/base-debian10
 WORKDIR /
 COPY --from=builder /api-devices /api-devices
-COPY --from=builder /app/.env /.env
+COPY --from=builder /app/.env_prod /.env_prod
 
-EXPOSE 50051 8082 27017 9001 1883 5672 8080 15672
+EXPOSE 50051 27017 1883 5672
+
+ENV ENV="prod"
 
 ENTRYPOINT ["/api-devices"]
