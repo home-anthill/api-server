@@ -26,13 +26,13 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length);
 // ----------------------- WIFI -------------------------
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
-const char* serverName = "http://192.168.178.128:8082/api/register";
+const char* serverName = "http://192.168.1.71:8082/api/register";
 WiFiClient client;
 
 // -----------------------------------------------------
 // ---------------------- MQTT -------------------------
 const int serverPortMqtt = 1883;
-IPAddress serverMqtt(192, 168, 178, 128);
+IPAddress serverMqtt(192, 168, 1, 71);
 PubSubClient mqttClient(serverMqtt, serverPortMqtt, callbackMqtt, client);
 
 String savedUuid;
