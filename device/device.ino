@@ -26,13 +26,13 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length);
 // ----------------------- WIFI -------------------------
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
-const char* serverName = "http://192.168.1.71:8082/api/register";
+const char* serverName = "http://192.168.178.128:8082/api/register";
 WiFiClient client;
 
 // -----------------------------------------------------
 // ---------------------- MQTT -------------------------
 const int serverPortMqtt = 1883;
-IPAddress serverMqtt(192, 168, 1, 71);
+IPAddress serverMqtt(192, 168, 178, 128);
 PubSubClient mqttClient(serverMqtt, serverPortMqtt, callbackMqtt, client);
 
 String savedUuid;
@@ -243,14 +243,13 @@ void registerServer() {
   HTTPClient http;
   http.begin(client, serverName);
   http.addHeader("Content-Type", "application/json; charset=utf-8");
-  http.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NjA1NzIwNywibmFtZSI6IlN0ZWZhbm8gQ2FwcGEiLCJleHAiOjE2Mzc3MDk3MDF9.1Du9-D-zmbyblmrpxM9Lw-MUPJkdE99s7p68yHFHvQo");
   String macAddress = WiFi.macAddress();
   String httpRequestData = "{\"mac\": \"" + WiFi.macAddress() + 
     "\",\"name\": \"" + NAME + 
     "\",\"manufacturer\": \"" + MANUFACTURER +
     "\",\"model\": \"" + MODEL +
     "\",\"type\": \"" + TYPE +
-    "\",\"apiToken\": \"" + API_TOKEN + "\"}";
+    "\",\"APIToken\": \"" + API_TOKEN + "\"}";
   const int httpResponseCode = http.POST(httpRequestData);
   if (httpResponseCode <= 0) {
     Serial.print("registerServer - Error on sending POST with httpResponseCode = ");
@@ -258,7 +257,7 @@ void registerServer() {
     http.end();
 
     Serial.println("registerServer - Retrying in 3 seconds...");
-    delay(3000);
+    delay(60000);
     registerServer();
     return;
   }
@@ -266,47 +265,62 @@ void registerServer() {
   Serial.print("registerServer - httpResponseCode = ");
   Serial.println(httpResponseCode);
 
-  StaticJsonDocument<256> staticDoc;
-  DeserializationError err = deserializeJson(staticDoc, http.getStream());
-  // There is no need to check for specific reasons,
-  // because err evaluates to true/false in this case,
-  // as recommended by the developer of ArduinoJson
-  if (err) {
-    Serial.println("registerServer - Deserialization succeeded!");
-    const char* uuidValue = staticDoc["uuid"];
-    const char* macValue = staticDoc["mac"];
-    const char* nameValue = staticDoc["name"];
-    const char* manufacturerValue = staticDoc["manufacturer"];
-    const char* modelValue = staticDoc["model"];
-    Serial.print("registerServer - uuidValue: ");
-    Serial.println(uuidValue);
-    Serial.print("registerServer - macValue: ");
-    Serial.println(macValue);
-    Serial.print("registerServer - nameValue: ");
-    Serial.println(nameValue);
-    Serial.print("registerServer - manufacturerValue: ");
-    Serial.println(manufacturerValue);
-    Serial.print("registerServer - modelValue: ");
-    Serial.println(modelValue);
+  if (httpResponseCode == HTTP_CODE_OK) {
+    Serial.println("registerServer - HTTP_CODE_OK");
+    StaticJsonDocument<500> staticDoc;
+    DeserializationError err = deserializeJson(staticDoc, http.getStream());
+    // There is no need to check for specific reasons,
+    // because err evaluates to true/false in this case,
+    // as recommended by the developer of ArduinoJson
+    if (!err) {
+      Serial.println("registerServer - Deserialization succeeded!");
+      serializeJsonPretty(staticDoc, Serial);
+      const char* uuidValue = staticDoc["uuid"];
+      const char* macValue = staticDoc["mac"];
+      const char* nameValue = staticDoc["name"];
+      const char* manufacturerValue = staticDoc["manufacturer"];
+      const char* modelValue = staticDoc["model"];
+      Serial.print("registerServer - uuidValue: ");
+      Serial.println(uuidValue);
+      Serial.print("registerServer - macValue: ");
+      Serial.println(macValue);
+      Serial.print("registerServer - nameValue: ");
+      Serial.println(nameValue);
+      Serial.print("registerServer - manufacturerValue: ");
+      Serial.println(manufacturerValue);
+      Serial.print("registerServer - modelValue: ");
+      Serial.println(modelValue);
 
-    // TODO TODO TODO TODO TODO TODO validate uuidValue. It must have a certain format and it must be a string
+      // TODO TODO TODO TODO TODO TODO validate uuidValue. It must have a certain format and it must be a string
 
 
-    // if (strcmp(macAddress.c_str(), macValue) != 0) {
-        // strcmp(NAME, nameValue) != 0 ||
-        // strcmp(MANUFACTURER, manufacturerValue) != 0 ||
-        // strcmp(MODEL, modelValue) != 0) {
-    //   Serial.println("--- ERROR : Request and response data don't match ---");
-    //   return;
-    // }
-    // if (!macAddress.equals(macValue) || nameValue != NAME || manufacturerValue != MANUFACTURER || modelValue != MODEL) {
-    //   Serial.println("--- ERROR : Request and response data don't match ---");
-    //   return;
-    // }
+      // if (strcmp(macAddress.c_str(), macValue) != 0) {
+          // strcmp(NAME, nameValue) != 0 ||
+          // strcmp(MANUFACTURER, manufacturerValue) != 0 ||
+          // strcmp(MODEL, modelValue) != 0) {
+      //   Serial.println("--- ERROR : Request and response data don't match ---");
+      //   return;
+      // }
+      // if (!macAddress.equals(macValue) || nameValue != NAME || manufacturerValue != MANUFACTURER || modelValue != MODEL) {
+      //   Serial.println("--- ERROR : Request and response data don't match ---");
+      //   return;
+      // }
 
-    preferences.begin("ac", false); 
-    preferences.putString("uuid", uuidValue);
-    preferences.end();
+      preferences.begin("ac", false); 
+      String uuidStr = String(uuidValue);
+      size_t len = preferences.putString("uuid", uuidStr);
+      preferences.end();
+      if (len != strlen(uuidValue)) {
+        Serial.println("************* ERROR **************");
+        Serial.println("setup - Cannot SAVE UUID in Preferences");
+        Serial.println("**********************************");
+      }
+    } else {
+      Serial.println("cannot deserialize register JSON payload");
+    }
+  }
+  if (httpResponseCode == HTTP_CODE_CONFLICT) {
+    Serial.println("registerServer - HTTP_CODE_CONFLICT - already registered");
   }
 }
 
@@ -338,7 +352,7 @@ void setup() {
 
   if (savedUuid.equals("")) {
     Serial.println("************* ERROR **************");
-    Serial.println("setup - Cannot read UUID from Preferences");
+    Serial.println("setup - Cannot read saved UUID from Preferences");
     Serial.println("**********************************");
     return;
   }
