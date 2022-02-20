@@ -9,11 +9,11 @@ services:
       - "8082:80"
     depends_on:
       - api-devices
-      - mongodb
+#      - mongodb
       - rabbitmq
     external_links:
       - api-devices
-      - mongodb
+#      - mongodb
       - rabbitmq
 
   api-devices:
@@ -21,11 +21,11 @@ services:
     networks:
       - api_network
     depends_on:
-      - mongodb
+#      - mongodb
       - rabbitmq
     external_links:
       - api-server
-      - mongodb
+#      - mongodb
       - rabbitmq
       - eclipse-mosquitto
 
@@ -58,15 +58,15 @@ services:
     external_links:
       - api-server
 
-  mongodb:
-    image: mongo:latest
-    networks:
-      - api_network
-    ports:
-      # useful to access via mongodb compass
-      - "27017:27017"
-    volumes:
-      - ~/mongodb:/data/db
+#  mongodb:
+#    image: mongo:latest
+#    networks:
+#      - api_network
+#    ports:
+#      # useful to access via mongodb compass
+#      - "27017:27017"
+#    volumes:
+#      - ~/mongodb:/data/db
 
 networks:
   api_network:
