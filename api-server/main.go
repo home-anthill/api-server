@@ -45,13 +45,11 @@ var profiles *api.Profiles
 var register *api.Register
 
 func main() {
-  fmt.Println("starting")
   // 1. Init logger
   logger := InitLogger()
   defer logger.Sync()
   logger.Info("Starting application...)")
 
-  fmt.Println("env")
   // 2. Load the .env file
   var envFile string
   if os.Getenv("ENV") == "prod" {
@@ -63,7 +61,6 @@ func main() {
   if err != nil {
     logger.Error("failed to load the env file")
   }
-  fmt.Println("env read")
 
   // 3. Read ENV property from .env
   if os.Getenv("ENV") == "prod" {
@@ -120,7 +117,6 @@ func main() {
   devices = api.NewDevices(ctx, logger, collectionDevices, collectionProfiles, collectionHomes)
   profiles = api.NewProfiles(ctx, logger, collectionProfiles)
   register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles)
-  fmt.Println("Create api interfaces")
 
   // 8. Init AMQP and open connection
   // amqpSubscriber.InitAmqpSubscriber(logger)
@@ -134,21 +130,21 @@ func main() {
   router.Use(gzip.Gzip(gzip.DefaultCompression))
 
   // 10bis. apply security config to GIN
-  //secureMiddleware := secure.New(getSecureOptions(port))
-  //router.Use(func() gin.HandlerFunc {
-  //  return func(c *gin.Context) {
-  //    err := secureMiddleware.Process(c.Writer, c.Request)
-  //    // If there was an error, do not continue.
-  //    if err != nil {
-  //      c.Abort()
-  //      return
-  //    }
-  //    // Avoid header rewrite if response is a redirection.
-  //    if status := c.Writer.Status(); status > 300 && status < 399 {
-  //      c.Abort()
-  //    }
-  //  }
-  //}())
+  secureMiddleware := secure.New(getSecureOptions(port))
+  router.Use(func() gin.HandlerFunc {
+    return func(c *gin.Context) {
+      err := secureMiddleware.Process(c.Writer, c.Request)
+      // If there was an error, do not continue.
+      if err != nil {
+        c.Abort()
+        return
+      }
+      // Avoid header rewrite if response is a redirection.
+      if status := c.Writer.Status(); status > 300 && status < 399 {
+        c.Abort()
+      }
+    }
+  }())
 
   // 10tris. fix a max POST payload size
   router.Use(limits.RequestSizeLimiter(1024 * 1024))
