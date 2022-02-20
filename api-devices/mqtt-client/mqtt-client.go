@@ -4,6 +4,7 @@ import (
   amqpPublisher "api-devices/amqp-publisher"
   "fmt"
   mqtt "github.com/eclipse/paho.mqtt.golang"
+  "os"
   "strings"
   "time"
 )
@@ -51,7 +52,8 @@ func PublishMessage(msg mqtt.Message) {
 func InitMqtt() {
   //mqtt.DEBUG = log.New(os.Stdout, "", 0)
   //mqtt.ERROR = log.New(os.Stdout, "", 0)
-  opts := mqtt.NewClientOptions().AddBroker("tcp://eclipse-mosquitto:1883").SetClientID("apiDevices")
+  mqttUrl := os.Getenv("MQTT_URL")
+  opts := mqtt.NewClientOptions().AddBroker(mqttUrl).SetClientID("apiDevices")
   opts.SetKeepAlive(2 * time.Second)
   opts.SetDefaultPublishHandler(defaultHandler)
   opts.SetPingTimeout(1 * time.Second)

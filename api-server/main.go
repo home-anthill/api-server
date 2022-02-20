@@ -3,7 +3,7 @@
 // Air Conditioner control system APIs.
 //
 //	Schemes: http
-//  Host: localhost:8082
+//  Host: localhost
 //	BasePath: /
 //	Version: 1.0.0
 //	Contact: Stefano Cappa https://github.com/Ks89
@@ -17,11 +17,10 @@
 package main
 
 import (
-  amqpSubscriber "api-server/amqp-subscriber"
   "api-server/api"
   "api-server/api/oauth"
-  "api-server/ws"
   "context"
+  "fmt"
   "github.com/gin-contrib/cors"
   limits "github.com/gin-contrib/size"
   "github.com/gin-gonic/contrib/gzip"
@@ -46,16 +45,25 @@ var profiles *api.Profiles
 var register *api.Register
 
 func main() {
+  fmt.Println("starting")
   // 1. Init logger
   logger := InitLogger()
   defer logger.Sync()
   logger.Info("Starting application...)")
 
+  fmt.Println("env")
   // 2. Load the .env file
-  err := godotenv.Load(".env")
+  var envFile string
+  if os.Getenv("ENV") == "prod" {
+    envFile = ".env_prod"
+  } else {
+    envFile = ".env"
+  }
+  err := godotenv.Load(envFile)
   if err != nil {
     logger.Error("failed to load the env file")
   }
+  fmt.Println("env read")
 
   // 3. Read ENV property from .env
   if os.Getenv("ENV") == "prod" {
@@ -63,24 +71,48 @@ func main() {
   }
   port := os.Getenv("HTTP_PORT")
 
+  fmt.Println("ENVIRONMENT = " + os.Getenv("ENV"))
+  fmt.Println("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
+  fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
+  fmt.Println("HTTP PORT = " + os.Getenv("HTTP_PORT"))
+  fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
+
   // 4. Print .env vars
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
+  logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
+  logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("HTTP PORT = " + os.Getenv("HTTP_PORT"))
-  logger.Info("GRPC PORT = " + os.Getenv("GRPC_PORT"))
+  logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
 
   ctx := context.Background()
 
   // 5. Connect to DB
   logger.Info("Connecting to MongoDB...")
-  client, err := mongo.Connect(ctx, options.Client().ApplyURI("mongodb://localhost:27017/"))
+  mongoDBUrl := os.Getenv("MONGODB_URL")
+  // mongoDBUrl := "mongodb+srv://ks89:XuF3Zw2omd9cUy7b6A4oVg@cluster0.4wies.mongodb.net"
+  client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoDBUrl))
   if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
     logger.Fatalf("Cannot connect to MongoDB: %s", err)
   }
   logger.Info("Connected to MongoDB")
+  fmt.Println("Connected to MongoDB")
+
   // 6. Define DB collections
-  collectionProfiles := client.Database(DbName).Collection("profiles")
-  collectionHomes := client.Database(DbName).Collection("homes")
-  collectionDevices := client.Database(DbName).Collection("devices")
+  var collNameProfiles string
+  var collNameHomes string
+  var collNameDevices string
+  if os.Getenv("ENV") == "testing" {
+    collNameProfiles = "profiles_test"
+    collNameHomes = "homes_test"
+    collNameDevices = "devices_test"
+  } else {
+    collNameProfiles = "profiles"
+    collNameHomes = "homes"
+    collNameDevices = "devices"
+  }
+  collectionProfiles := client.Database(DbName).Collection(collNameProfiles)
+  collectionHomes := client.Database(DbName).Collection(collNameHomes)
+  collectionDevices := client.Database(DbName).Collection(collNameDevices)
 
   // 7. Create API instances
   auth = api.NewAuth(ctx, logger, collectionProfiles)
@@ -88,20 +120,133 @@ func main() {
   devices = api.NewDevices(ctx, logger, collectionDevices, collectionProfiles, collectionHomes)
   profiles = api.NewProfiles(ctx, logger, collectionProfiles)
   register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles)
+  fmt.Println("Create api interfaces")
 
   // 8. Init AMQP and open connection
-  amqpSubscriber.InitAmqpSubscriber(logger)
+  // amqpSubscriber.InitAmqpSubscriber(logger)
 
   // 9. Init WebSocket and start it
-  hubInstance := ws.GetInstance()
-  go hubInstance.Run()
+  //  hubInstance := ws.GetInstance()
+  //  go hubInstance.Run()
 
   // 10. Instantiate GIN and apply some middlewares
   router := gin.Default()
   router.Use(gzip.Gzip(gzip.DefaultCompression))
 
   // 10bis. apply security config to GIN
-  secureMiddleware := secure.New(secure.Options{
+  //secureMiddleware := secure.New(getSecureOptions(port))
+  //router.Use(func() gin.HandlerFunc {
+  //  return func(c *gin.Context) {
+  //    err := secureMiddleware.Process(c.Writer, c.Request)
+  //    // If there was an error, do not continue.
+  //    if err != nil {
+  //      c.Abort()
+  //      return
+  //    }
+  //    // Avoid header rewrite if response is a redirection.
+  //    if status := c.Writer.Status(); status > 300 && status < 399 {
+  //      c.Abort()
+  //    }
+  //  }
+  //}())
+
+  // 10tris. fix a max POST payload size
+  router.Use(limits.RequestSizeLimiter(1024 * 1024))
+
+  // 11. Upgrade an http GET to start websocket
+  // implement websocket to receive realtime events from rabbitmq via AMQP
+  // TODO this service should be protected by auth
+  //router.GET("/ws", func(c *gin.Context) {
+  //  ws.ServeWs(c.Writer, c.Request)
+  //})
+
+  // 12. Configure CORS
+  // - No origin allowed by default
+  // - GET,POST, PUT, HEAD methods
+  // - Credentials share disabled
+  // - Preflight requests cached for 12 hours
+  config := cors.DefaultConfig()
+  config.AllowOrigins = []string{"http://localhost:3000", "http://localhost", "http://localhost:8082", "http://localhost:8085"}
+  // config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
+  router.Use(cors.New(config))
+
+  // 13. Configure Gin to serve a Single Page Application
+  // GIN is terrible with SPA, because you can configure static.serve
+  // but if you refresh the SPA it will return an error, and you cannot add something like /*
+  // The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
+  // to the index.html page
+  router.NoRoute(func(c *gin.Context) {
+    fmt.Println("c.Request.RequestURI = " + c.Request.RequestURI)
+    dir, file := path.Split(c.Request.RequestURI)
+    ext := filepath.Ext(file)
+    allowedExts := []string{".html", ".htm", ".js", ".css", ".json", ".txt", ".jpeg", ".jpg", ".png", ".ico", ".map", ".svg"}
+    _, found := Find(allowedExts, ext)
+    if found {
+      c.File("./public" + path.Join(dir, file))
+    } else {
+      c.File("./public/index.html")
+    }
+  })
+
+  // 14. Configure OAUTH 2 authentication
+  redirectURL := "http://localhost:8082/auth/"
+  credFile := "./credentials.json"
+  scopes := []string{"repo"} // select your scope - https://developer.github.com/v3/oauth/#scopes
+  secret := []byte("secret")
+  oauth.Setup(redirectURL, credFile, scopes, secret, logger, collectionProfiles)
+  router.Use(oauth.Session("session")) // session called "session"
+  router.GET("/api/login", oauth.GetLoginURL)
+  router.POST("/api/register", register.PostRegister)
+  authorized := router.Group("/auth")
+  authorized.Use(oauth.OauthAuth())
+  authorized.GET("", auth.LoginCallback)
+
+  // 15. Define /api group protected via JWTMiddleware
+  private := router.Group("/api")
+  private.Use(auth.JWTMiddleware())
+  {
+    private.GET("/homes", homes.GetHomes)
+    private.POST("/homes", homes.PostHome)
+    private.PUT("/homes/:id", homes.PutHome)
+    private.DELETE("/homes/:id", homes.DeleteHome)
+    private.GET("/homes/:id/rooms", homes.GetRooms)
+    private.POST("/homes/:id/rooms", homes.PostRoom)
+    private.PUT("/homes/:id/rooms/:rid", homes.PutRoom)
+    private.DELETE("/homes/:id/rooms/:rid", homes.DeleteRoom)
+
+    private.GET("/profile", profiles.GetProfile)
+    private.POST("/profiles/:id/tokens", profiles.PostProfilesToken)
+
+    private.GET("/devices", devices.GetDevices)
+    private.DELETE("/devices/:id", devices.DeleteDevice)
+
+    private.GET("/devices/:id/values", devices.GetValuesDevice)
+    private.POST("/devices/:id/values/onoff", devices.PostOnOffDevice)
+    private.POST("/devices/:id/values/temperature", devices.PostTemperatureDevice)
+    private.POST("/devices/:id/values/mode", devices.PostModeDevice)
+    private.POST("/devices/:id/values/fanmode", devices.PostFanModeDevice)
+    private.POST("/devices/:id/values/fanspeed", devices.PostFanSpeedDevice)
+  }
+
+  fmt.Println("up and running")
+  err = router.Run(":" + port)
+  if err != nil {
+    logger.Error("Cannot start HTTP server", err)
+    panic(err)
+  }
+}
+
+func Find(slice []string, val string) (int, bool) {
+  for i, item := range slice {
+    if item == val {
+      return i, true
+    }
+  }
+  return -1, false
+}
+
+func getSecureOptions(port string) secure.Options {
+  return secure.Options{
     // AllowedHosts is a list of fully qualified domain names that are allowed. Default is empty list, which allows any and all host names.
     AllowedHosts: []string{
       "localhost:" + port,
@@ -154,113 +299,7 @@ func main() {
     ExpectCTHeader: "enforce, max-age=30",
     // This will cause the AllowedHosts, SSLRedirect, and STSSeconds/STSIncludeSubdomains options to be ignored during development. When deploying to production, be sure to set this to false.
     IsDevelopment: os.Getenv("ENV") != "prod",
-  })
-  router.Use(func() gin.HandlerFunc {
-    return func(c *gin.Context) {
-      err := secureMiddleware.Process(c.Writer, c.Request)
-      // If there was an error, do not continue.
-      if err != nil {
-        c.Abort()
-        return
-      }
-      // Avoid header rewrite if response is a redirection.
-      if status := c.Writer.Status(); status > 300 && status < 399 {
-        c.Abort()
-      }
-    }
-  }())
-
-  // 10tris. fix a max POST payload size
-  router.Use(limits.RequestSizeLimiter(1024 * 1024))
-
-  // 11. Upgrade an http GET to start websocket
-  // implement websocket to receive realtime events from rabbitmq via AMQP
-  // TODO this service should be protected by auth
-  router.GET("/ws", func(c *gin.Context) {
-    ws.ServeWs(c.Writer, c.Request)
-  })
-
-  // 12. Configure CORS
-  // - No origin allowed by default
-  // - GET,POST, PUT, HEAD methods
-  // - Credentials share disabled
-  // - Preflight requests cached for 12 hours
-  config := cors.DefaultConfig()
-  config.AllowOrigins = []string{"http://localhost:3000", "http://localhost:8082"}
-  // config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
-  router.Use(cors.New(config))
-
-  // 13. Configure Gin to serve a Single Page Application
-  // GIN is terrible with SPA, because you can configure static.serve
-  // but if you refresh the SPA it will return an error, and you cannot add something like /*
-  // The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
-  // to the index.html page
-  router.NoRoute(func(c *gin.Context) {
-    dir, file := path.Split(c.Request.RequestURI)
-    ext := filepath.Ext(file)
-    allowedExts := []string{".html", ".htm", ".js", ".css", ".json", ".txt", ".jpeg", ".jpg", ".png", ".ico", ".map", ".svg"}
-    _, found := Find(allowedExts, ext)
-    if found {
-      c.File("./public" + path.Join(dir, file))
-    } else {
-      c.File("./public/index.html")
-    }
-  })
-
-  // 14. Configure OAUTH 2 authentication
-  redirectURL := "http://localhost:8082/auth/"
-  credFile := "./credentials.json"
-  scopes := []string{"repo"}
-  secret := []byte("secret") // select your scope - https://developer.github.com/v3/oauth/#scopes
-  oauth.Setup(redirectURL, credFile, scopes, secret, logger, collectionProfiles)
-  router.Use(oauth.Session("session")) // session called "session"
-  router.GET("/api/login", oauth.GetLoginURL)
-  router.POST("/api/register", register.PostRegister)
-  authorized := router.Group("/auth")
-  authorized.Use(oauth.OauthAuth())
-  authorized.GET("", auth.LoginCallback)
-
-  // 15. Define /api group protected via JWTMiddleware
-  private := router.Group("/api")
-  private.Use(auth.JWTMiddleware())
-  {
-    private.GET("/homes", homes.GetHomes)
-    private.POST("/homes", homes.PostHome)
-    private.PUT("/homes/:id", homes.PutHome)
-    private.DELETE("/homes/:id", homes.DeleteHome)
-    private.GET("/homes/:id/rooms", homes.GetRooms)
-    private.POST("/homes/:id/rooms", homes.PostRoom)
-    private.PUT("/homes/:id/rooms/:rid", homes.PutRoom)
-    private.DELETE("/homes/:id/rooms/:rid", homes.DeleteRoom)
-
-    private.GET("/profile", profiles.GetProfile)
-    private.POST("/profiles/:id/tokens", profiles.PostProfilesToken)
-
-    private.GET("/devices", devices.GetDevices)
-    private.DELETE("/devices/:id", devices.DeleteDevice)
-
-    private.GET("/devices/:id/values", devices.GetValuesDevice)
-    private.POST("/devices/:id/values/onoff", devices.PostOnOffDevice)
-    private.POST("/devices/:id/values/temperature", devices.PostTemperatureDevice)
-    private.POST("/devices/:id/values/mode", devices.PostModeDevice)
-    private.POST("/devices/:id/values/fanmode", devices.PostFanModeDevice)
-    private.POST("/devices/:id/values/fanspeed", devices.PostFanSpeedDevice)
   }
-
-  err = router.Run(":" + port)
-  if err != nil {
-    logger.Error("Cannot start HTTP server", err)
-    panic(err)
-  }
-}
-
-func Find(slice []string, val string) (int, bool) {
-  for i, item := range slice {
-    if item == val {
-      return i, true
-    }
-  }
-  return -1, false
 }
 
 func getCsp() string {
