@@ -160,7 +160,7 @@ func main() {
   // - Credentials share disabled
   // - Preflight requests cached for 12 hours
   config := cors.DefaultConfig()
-  config.AllowOrigins = []string{"http://localhost:3000", "http://localhost", "http://localhost:8082", "http://localhost:8085"}
+  config.AllowOrigins = []string{"http://localhost:3000", "http://localhost", "http://localhost:8082", "http://localhost:8082"}
   // config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
   router.Use(cors.New(config))
 
@@ -183,7 +183,7 @@ func main() {
   })
 
   // 14. Configure OAUTH 2 authentication
-  redirectURL := "http://localhost:8082/auth/"
+  redirectURL := "http://localhost:8082/api/callback/"
   credFile := "./credentials.json"
   scopes := []string{"repo"} // select your scope - https://developer.github.com/v3/oauth/#scopes
   secret := []byte("secret")
@@ -191,7 +191,7 @@ func main() {
   router.Use(oauth.Session("session")) // session called "session"
   router.GET("/api/login", oauth.GetLoginURL)
   router.POST("/api/register", register.PostRegister)
-  authorized := router.Group("/auth")
+  authorized := router.Group("/api/callback")
   authorized.Use(oauth.OauthAuth())
   authorized.GET("", auth.LoginCallback)
 
