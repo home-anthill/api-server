@@ -15,7 +15,7 @@ export default function Profile() {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       };
-      const response = await axios.post(`http://localhost:8082/api/profiles/${profile.id}/tokens`,
+      const response = await axios.post(`api/profiles/${profile.id}/tokens`,
         {},
         {
           headers

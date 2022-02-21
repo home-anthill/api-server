@@ -6,7 +6,6 @@ import './App.css';
 
 import AuthProvider from './auth/AuthProvider';
 import RequireAuth from './auth/RequireAuth';
-import { removeToken } from './auth/auth-utils';
 
 import Login from './pages/Login';
 import PostLogin from './pages/PostLogin';
@@ -19,25 +18,6 @@ import Profile from './pages/Profile';
 import NewHome from './pages/home/NewHome';
 import EditHome from './pages/home/EditHome';
 import DeviceDetails from './pages/home/DeviceDetails';
-
-const responseSuccessHandler = response => {
-  return response;
-};
-const responseErrorHandler = error => {
-  if (error.response.status === 401) {
-    console.log('responseErrorHandler - 401');
-    removeToken();
-    window.location.href = 'http://localhost:8082';
-    // Add your logic to
-    //  1. Redirect user to LOGIN
-    //  2. Reset authentication from localstorage/sessionstorage
-  }
-  return Promise.reject(error);
-}
-axios.interceptors.response.use(
-  response => responseSuccessHandler(response),
-  error => responseErrorHandler(error)
-);
 
 export default function App() {
   return (

@@ -1,9 +1,29 @@
 import React from 'react';
 import { render } from 'react-dom'
+import axios from 'axios';
 
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { removeToken } from "./auth/auth-utils";
+
+axios.defaults.baseURL = 'http://localhost:8082';
+
+const responseErrorHandler = error => {
+  if (error.response.status === 401) {
+    console.log('responseErrorHandler - 401');
+    removeToken();
+    window.location.href = 'http://localhost:8082';
+    // Add your logic to
+    //  1. Redirect user to LOGIN
+    //  2. Reset authentication from localstorage/sessionstorage
+  }
+  return Promise.reject(error);
+}
+axios.interceptors.response.use(
+  response => response,
+  error => responseErrorHandler(error)
+);
 
 render(
   <React.StrictMode>

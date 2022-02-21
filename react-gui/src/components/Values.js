@@ -19,7 +19,7 @@ export default function Values({device}) {
         'Authorization': 'Bearer ' + token
       };
       try {
-        const response = await axios.get(`http://localhost:8082/api/devices/${device.id}/values`, {
+        const response = await axios.get(`api/devices/${device.id}/values`, {
           headers
         })
         const data = response.data;
@@ -34,7 +34,7 @@ export default function Values({device}) {
   }, []);
 
   async function setOnOff() {
-    const response = await axios.post(`http://localhost:8082/api/devices/${device.id}/values/onoff`, {
+    const response = await axios.post(`api/devices/${device.id}/values/onoff`, {
       on: value.on
     }, {
       headers
@@ -44,7 +44,7 @@ export default function Values({device}) {
   }
 
   async function setTemperature() {
-    const response = await axios.post(`http://localhost:8082/api/devices/${device.id}/values/temperature`, {
+    const response = await axios.post(`api/devices/${device.id}/values/temperature`, {
       temperature: value.temperature
     }, {
       headers
@@ -54,7 +54,7 @@ export default function Values({device}) {
   }
 
   async function setMode() {
-    const response = await axios.post(`http://localhost:8082/api/devices/${device.id}/values/mode`, {
+    const response = await axios.post(`api/devices/${device.id}/values/mode`, {
       mode: value.mode
     }, {
       headers
@@ -64,7 +64,7 @@ export default function Values({device}) {
   }
 
   async function setFanMode() {
-    const response = await axios.post(`http://localhost:8082/api/devices/${device.id}/values/fanmode`, {
+    const response = await axios.post(`api/devices/${device.id}/values/fanmode`, {
       fanMode: value.fanMode
     }, {
       headers
@@ -74,7 +74,7 @@ export default function Values({device}) {
   }
 
   async function setFanSpeed() {
-    const response = await axios.post(`http://localhost:8082/api/devices/${device.id}/values/fanspeed`, {
+    const response = await axios.post(`api/devices/${device.id}/values/fanspeed`, {
       fanSpeed: value.fanSpeed
     }, {
       headers

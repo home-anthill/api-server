@@ -26,7 +26,7 @@ export default function EditHome() {
       'Authorization': 'Bearer ' + token
     };
     try {
-      const response = await axios.put(`http://localhost:8082/api/homes/${home.id}`, {
+      const response = await axios.put(`api/homes/${home.id}`, {
         name: home.name,
         location: home.location
         // cannot change room with this api
@@ -60,7 +60,7 @@ export default function EditHome() {
       'Authorization': 'Bearer ' + token
     };
     try {
-      const response = await axios.delete(`http://localhost:8082/api/homes/${home.id}/rooms/${room.id}`, {
+      const response = await axios.delete(`api/homes/${home.id}/rooms/${room.id}`, {
         headers
       });
       console.log('response', response);
@@ -80,14 +80,14 @@ export default function EditHome() {
     try {
       let response;
       if (room.id) {
-        response = await axios.put(`http://localhost:8082/api/homes/${home.id}/rooms/${room.id}`, {
+        response = await axios.put(`api/homes/${home.id}/rooms/${room.id}`, {
           'name': room.name,
           'floor': room.floor
         }, {
           headers
         });
       } else {
-        response = await axios.post(`http://localhost:8082/api/homes/${home.id}/rooms`, {
+        response = await axios.post(`api/homes/${home.id}/rooms`, {
           'name': room.name,
           'floor': room.floor
         }, {

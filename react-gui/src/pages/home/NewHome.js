@@ -16,7 +16,7 @@ export default function NewHome() {
       'Authorization': 'Bearer ' + token
     };
     try {
-      await axios.post(`http://localhost:8082/api/homes`, {
+      await axios.post(`api/homes`, {
         name: home.name,
         location: home.location,
         rooms: rooms
