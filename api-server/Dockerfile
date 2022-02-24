@@ -10,14 +10,12 @@ COPY . ./
 
 RUN go build -o /api-server .
 
-FROM gcr.io/distroless/base-debian10
+FROM golang:1.17
 WORKDIR /
 COPY --from=builder /api-server /api-server
 COPY --from=builder /app/credentials.json /credentials.json
 COPY --from=builder /app/.env_prod /.env_prod
 
 EXPOSE 50051 80 27017 5672
-
-ENV ENV="prod"
 
 ENTRYPOINT ["/api-server"]

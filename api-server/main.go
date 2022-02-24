@@ -160,7 +160,7 @@ func main() {
   // - Credentials share disabled
   // - Preflight requests cached for 12 hours
   config := cors.DefaultConfig()
-  config.AllowOrigins = []string{"http://localhost:3000", "http://localhost", "http://localhost:8082", "http://localhost:8082"}
+  config.AllowOrigins = []string{"http://localhost:3000", "http://localhost", "http://localhost:8082", "http://localhost:8085"}
   // config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
   router.Use(cors.New(config))
 
@@ -169,21 +169,24 @@ func main() {
   // but if you refresh the SPA it will return an error, and you cannot add something like /*
   // The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
   // to the index.html page
-  router.NoRoute(func(c *gin.Context) {
-    fmt.Println("c.Request.RequestURI = " + c.Request.RequestURI)
-    dir, file := path.Split(c.Request.RequestURI)
-    ext := filepath.Ext(file)
-    allowedExts := []string{".html", ".htm", ".js", ".css", ".json", ".txt", ".jpeg", ".jpg", ".png", ".ico", ".map", ".svg"}
-    _, found := Find(allowedExts, ext)
-    if found {
-      c.File("./public" + path.Join(dir, file))
-    } else {
-      c.File("./public/index.html")
-    }
-  })
+  if os.Getenv("ENV") != "prod" {
+    fmt.Println("Adding NoRoute to handle static files")
+    router.NoRoute(func(c *gin.Context) {
+      fmt.Println("c.Request.RequestURI = " + c.Request.RequestURI)
+      dir, file := path.Split(c.Request.RequestURI)
+      ext := filepath.Ext(file)
+      allowedExts := []string{".html", ".htm", ".js", ".css", ".json", ".txt", ".jpeg", ".jpg", ".png", ".ico", ".map", ".svg"}
+      _, found := Find(allowedExts, ext)
+      if found {
+        c.File("./public" + path.Join(dir, file))
+      } else {
+        c.File("./public/index.html")
+      }
+    })
+  }
 
   // 14. Configure OAUTH 2 authentication
-  redirectURL := "http://localhost:8082/api/callback/"
+  redirectURL := "http://localhost:8085/api/callback/"
   credFile := "./credentials.json"
   scopes := []string{"repo"} // select your scope - https://developer.github.com/v3/oauth/#scopes
   secret := []byte("secret")
@@ -243,7 +246,11 @@ func getSecureOptions(port string) secure.Options {
   return secure.Options{
     // AllowedHosts is a list of fully qualified domain names that are allowed. Default is empty list, which allows any and all host names.
     AllowedHosts: []string{
-      "localhost:" + port,
+      // TODO find a way to use this feature without breaking everything with docker-compose
+      // It requires a little bit of investigation
+      //"localhost:8085",
+      //"localhost:8082",
+      //"localhost:80",
     },
     //// AllowedHostsAreRegex determines, if the provided AllowedHosts slice contains valid regular expressions. Default is false.
     //AllowedHostsAreRegex: false,
