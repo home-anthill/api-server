@@ -12,11 +12,13 @@ RUN npm install --silent
 
 COPY . ./
 
-RUN npm run build
+RUN npm run build:prod
 
 FROM nginx:alpine
+
 COPY --from=builder /app/nginx.conf /etc/nginx/nginx.conf
 COPY --from=builder /app/build/ /etc/nginx/html/html
-# COPY ./nginx.conf /etc/nginx/conf.d/default.conf
+
+RUN rm /etc/nginx/conf.d/default.conf
 
 EXPOSE 80 8085
