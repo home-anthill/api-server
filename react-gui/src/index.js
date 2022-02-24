@@ -1,19 +1,19 @@
 import React from 'react';
-import { render } from 'react-dom'
+import {render} from 'react-dom'
 import axios from 'axios';
 
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import { removeToken } from "./auth/auth-utils";
+import {removeToken} from "./auth/auth-utils";
 
-axios.defaults.baseURL = 'http://localhost:8082';
+axios.defaults.baseURL = process.env.REACT_APP_BASEURL;
 
 const responseErrorHandler = error => {
   if (error.response.status === 401) {
     console.log('responseErrorHandler - 401');
     removeToken();
-    window.location.href = 'http://localhost:8082';
+    window.location.href = process.env.REACT_APP_BASEURL;
     // Add your logic to
     //  1. Redirect user to LOGIN
     //  2. Reset authentication from localstorage/sessionstorage
