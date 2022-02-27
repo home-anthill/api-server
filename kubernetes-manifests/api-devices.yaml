@@ -54,10 +54,7 @@ spec:
   selector:
     app: ac-api-devices
   ports:
-  - protocol: TCP
-    # ort exposes the Kubernetes service on the specified port within the cluster.
-    # Other pods within the cluster can communicate with this server on the specified port.
-    port: 50051
+  - port: 50051
     # TargetPort is the port on which the service will send requests to, that your pod will be listening on.
     # Your application in the container will need to be listening on this port also.
     targetPort: 50051

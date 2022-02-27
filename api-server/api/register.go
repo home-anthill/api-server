@@ -116,6 +116,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
   conn, err := grpc.DialContext(contextBg, handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
   if err != nil {
     handler.logger.Errorf("Cannot connect via gRPC: %v", err)
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot connect to remote service"})
   }
   defer conn.Close()
   client := register.NewRegistrationClient(conn)
@@ -135,6 +136,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
   })
   if err != nil {
     handler.logger.Fatalf("Could not execute gRPC register: %v", err)
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot call remote method 'register'"})
   }
   handler.logger.Debug("Register status: ", r.GetStatus())
   handler.logger.Debug("Register message: ", r.GetMessage())
