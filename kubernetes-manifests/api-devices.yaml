@@ -1,0 +1,66 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-devices-config
+data:
+  .env_prod: |-
+    MONGODB_URL=mongodb+srv://ks89:XuF3Zw2omd9cUy7b6A4oVg@cluster0.4wies.mongodb.net
+    RABBITMQ_URL=amqp://guest:guest@rabbitmq-svc:5672
+    MQTT_URL=tcp://mosquitto-svc:1883
+    GRPC_URL=:50051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ac-devices
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ac-app
+  template:
+    metadata:
+      labels:
+        app: ac-app
+    spec:
+      containers:
+      - name: ac-api-devices
+        image: ks89/ac-api-devices
+        resources:
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        env:
+        - name: ENV
+          value: "prod"
+        ports:
+        - containerPort: 50051
+        volumeMounts:
+        - name: api-devices-config
+          mountPath: /.env_prod
+          subPath: .env_prod
+          readOnly: true
+      volumes:
+      - name: api-devices-config
+        configMap:
+          name: api-devices-config
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: api-devices-svc
+spec:
+  selector:
+    app: ac-api-devices
+  ports:
+  - protocol: TCP
+    # ort exposes the Kubernetes service on the specified port within the cluster.
+    # Other pods within the cluster can communicate with this server on the specified port.
+    port: 50051
+    # TargetPort is the port on which the service will send requests to, that your pod will be listening on.
+    # Your application in the container will need to be listening on this port also.
+    targetPort: 50051
+    # NodePort exposes a service externally to the cluster by means of the target nodes IP address and the NodePort.
+    # NodePort is the default setting if the port field is not specified.
+    # nodePort: 30036
