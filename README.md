@@ -10,9 +10,10 @@ Install it with: `curl -sSfL https://raw.githubusercontent.com/cosmtrek/air/mast
 Run it with: `air`
 
 ```
-cd server
-go mod tidy
+cd api-server
+go mod download
 ```
+
 
 ## Re-generate gRPC from proto files
 
@@ -36,6 +37,7 @@ protoc --go_out=. --go_opt=paths=source_relative \
 api-devices/register/register.proto
 ```
 
+
 ## RabbitMQ
 Run rabbitmq via Docker:
 `docker run -d --name rabbitmq -p 8080:15672 -p 5672:5672 rabbitmq:3-management`
@@ -54,6 +56,7 @@ docker run -it --name mosquitto -p 1883:1883 -p 9001:9001 --rm -v $PWD/mosquitto
 
 mosquitto_sub -t devices/+/onoff
 mosquitto_pub -m "{\"uuid\": \"uuid1\",\"profileToken\": \"profiletoken-1\",\"on\": false}" -t devices/uid1/onoff
+
 
 ### Security
 
@@ -100,7 +103,6 @@ mosquitto_pub -m "{\"uuid\": \"uuid1\",\"profileToken\": \"profiletoken-1\",\"on
   docker run -it --name mosquitto -p 1883:1883 -p 9001:9001 --rm -v $PWD/mosquitto-certs/server/certificates:/mosquitto/certificates -v $PWD/mosquitto-certs/mosquitto.conf:/mosquitto/config/mosquitto.conf -v /mosquitto/data -v /mosquitto/log eclipse-mosquitto
 
 
-
 ## Mondogb
 
 Install mongodb in docker with:
@@ -108,6 +110,27 @@ Install mongodb in docker with:
 ```
 docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:latest
 ```
+
+
+## Docker compose 
+
+```
+cd api-server
+docker build --tag ks89/ac-api-server .
+docker push ks89/ac-api-server
+cd ..
+cd api-devices
+docker build --tag ks89/ac-api-devices .
+docker push ks89/ac-api-devices
+cd ..
+cd react-gui
+docker build --tag ks89/ac-gui .
+docker push ks89/ac-gui
+cd ..
+docker-compose up
+```
+
+Visit `http://localhost:8085`
 
 
 ## APIS
