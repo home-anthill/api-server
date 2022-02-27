@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   api-server:
-    image: api-server
+    image: ks89/ac-api-server
     networks:
       - api_network
     ports:
@@ -17,7 +17,7 @@ services:
       - rabbitmq
 
   api-devices:
-    image: api-devices
+    image: ks89/ac-api-devices
     networks:
       - api_network
     depends_on:
@@ -44,7 +44,7 @@ services:
       - /mosquitto/log
 
   gui:
-    image: gui
+    image: ks89/ac-gui
     networks:
       - api_network
     ports:
