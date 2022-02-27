@@ -80,7 +80,7 @@ func GetLoginURL(c *gin.Context) {
   session.Save()
   loginURL := conf.AuthCodeURL(state)
   noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
-  logger.Info("noUnicodeString", noUnicodeString)
+  logger.Info("noUnicodeString: ", noUnicodeString)
   c.JSON(http.StatusOK, gin.H{
     "loginURL": noUnicodeString,
   })

@@ -111,7 +111,9 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
   // TODO TODO TODO TODO If here it fails, I should remove the paired device, otherwise I won't be able to register it again
   // Set up a connection to the server.
-  conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
+  contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
+  defer cancelBg()
+  conn, err := grpc.DialContext(contextBg, handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
   if err != nil {
     handler.logger.Errorf("Cannot connect via gRPC: %v", err)
   }
@@ -119,7 +121,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
   client := register.NewRegistrationClient(conn)
 
   // Contact the server and print out its response.
-  ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+  ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
   defer cancel()
   r, err := client.Register(ctx, &register.RegisterRequest{
     Id:             device.ID.Hex(),
