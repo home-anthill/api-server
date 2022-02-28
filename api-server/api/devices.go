@@ -461,7 +461,7 @@ func (handler *Devices) PostFanSpeedDevice(c *gin.Context) {
 
 func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
   handler.logger.Debug("gRPC - sendViaGrpc - Sending device via gRPC...")
-  contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
+  contextBg, cancelBg := context.WithTimeout(context.Background(), 10*time.Second)
   defer cancelBg()
   // Set up a connection to the server.
   conn, err := grpc.DialContext(contextBg, handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
@@ -475,7 +475,7 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
   defer conn.Close()
   client := device3.NewDeviceClient(conn)
 
-  clientDeadline := time.Now().Add(time.Duration(20) * time.Millisecond)
+  clientDeadline := time.Now().Add(time.Duration(200) * time.Millisecond)
   ctx, cancel := context.WithDeadline(contextBg, clientDeadline)
   defer cancel()
 

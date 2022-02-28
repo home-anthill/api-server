@@ -13,7 +13,7 @@ import (
   "time"
 )
 
-const TIMEOUT = 3 * time.Second
+const TIMEOUT = 5 * time.Second
 
 type DevicesGrpc struct {
   device.UnimplementedDeviceServer

@@ -29,6 +29,7 @@ import (
   "github.com/unrolled/secure"
   "go.mongodb.org/mongo-driver/mongo"
   "go.mongodb.org/mongo-driver/mongo/options"
+  "go.mongodb.org/mongo-driver/mongo/readpref"
   "os"
   "path"
   "path/filepath"
@@ -86,9 +87,11 @@ func main() {
   logger.Info("Connecting to MongoDB...")
   mongoDBUrl := os.Getenv("MONGODB_URL")
   client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoDBUrl))
-  //if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
-  //  logger.Fatalf("Cannot connect to MongoDB: %s", err)
-  //}
+  if os.Getenv("ENV") != "prod" {
+    if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+      logger.Fatalf("Cannot connect to MongoDB: %s", err)
+    }
+  }
   logger.Info("Connected to MongoDB")
   fmt.Println("Connected to MongoDB")
 

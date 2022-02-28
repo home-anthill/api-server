@@ -21,4 +21,4 @@ COPY --from=builder /app/build/ /etc/nginx/html/html
 
 RUN rm /etc/nginx/conf.d/default.conf
 
-EXPOSE 80 8085
+EXPOSE 80 443 8085

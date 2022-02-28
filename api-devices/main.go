@@ -10,6 +10,7 @@ import (
   "github.com/joho/godotenv"
   "go.mongodb.org/mongo-driver/mongo"
   "go.mongodb.org/mongo-driver/mongo/options"
+  "go.mongodb.org/mongo-driver/mongo/readpref"
   "google.golang.org/grpc"
   "net"
   "os"
@@ -60,9 +61,11 @@ func main() {
   logger.Info("Connecting to MongoDB...")
   mongoDBUrl := os.Getenv("MONGODB_URL")
   client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoDBUrl))
-  //if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
-  //  logger.Fatalf("Cannot connect to MongoDB: %s", err)
-  //}
+  if os.Getenv("ENV") != "prod" {
+    if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
+      logger.Fatalf("Cannot connect to MongoDB: %s", err)
+    }
+  }
   logger.Info("Connected to MongoDB")
   // 6. Define DB collections
   collectionACs := client.Database(DbName).Collection("airconditioners")

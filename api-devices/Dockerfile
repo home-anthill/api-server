@@ -28,7 +28,7 @@ WORKDIR /
 COPY --from=builder /api-devices /api-devices
 COPY --from=builder /app/.env_prod /.env_prod
 
-EXPOSE 50051 27017 1883 5672
+EXPOSE 50051
 
 ENV ENV="prod"
 
