@@ -6,23 +6,23 @@ metadata:
 data:
   .env_prod: |-
     MONGODB_URL=mongodb+srv://ks89:XuF3Zw2omd9cUy7b6A4oVg@cluster0.4wies.mongodb.net
-    RABBITMQ_URL=amqp://guest:guest@rabbitmq-svc:5672
-    MQTT_URL=tcp://mosquitto-svc:1883
-    GRPC_URL=:50051
+    RABBITMQ_URL=amqp://guest:guest@rabbitmq-svc.default.svc.cluster.local:5672
+    MQTT_URL=tcp://mosquitto-svc.default.svc.cluster.local:1883
+    GRPC_URL=0.0.0.0:50051
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ac-devices
+  name: ac-api-devices
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ac-app
+      app: ac-api-devices
   template:
     metadata:
       labels:
-        app: ac-app
+        app: ac-api-devices
     spec:
       containers:
       - name: ac-api-devices
@@ -35,7 +35,9 @@ spec:
         - name: ENV
           value: "prod"
         ports:
-        - containerPort: 50051
+        - name: grpc
+          containerPort: 50051
+          protocol: TCP
         volumeMounts:
         - name: api-devices-config
           mountPath: /.env_prod
@@ -54,10 +56,12 @@ spec:
   selector:
     app: ac-api-devices
   ports:
-  - port: 50051
+  - name: grpc
+    protocol: TCP
+    port: 50051
     # TargetPort is the port on which the service will send requests to, that your pod will be listening on.
     # Your application in the container will need to be listening on this port also.
-    targetPort: 50051
+    targetPort: grpc
     # NodePort exposes a service externally to the cluster by means of the target nodes IP address and the NodePort.
     # NodePort is the default setting if the port field is not specified.
     # nodePort: 30036
