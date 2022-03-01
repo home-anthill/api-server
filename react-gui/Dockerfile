@@ -8,17 +8,19 @@ ENV PATH /app/node_modules/.bin:$PATH
 
 COPY package*.json ./
 
-RUN npm install --silent
+RUN npm ci
 
 COPY . ./
 
+RUN ls /app
+
 RUN npm run build:prod
 
-FROM nginx:alpine
-WORKDIR /
-COPY --from=builder /app/nginx.conf /etc/nginx/nginx.conf
-COPY --from=builder /app/build/ /etc/nginx/html/html
-
-RUN rm /etc/nginx/conf.d/default.conf
-
-EXPOSE 80 443 8085
+#FROM nginx:alpine
+#WORKDIR /
+#COPY --from=builder /app/nginx.conf /etc/nginx/nginx.conf
+#COPY --from=builder /app/build/ /etc/nginx/html/html
+#
+#RUN rm /etc/nginx/conf.d/default.conf
+#
+#EXPOSE 80 443 8085
