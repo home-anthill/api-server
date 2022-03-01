@@ -45,7 +45,7 @@ jobs:
         name: Build and push api-gui
         uses: docker/build-push-action@v2
         with:
-          context: ./api-gui
-          file: ./api-gui/Dockerfile
+          context: ./react-gui
+          file: ./react-gui/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-gui:latest
