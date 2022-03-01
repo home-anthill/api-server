@@ -8,13 +8,16 @@ ENV PATH /app/node_modules/.bin:$PATH
 
 COPY package*.json ./
 
+RUN npm install -g create-react-app
+
 RUN npm ci
 
 COPY . ./
 
-RUN ls /app
+RUN ls -a /app
 
-RUN npm run build:prod
+RUN npm run clean
+RUN react-scripts build
 
 #FROM nginx:alpine
 #WORKDIR /
