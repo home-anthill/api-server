@@ -38,7 +38,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./api-devices
-          file: ./Dockerfile
+          file: ./api-devices/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-devices:latest
       -
@@ -46,6 +46,6 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: ./api-gui
-          file: ./Dockerfile
+          file: ./api-gui/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-gui:latest
