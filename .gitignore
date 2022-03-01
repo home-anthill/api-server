@@ -6,8 +6,4 @@ out/
 build/
 logs/
 
-public
-public-old
-air-conditioner
-
 device/secrets.h
