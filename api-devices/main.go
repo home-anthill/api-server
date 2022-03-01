@@ -1,6 +1,7 @@
 package main
 
 import (
+  amqpPublisher "api-devices/amqp-publisher"
   "api-devices/api"
   pbd "api-devices/api/device"
   pbr "api-devices/api/register"
@@ -75,7 +76,7 @@ func main() {
   devicesGrpc = api.NewDevicesGrpc(ctx, logger, collectionACs)
 
   // 8. Init AMQP and open connection
-  // amqpPublisher.InitAmqpPublisher()
+  amqpPublisher.InitAmqpPublisher()
 
   // 9. Init MQTT and start it
   mqttClient.InitMqtt()

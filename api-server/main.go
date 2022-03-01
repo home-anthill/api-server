@@ -17,6 +17,7 @@
 package main
 
 import (
+  "api-server/amqp-subscriber"
   "api-server/api"
   "api-server/api/oauth"
   "context"
@@ -120,7 +121,7 @@ func main() {
   register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles)
 
   // 8. Init AMQP and open connection
-  // amqpSubscriber.InitAmqpSubscriber(logger)
+  amqp.InitAmqpSubscriber(logger)
 
   // 9. Init WebSocket and start it
   //  hubInstance := ws.GetInstance()
