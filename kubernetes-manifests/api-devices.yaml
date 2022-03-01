@@ -27,10 +27,6 @@ spec:
       containers:
       - name: ac-api-devices
         image: ks89/ac-api-devices
-        resources:
-          limits:
-            memory: "128Mi"
-            cpu: "500m"
         env:
         - name: ENV
           value: "prod"

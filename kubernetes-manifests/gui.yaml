@@ -66,10 +66,6 @@ spec:
       containers:
       - name: ac-gui
         image: ks89/ac-gui
-        resources:
-          limits:
-            memory: "128Mi"
-            cpu: "500m"
         ports:
         - containerPort: 80
         volumeMounts:
