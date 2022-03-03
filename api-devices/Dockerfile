@@ -27,6 +27,7 @@ FROM golang:1.17-alpine
 WORKDIR /
 COPY --from=builder /api-devices /api-devices
 COPY --from=builder /app/.env_prod /.env_prod
+COPY --from=builder /app/cert /cert
 
 EXPOSE 50051
 
