@@ -7,12 +7,14 @@ import (
   pbr "api-devices/api/register"
   mqttClient "api-devices/mqtt-client"
   "context"
+  "crypto/tls"
   "fmt"
   "github.com/joho/godotenv"
   "go.mongodb.org/mongo-driver/mongo"
   "go.mongodb.org/mongo-driver/mongo/options"
   "go.mongodb.org/mongo-driver/mongo/readpref"
   "google.golang.org/grpc"
+  "google.golang.org/grpc/credentials"
   "net"
   "os"
 )
@@ -21,6 +23,23 @@ const DbName = "api-devices"
 
 var registerGrpc *api.RegisterGrpc
 var devicesGrpc *api.DevicesGrpc
+
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+  // Load server's certificate and private key
+  serverCert, err := tls.LoadX509KeyPair("cert/server-cert.pem", "cert/server-key.pem")
+  if err != nil {
+    return nil, err
+  }
+
+  // Create the credentials and return it
+  config := &tls.Config{
+    Certificates: []tls.Certificate{serverCert},
+    // we set the ClientAuth field to NoClientCert since we’re just using server-side TLS
+    ClientAuth: tls.NoClientCert,
+  }
+
+  return credentials.NewTLS(config), nil
+}
 
 func main() {
   // 1. Init logger
@@ -87,8 +106,12 @@ func main() {
   if errGrpc != nil {
     logger.Fatalf("failed to listen: %v", errGrpc)
   }
+  tlsCredentials, err := loadTLSCredentials()
+  if err != nil {
+    logger.Fatal("cannot load TLS credentials: ", err)
+  }
   // Create new gRPC server with (blank) options
-  s := grpc.NewServer()
+  s := grpc.NewServer(grpc.Creds(tlsCredentials))
   // Register the service with the server
   pbr.RegisterRegistrationServer(s, registerGrpc)
   pbd.RegisterDeviceServer(s, devicesGrpc)

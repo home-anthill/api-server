@@ -3,6 +3,9 @@ package api
 import (
   "api-server/api/gRPC/register"
   "api-server/models"
+  "crypto/tls"
+  "crypto/x509"
+  "fmt"
   "github.com/gin-gonic/gin"
   "github.com/google/uuid"
   "go.mongodb.org/mongo-driver/bson"
@@ -11,6 +14,8 @@ import (
   "go.uber.org/zap"
   "golang.org/x/net/context"
   "google.golang.org/grpc"
+  "google.golang.org/grpc/credentials"
+  "io/ioutil"
   "net/http"
   "os"
   "time"
@@ -43,6 +48,26 @@ func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mon
     logger:             logger,
     grpcTarget:         grpcUrl,
   }
+}
+
+func loadTLSCredentials() (credentials.TransportCredentials, error) {
+  // Load certificate of the CA who signed server's certificate
+  pemServerCA, err := ioutil.ReadFile("cert/ca-cert.pem")
+  if err != nil {
+    return nil, err
+  }
+
+  certPool := x509.NewCertPool()
+  if !certPool.AppendCertsFromPEM(pemServerCA) {
+    return nil, fmt.Errorf("failed to add server CA's certificate")
+  }
+
+  // Create the credentials and return it
+  config := &tls.Config{
+    RootCAs: certPool,
+  }
+
+  return credentials.NewTLS(config), nil
 }
 
 func (handler *Register) PostRegister(c *gin.Context) {
@@ -111,9 +136,13 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
   // TODO TODO TODO TODO If here it fails, I should remove the paired device, otherwise I won't be able to register it again
   // Set up a connection to the server.
+  tlsCredentials, err := loadTLSCredentials()
+  if err != nil {
+    handler.logger.Fatal("cannot load TLS credentials: ", err)
+  }
   contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
   defer cancelBg()
-  conn, err := grpc.DialContext(contextBg, handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
+  conn, err := grpc.DialContext(contextBg, handler.grpcTarget, grpc.WithTransportCredentials(tlsCredentials), grpc.WithBlock())
   if err != nil {
     handler.logger.Errorf("Cannot connect via gRPC: %v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot connect to remote service"})
