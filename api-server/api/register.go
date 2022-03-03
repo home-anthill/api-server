@@ -50,15 +50,17 @@ func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mon
   }
 }
 
-func loadTLSCredentials() (credentials.TransportCredentials, error) {
+func loadTLSCredentials(logger *zap.SugaredLogger) (credentials.TransportCredentials, error) {
   // Load certificate of the CA who signed server's certificate
-  pemServerCA, err := ioutil.ReadFile("cert/ca-cert.pem")
+  pemServerCA, err := ioutil.ReadFile(os.Getenv("CERT_FOLDER_PATH") + "/ca-cert.pem")
   if err != nil {
+    logger.Error("REST - POST - PostRegister - loadTLSCredentials cannot read certificates", err)
     return nil, err
   }
 
   certPool := x509.NewCertPool()
   if !certPool.AppendCertsFromPEM(pemServerCA) {
+    logger.Error("REST - POST - PostRegister - loadTLSCredentials cannot create certPool", err)
     return nil, fmt.Errorf("failed to add server CA's certificate")
   }
 
@@ -66,6 +68,7 @@ func loadTLSCredentials() (credentials.TransportCredentials, error) {
   config := &tls.Config{
     RootCAs: certPool,
   }
+  logger.Infof("REST - POST - PostRegister - loadTLSCredentials config = %#v", config)
 
   return credentials.NewTLS(config), nil
 }
@@ -136,7 +139,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
   // TODO TODO TODO TODO If here it fails, I should remove the paired device, otherwise I won't be able to register it again
   // Set up a connection to the server.
-  tlsCredentials, err := loadTLSCredentials()
+  tlsCredentials, err := loadTLSCredentials(handler.logger)
   if err != nil {
     handler.logger.Fatal("cannot load TLS credentials: ", err)
   }

@@ -50,12 +50,14 @@ func main() {
   fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("MQTT_URL = " + os.Getenv("MQTT_URL"))
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
+  fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
 
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
   logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
   logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("MQTT_URL = " + os.Getenv("MQTT_URL"))
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
+  logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
 
   ctx := context.Background()
 
@@ -85,7 +87,13 @@ func main() {
 
   // 10. Start gRPC listener
   // Create new gRPC server with (blank) options
-  creds, _ := credentials.NewServerTLSFromFile("cert/server-cert.pem", "cert/server-key.pem")
+  creds, credErr := credentials.NewServerTLSFromFile(
+    os.Getenv("CERT_FOLDER_PATH")+"/server-cert.pem",
+    os.Getenv("CERT_FOLDER_PATH")+"/server-key.pem",
+  )
+  if credErr != nil {
+    logger.Error("NewServerTLSFromFile error", credErr)
+  }
   s := grpc.NewServer(grpc.Creds(creds))
   // Register the service with the server
   pbr.RegisterRegistrationServer(s, registerGrpc)
