@@ -139,13 +139,21 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
   // TODO TODO TODO TODO If here it fails, I should remove the paired device, otherwise I won't be able to register it again
   // Set up a connection to the server.
-  tlsCredentials, err := loadTLSCredentials(handler.logger)
-  if err != nil {
-    handler.logger.Fatal("cannot load TLS credentials: ", err)
+  var securityDialOption grpc.DialOption
+  if os.Getenv("GRPC_TLS") == "true" {
+    tlsCredentials, err := loadTLSCredentials(handler.logger)
+    if err != nil {
+      handler.logger.Fatal("cannot load TLS credentials: ", err)
+    }
+    securityDialOption = grpc.WithTransportCredentials(tlsCredentials)
+    handler.logger.Info("gRPC TLS security enabled")
+  } else {
+    securityDialOption = grpc.WithInsecure()
+    handler.logger.Info("gRPC TLS security not enabled")
   }
   contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
   defer cancelBg()
-  conn, err := grpc.DialContext(contextBg, handler.grpcTarget, grpc.WithTransportCredentials(tlsCredentials), grpc.WithBlock())
+  conn, err := grpc.DialContext(contextBg, handler.grpcTarget, securityDialOption, grpc.WithBlock())
   if err != nil {
     handler.logger.Errorf("Cannot connect via gRPC: %v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot connect to remote service"})

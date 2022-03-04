@@ -74,6 +74,7 @@ func main() {
   fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("HTTP PORT = " + os.Getenv("HTTP_PORT"))
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
+  fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
 
   // 4. Print .env vars
@@ -82,6 +83,7 @@ func main() {
   logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("HTTP PORT = " + os.Getenv("HTTP_PORT"))
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
+  logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
 
   ctx := context.Background()

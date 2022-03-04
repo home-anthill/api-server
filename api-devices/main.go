@@ -50,6 +50,7 @@ func main() {
   fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("MQTT_URL = " + os.Getenv("MQTT_URL"))
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
+  fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
 
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
@@ -57,6 +58,7 @@ func main() {
   logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("MQTT_URL = " + os.Getenv("MQTT_URL"))
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
+  logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
 
   ctx := context.Background()
@@ -87,24 +89,31 @@ func main() {
 
   // 10. Start gRPC listener
   // Create new gRPC server with (blank) options
-  creds, credErr := credentials.NewServerTLSFromFile(
-    os.Getenv("CERT_FOLDER_PATH")+"/server-cert.pem",
-    os.Getenv("CERT_FOLDER_PATH")+"/server-key.pem",
-  )
-  if credErr != nil {
-    logger.Error("NewServerTLSFromFile error", credErr)
+  var server *grpc.Server
+  if os.Getenv("GRPC_TLS") == "true" {
+    creds, credErr := credentials.NewServerTLSFromFile(
+      os.Getenv("CERT_FOLDER_PATH")+"/server-cert.pem",
+      os.Getenv("CERT_FOLDER_PATH")+"/server-key.pem",
+    )
+    if credErr != nil {
+      logger.Fatalf("NewServerTLSFromFile error %v", credErr)
+    }
+    logger.Info("gRPC TLS security enabled")
+    server = grpc.NewServer(grpc.Creds(creds))
+  } else {
+    logger.Info("gRPC TLS security not enabled")
+    server = grpc.NewServer()
   }
-  s := grpc.NewServer(grpc.Creds(creds))
   // Register the service with the server
-  pbr.RegisterRegistrationServer(s, registerGrpc)
-  pbd.RegisterDeviceServer(s, devicesGrpc)
+  pbr.RegisterRegistrationServer(server, registerGrpc)
+  pbd.RegisterDeviceServer(server, devicesGrpc)
   lis, errGrpc := net.Listen("tcp", grpcUrl)
   if errGrpc != nil {
     logger.Fatalf("failed to listen: %v", errGrpc)
   }
   fmt.Println("gRPC client listening at " + lis.Addr().String())
   logger.Infof("server listening at %v", lis.Addr())
-  if errGrpc := s.Serve(lis); errGrpc != nil {
+  if errGrpc := server.Serve(lis); errGrpc != nil {
     logger.Fatalf("failed to serve: %v", errGrpc)
   }
 }
