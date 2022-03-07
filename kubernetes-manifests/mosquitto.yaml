@@ -3,6 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mosquitto-config
+  namespace: ac
 data:
   mosquitto.conf: |-
     persistence false
@@ -15,6 +16,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mosquitto
+  namespace: ac
 spec:
   replicas: 1
   selector:
@@ -45,6 +47,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: mosquitto-svc
+  namespace: ac
 spec:
   selector:
     app: mosquitto

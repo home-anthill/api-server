@@ -3,6 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: rabbitmq
+  namespace: ac
 spec:
   replicas: 1
   selector:
@@ -25,6 +26,7 @@ kind: Service
 apiVersion: v1
 metadata:
   name: rabbitmq-svc
+  namespace: ac
 spec:
   selector:
     app: rabbitmq
