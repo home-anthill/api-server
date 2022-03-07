@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.17-bullseye as builder
-RUN apt update && apt install -y curl make unzip
+FROM golang:1.17-alpine as builder
+RUN apk update && apk add curl make unzip protoc
 WORKDIR /app
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 COPY go.mod ./
@@ -23,7 +23,7 @@ COPY . ./
 
 RUN go build -o /api-devices .
 
-FROM golang:1.17-bullseye
+FROM golang:1.17-alpine
 WORKDIR /
 COPY --from=builder /api-devices /api-devices
 COPY --from=builder /app/.env_prod /.env_prod
