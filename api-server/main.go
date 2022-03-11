@@ -176,7 +176,10 @@ func main() {
     fmt.Println("CORS ENABLED and httpOrigin is = " + httpOrigin)
     config := cors.DefaultConfig()
     config.AllowOrigins = []string{
+      "http://api-server-svc.ac.svc.cluster.local",
+      "http://api-server-svc.ac.svc.cluster.local:80",
       "http://localhost",
+      "http://localhost:80",
       "http://localhost:8082",
       "http://localhost:8085",
       httpOrigin,
