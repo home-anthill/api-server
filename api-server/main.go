@@ -173,6 +173,7 @@ func main() {
   // - Credentials share disabled
   // - Preflight requests cached for 12 hours
   if os.Getenv("HTTP_CORS") == "true" {
+    fmt.Println("CORS ENABLED and httpOrigin is = " + httpOrigin)
     config := cors.DefaultConfig()
     config.AllowOrigins = []string{
       "http://localhost",
