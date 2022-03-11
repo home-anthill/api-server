@@ -68,11 +68,14 @@ func main() {
     gin.SetMode(gin.ReleaseMode)
   }
   port := os.Getenv("HTTP_PORT")
+  httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
 
   fmt.Println("ENVIRONMENT = " + os.Getenv("ENV"))
   fmt.Println("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
   fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
-  fmt.Println("HTTP PORT = " + os.Getenv("HTTP_PORT"))
+  fmt.Println("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
+  fmt.Println("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
+  fmt.Println("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
   fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
@@ -81,7 +84,9 @@ func main() {
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
   logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
   logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
-  logger.Info("HTTP PORT = " + os.Getenv("HTTP_PORT"))
+  logger.Info("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
+  logger.Info("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
+  logger.Info("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
   logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
@@ -136,7 +141,7 @@ func main() {
   router.Use(gzip.Gzip(gzip.DefaultCompression))
 
   // 10bis. apply security config to GIN
-  secureMiddleware := secure.New(getSecureOptions(port))
+  secureMiddleware := secure.New(getSecureOptions(httpOrigin))
   router.Use(func() gin.HandlerFunc {
     return func(c *gin.Context) {
       err := secureMiddleware.Process(c.Writer, c.Request)
@@ -167,10 +172,16 @@ func main() {
   // - GET,POST, PUT, HEAD methods
   // - Credentials share disabled
   // - Preflight requests cached for 12 hours
-  config := cors.DefaultConfig()
-  config.AllowOrigins = []string{"http://localhost:3000", "http://localhost", "http://localhost:8082", "http://localhost:8085"}
-  // config.AllowOrigins == []string{"http://google.com", "http://facebook.com"}
-  router.Use(cors.New(config))
+  if os.Getenv("HTTP_CORS") == "true" {
+    config := cors.DefaultConfig()
+    config.AllowOrigins = []string{
+      "http://localhost",
+      "http://localhost:8082",
+      "http://localhost:8085",
+      httpOrigin,
+    }
+    router.Use(cors.New(config))
+  }
 
   // 13. Configure Gin to serve a Single Page Application
   // GIN is terrible with SPA, because you can configure static.serve
@@ -194,7 +205,7 @@ func main() {
   }
 
   // 14. Configure OAUTH 2 authentication
-  redirectURL := "http://localhost:8085/api/callback/"
+  redirectURL := httpOrigin + "/api/callback/"
   credFile := "./credentials.json"
   scopes := []string{"repo"} // select your scope - https://developer.github.com/v3/oauth/#scopes
   secret := []byte("secret")
@@ -250,15 +261,13 @@ func Find(slice []string, val string) (int, bool) {
   return -1, false
 }
 
-func getSecureOptions(port string) secure.Options {
+func getSecureOptions(httpOrigin string) secure.Options {
   return secure.Options{
     // AllowedHosts is a list of fully qualified domain names that are allowed. Default is empty list, which allows any and all host names.
     AllowedHosts: []string{
       // TODO find a way to use this feature without breaking everything with docker-compose
       // It requires a little bit of investigation
-      //"localhost:8085",
-      //"localhost:8082",
-      //"localhost:80",
+      httpOrigin,
     },
     //// AllowedHostsAreRegex determines, if the provided AllowedHosts slice contains valid regular expressions. Default is false.
     //AllowedHostsAreRegex: false,
