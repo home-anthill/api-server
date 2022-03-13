@@ -137,10 +137,12 @@ func main() {
   //  go hubInstance.Run()
 
   // 10. Instantiate GIN and apply some middlewares
+  fmt.Println("GIN - Initializing...")
   router := gin.Default()
   router.Use(gzip.Gzip(gzip.DefaultCompression))
 
   // 10bis. apply security config to GIN
+  fmt.Println("GIN - starting SECURE middleware...")
   secureMiddleware := secure.New(getSecureOptions(httpOrigin))
   router.Use(func() gin.HandlerFunc {
     return func(c *gin.Context) {
@@ -158,6 +160,7 @@ func main() {
   }())
 
   // 10tris. fix a max POST payload size
+  fmt.Println("GIN - set mac POST payload size")
   router.Use(limits.RequestSizeLimiter(1024 * 1024))
 
   // 11. Upgrade an http GET to start websocket
@@ -173,7 +176,7 @@ func main() {
   // - Credentials share disabled
   // - Preflight requests cached for 12 hours
   if os.Getenv("HTTP_CORS") == "true" {
-    fmt.Println("CORS ENABLED and httpOrigin is = " + httpOrigin)
+    fmt.Println("GIN - CORS enabled and httpOrigin is = " + httpOrigin)
     config := cors.DefaultConfig()
     config.AllowOrigins = []string{
       "http://api-server-svc.ac.svc.cluster.local",
@@ -185,6 +188,8 @@ func main() {
       httpOrigin,
     }
     router.Use(cors.New(config))
+  } else {
+    fmt.Println("GIN - CORS disabled")
   }
 
   // 13. Configure Gin to serve a Single Page Application
@@ -193,7 +198,7 @@ func main() {
   // The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
   // to the index.html page
   if os.Getenv("ENV") != "prod" {
-    fmt.Println("Adding NoRoute to handle static files")
+    fmt.Println("GIN - Adding NoRoute to handle static files")
     router.NoRoute(func(c *gin.Context) {
       fmt.Println("c.Request.RequestURI = " + c.Request.RequestURI)
       dir, file := path.Split(c.Request.RequestURI)
@@ -206,6 +211,8 @@ func main() {
         c.File("./public/index.html")
       }
     })
+  } else {
+    fmt.Println("GIN - Skipping NoRoute config, because it's running in production mode")
   }
 
   // 14. Configure OAUTH 2 authentication
@@ -248,7 +255,7 @@ func main() {
     private.POST("/devices/:id/values/fanspeed", devices.PostFanSpeedDevice)
   }
 
-  fmt.Println("up and running")
+  fmt.Println("GIN - up and running")
   err = router.Run(":" + port)
   if err != nil {
     logger.Error("Cannot start HTTP server", err)
