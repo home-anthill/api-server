@@ -327,7 +327,7 @@ func getSecureOptions(httpOrigin string) secure.Options {
     // "enforce" and "report-uri" are optional.
     ExpectCTHeader: "enforce, max-age=30",
     // This will cause the AllowedHosts, SSLRedirect, and STSSeconds/STSIncludeSubdomains options to be ignored during development. When deploying to production, be sure to set this to false.
-    IsDevelopment: true, // os.Getenv("ENV") != "prod",
+    IsDevelopment: os.Getenv("ENV") != "prod",
   }
 }
 
