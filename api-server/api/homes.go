@@ -39,7 +39,7 @@ func NewHomes(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.
 //     '200':
 //         description: Successful operation
 func (handler *Homes) GetHomes(c *gin.Context) {
-  handler.logger.Debug("REST - GET - GetHomes called")
+  handler.logger.Info("REST - GET - GetHomes called")
 
   session := sessions.Default(c)
   profileSession := session.Get("profile").(models.Profile)
@@ -87,7 +87,7 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *Homes) PostHome(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostHome called")
+  handler.logger.Info("REST - POST - PostHome called")
 
   session := sessions.Default(c)
   profileSession := session.Get("profile").(models.Profile)
@@ -147,7 +147,7 @@ func (handler *Homes) PostHome(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Homes) PutHome(c *gin.Context) {
-  handler.logger.Debug("REST - PUT - PutHome called")
+  handler.logger.Info("REST - PUT - PutHome called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -202,7 +202,7 @@ func (handler *Homes) PutHome(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Homes) DeleteHome(c *gin.Context) {
-  handler.logger.Debug("REST - DELETE - DeleteHome called")
+  handler.logger.Info("REST - DELETE - DeleteHome called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -269,7 +269,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 //     '200':
 //         description: Successful operation
 func (handler *Homes) GetRooms(c *gin.Context) {
-  handler.logger.Debug("REST - GET - GetRooms called")
+  handler.logger.Info("REST - GET - GetRooms called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -307,7 +307,7 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *Homes) PostRoom(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostRoom called")
+  handler.logger.Info("REST - POST - PostRoom called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -377,7 +377,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Homes) PutRoom(c *gin.Context) {
-  handler.logger.Debug("REST - PUT - PutRoom called")
+  handler.logger.Info("REST - PUT - PutRoom called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -462,7 +462,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 //     '404':
 //         description: Invalid room ID
 func (handler *Homes) DeleteRoom(c *gin.Context) {
-  handler.logger.Debug("REST - DELETE - DeleteRoom called")
+  handler.logger.Info("REST - DELETE - DeleteRoom called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)

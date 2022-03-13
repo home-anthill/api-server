@@ -41,7 +41,7 @@ func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, collection *mon
 }
 
 func (handler *Profiles) GetProfile(c *gin.Context) {
-  handler.logger.Debug("REST - GET - GetProfile called")
+  handler.logger.Info("REST - GET - GetProfile called")
 
   session := sessions.Default(c).Get("profile")
   if profile, ok := session.(models.Profile); ok {
@@ -71,7 +71,7 @@ func (handler *Profiles) GetProfile(c *gin.Context) {
 //     '400':
 //         description: Invalid input
 func (handler *Profiles) PostProfilesToken(c *gin.Context) {
-  handler.logger.Debug("REST - POST - ProfilesToken called")
+  handler.logger.Info("REST - POST - ProfilesToken called")
   session := sessions.Default(c)
 
   id := c.Param("id")

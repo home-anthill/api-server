@@ -72,7 +72,7 @@ func Session(name string) gin.HandlerFunc {
 }
 
 func GetLoginURL(c *gin.Context) {
-  logger.Debug("REST - GET - GetLoginURL called")
+  logger.Info("REST - GET - GetLoginURL called")
 
   state = randToken()
   session := sessions.Default(c)

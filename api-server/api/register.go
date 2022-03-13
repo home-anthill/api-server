@@ -74,7 +74,7 @@ func loadTLSCredentials(logger *zap.SugaredLogger) (credentials.TransportCredent
 }
 
 func (handler *Register) PostRegister(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostRegister called")
+  handler.logger.Info("REST - POST - PostRegister called")
 
   // receive a payload from devices with
   var registerBody DeviceRequest
@@ -101,7 +101,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
     "mac": registerBody.Mac,
   }).Decode(&device)
   if err == nil {
-    handler.logger.Debug("REST - POST - PostRegister - Device already registered")
+    handler.logger.Info("REST - POST - PostRegister - Device already registered")
     // if err == nil => ac found in db (already exists)
     // skip register process returning "already registered"
     c.JSON(http.StatusConflict, gin.H{"message": "Already registered"})
@@ -178,8 +178,8 @@ func (handler *Register) PostRegister(c *gin.Context) {
     handler.logger.Fatalf("Could not execute gRPC register: %v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot call remote method 'register'"})
   }
-  handler.logger.Debug("Register status: ", r.GetStatus())
-  handler.logger.Debug("Register message: ", r.GetMessage())
+  handler.logger.Info("Register status: ", r.GetStatus())
+  handler.logger.Info("Register message: ", r.GetMessage())
 
   c.JSON(http.StatusOK, device)
 }

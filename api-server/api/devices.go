@@ -55,7 +55,7 @@ func NewDevices(ctx context.Context,
 //     '200':
 //         description: Successful operation
 func (handler *Devices) GetDevices(c *gin.Context) {
-  handler.logger.Debug("REST - GET - GetDevices called")
+  handler.logger.Info("REST - GET - GetDevices called")
 
   // retrieve current profile ID from session
   session := sessions.Default(c)
@@ -103,7 +103,7 @@ func (handler *Devices) GetDevices(c *gin.Context) {
 //     '404':
 //         description: Invalid home ID
 func (handler *Devices) DeleteDevice(c *gin.Context) {
-  handler.logger.Debug("REST - DELETE - DeleteDevice called")
+  handler.logger.Info("REST - DELETE - DeleteDevice called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -178,7 +178,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 }
 
 func (handler *Devices) GetValuesDevice(c *gin.Context) {
-  handler.logger.Debug("REST - GET - GetValuesDevice called")
+  handler.logger.Info("REST - GET - GetValuesDevice called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -239,7 +239,7 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
 }
 
 func (handler *Devices) PostOnOffDevice(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostOnOffDevice called")
+  handler.logger.Info("REST - POST - PostOnOffDevice called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -286,7 +286,7 @@ func (handler *Devices) PostOnOffDevice(c *gin.Context) {
 }
 
 func (handler *Devices) PostTemperatureDevice(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostTemperatureDevice called")
+  handler.logger.Info("REST - POST - PostTemperatureDevice called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -329,7 +329,7 @@ func (handler *Devices) PostTemperatureDevice(c *gin.Context) {
   c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 func (handler *Devices) PostModeDevice(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostModeDevice called")
+  handler.logger.Info("REST - POST - PostModeDevice called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -372,7 +372,7 @@ func (handler *Devices) PostModeDevice(c *gin.Context) {
   c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 func (handler *Devices) PostFanModeDevice(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostFanModeDevice called")
+  handler.logger.Info("REST - POST - PostFanModeDevice called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -416,7 +416,7 @@ func (handler *Devices) PostFanModeDevice(c *gin.Context) {
   c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
 func (handler *Devices) PostFanSpeedDevice(c *gin.Context) {
-  handler.logger.Debug("REST - POST - PostFanSpeedDevice called")
+  handler.logger.Info("REST - POST - PostFanSpeedDevice called")
 
   id := c.Param("id")
   objectId, _ := primitive.ObjectIDFromHex(id)
@@ -460,7 +460,7 @@ func (handler *Devices) PostFanSpeedDevice(c *gin.Context) {
 }
 
 func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
-  handler.logger.Debug("gRPC - sendViaGrpc - Sending device via gRPC...")
+  handler.logger.Info("gRPC - sendViaGrpc - Sending device via gRPC...")
   contextBg, cancelBg := context.WithTimeout(context.Background(), 10*time.Second)
   defer cancelBg()
   // Set up a connection to the server.
@@ -561,12 +561,12 @@ func (handler *Devices) isDeviceInProfile(profile *models.Profile, deviceId prim
 }
 
 func (handler *Devices) getDevice(deviceId primitive.ObjectID) (models.Device, error) {
-  handler.logger.Debug("gRPC - getDevice - searching device with objectId: ", deviceId)
+  handler.logger.Info("gRPC - getDevice - searching device with objectId: ", deviceId)
   var device models.Device
   err := handler.collection.FindOne(handler.ctx, bson.M{
     "_id": deviceId,
   }).Decode(&device)
-  handler.logger.Debug("Device found: ", device)
+  handler.logger.Info("Device found: ", device)
   return device, err
 }
 
