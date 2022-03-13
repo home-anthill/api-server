@@ -275,11 +275,11 @@ func Find(slice []string, val string) (int, bool) {
 func getSecureOptions(httpOrigin string) secure.Options {
   return secure.Options{
     // AllowedHosts is a list of fully qualified domain names that are allowed. Default is empty list, which allows any and all host names.
-    AllowedHosts: []string{
-      // TODO find a way to use this feature without breaking everything with docker-compose
-      // It requires a little bit of investigation
-      httpOrigin,
-    },
+    //AllowedHosts: []string{
+    //  // TODO find a way to use this feature without breaking everything with docker-compose
+    //  // It requires a little bit of investigation
+    //  httpOrigin,
+    //},
     //// AllowedHostsAreRegex determines, if the provided AllowedHosts slice contains valid regular expressions. Default is false.
     //AllowedHostsAreRegex: false,
     //// HostsProxyHeaders is a set of header keys that may hold a proxied hostname value for the request.
@@ -327,7 +327,7 @@ func getSecureOptions(httpOrigin string) secure.Options {
     // "enforce" and "report-uri" are optional.
     ExpectCTHeader: "enforce, max-age=30",
     // This will cause the AllowedHosts, SSLRedirect, and STSSeconds/STSIncludeSubdomains options to be ignored during development. When deploying to production, be sure to set this to false.
-    IsDevelopment: os.Getenv("ENV") != "prod",
+    IsDevelopment: true, // os.Getenv("ENV") != "prod",
   }
 }
 
