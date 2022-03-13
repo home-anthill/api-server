@@ -20,8 +20,8 @@ data:
         listen 80;
     #     listen  [::]:80;
     #     server_name  localhost;
-    #     access_log /var/log/nginx/appstore.access.log;
-    #     error_log /var/log/nginx/appstore.error.log;
+        access_log /var/log/nginx/appstore.access.log;
+        error_log /var/log/nginx/appstore.error.log;
 
         location / {
           root /etc/nginx/html/html;
@@ -69,7 +69,9 @@ spec:
       - name: ac-gui
         image: ks89/ac-gui
         ports:
-        - containerPort: 80
+          - name: http
+            containerPort: 80
+            protocol: TCP
         volumeMounts:
           - name: gui-config
             mountPath: /etc/nginx/nginx.conf
@@ -79,4 +81,31 @@ spec:
         - name: gui-config
           configMap:
             name: gui-config
-
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: ac-gui-svc
+  namespace: ac
+  # Notice the annotation cloud.google.com/neg: ‘{“ingress”: true}’ for the service. This has two benefits:
+  # - The Global Load Balancer (GLB) allocated as a consequence of the service creation will load balance traffic directly
+  #   between the pods, rather than the GKE nodes, thus leveraging the so called container-native load balancing, so Network Endpoint Groups
+  #   (NEGs). This will avoid a second level of load balancing / traffic routing inside the Kubernetes cluster, in favor of a more reliable and faster routing.
+  # - You’ll be able to reference ClusterIP services in your ingress, rather than having to create NodePort or LoadBalancer services.
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}'
+spec:
+  selector:
+    app: ac-gui
+  ports:
+    - name: http
+      protocol: TCP
+      # port exposes the Kubernetes service on the specified port within the cluster.
+      # Other pods within the cluster can communicate with this server on the specified port.
+      port: 80
+      # TargetPort is the port on which the service will send requests to, that your pod will be listening on.
+      # Your application in the container will need to be listening on this port also.
+      targetPort: http
+      # NodePort exposes a service externally to the cluster by means of the target nodes IP address and the NodePort.
+      # NodePort is the default setting if the port field is not specified.
+      # nodePort: 30036
