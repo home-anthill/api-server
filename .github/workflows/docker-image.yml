@@ -2,47 +2,45 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ master ]
+    paths-ignore:
+      - 'device/'
+      - 'kubernetes-manifests/'
+    branches:
+      - '**' # every branch
   pull_request:
     branches: [ master ]
 
 jobs:
-
   build:
-
+    name: Build and publish
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
-      -
-        name: Checkout 
+      - name: Checkout
         uses: actions/checkout@v2
-      -
-        name: Login to Docker Hub
+      - name: Login to Docker Hub
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
-      -
-        name: Set up Docker Buildx
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
-      -
-        name: Build and push api-server
+      - name: api-server - build and push
         uses: docker/build-push-action@v2
         with:
           context: ./api-server
           file: ./api-server/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-server:latest
-      -
-        name: Build and push api-devices
+      - name: api-devices - build and push
         uses: docker/build-push-action@v2
         with:
           context: ./api-devices
           file: ./api-devices/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-devices:latest
-      -
-        name: Build and push api-gui
+      - name: gui - build and push
         uses: docker/build-push-action@v2
         with:
           context: ./react-gui
