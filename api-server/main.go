@@ -72,6 +72,7 @@ func main() {
 
   fmt.Println("ENVIRONMENT = " + os.Getenv("ENV"))
   fmt.Println("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
+  fmt.Println("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
   fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
   fmt.Println("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
@@ -83,6 +84,7 @@ func main() {
   // 4. Print .env vars
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
   logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
+  logger.Info("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
   logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
   logger.Info("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
@@ -130,7 +132,9 @@ func main() {
   register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles)
 
   // 8. Init AMQP and open connection
-  amqp.InitAmqpSubscriber(logger)
+  if os.Getenv("RABBITMQ_ENABLE") == "true" {
+    amqp.InitAmqpSubscriber(logger)
+  }
 
   // 9. Init WebSocket and start it
   //  hubInstance := ws.GetInstance()

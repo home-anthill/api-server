@@ -47,6 +47,7 @@ func main() {
   // 4. Print .env vars
   fmt.Println("ENVIRONMENT = " + os.Getenv("ENV"))
   fmt.Println("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
+  fmt.Println("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
   fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("MQTT_URL = " + os.Getenv("MQTT_URL"))
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
@@ -55,6 +56,7 @@ func main() {
 
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
   logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
+  logger.Info("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
   logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("MQTT_URL = " + os.Getenv("MQTT_URL"))
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
@@ -81,7 +83,9 @@ func main() {
   devicesGrpc = api.NewDevicesGrpc(ctx, logger, collectionACs)
 
   // 8. Init AMQP and open connection
-  amqpPublisher.InitAmqpPublisher()
+  if os.Getenv("RABBITMQ_ENABLE") == "true" {
+    amqpPublisher.InitAmqpPublisher()
+  }
 
   // 9. Init MQTT and start it
   mqttClient.InitMqtt()
