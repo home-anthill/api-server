@@ -7,6 +7,7 @@ metadata:
 data:
   .env_prod: |-
     MONGODB_URL=mongodb+srv://ks89:XuF3Zw2omd9cUy7b6A4oVg@cluster0.4wies.mongodb.net
+    RABBITMQ_ENABLE=false
     RABBITMQ_URL=amqp://guest:guest@rabbitmq-svc.ac.svc.cluster.local:5672
     MQTT_URL=tcp://mosquitto-svc.ac.svc.cluster.local:1883
     GRPC_URL=0.0.0.0:50051

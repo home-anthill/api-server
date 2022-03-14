@@ -49,6 +49,8 @@ metadata:
   name: mosquitto-svc
   namespace: ac
 spec:
+  type: LoadBalancer
+  loadBalancerIP: 34.133.181.255
   selector:
     app: mosquitto
   ports:
