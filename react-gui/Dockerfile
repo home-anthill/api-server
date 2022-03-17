@@ -15,8 +15,8 @@ COPY . ./
 RUN npm run build:prod
 
 FROM nginx:alpine
+RUN apk update && apk add certbot certbot-nginx
 WORKDIR /
-COPY --from=builder /app/nginx.conf /etc/nginx/nginx.conf
 COPY --from=builder /app/build/ /etc/nginx/html/html
 
 RUN rm /etc/nginx/conf.d/default.conf
