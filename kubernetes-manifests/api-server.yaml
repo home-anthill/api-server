@@ -15,6 +15,11 @@ data:
     GRPC_URL=api-devices-svc.ac.svc.cluster.local:50051
     GRPC_TLS=false
     CERT_FOLDER_PATH=/cert
+  credentials.json: |-
+    {
+      "clientid": "ad7113e2e360b62be360",
+      "secret": "c70d2e20978af1e8e14a04a7ebceca60d78cf531"
+    }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -45,6 +50,10 @@ spec:
         - name: api-server-config
           mountPath: /.env_prod
           subPath: .env_prod
+          readOnly: true
+        - name: api-server-config
+          mountPath: /credentials.json
+          subPath: credentials.json
           readOnly: true
       volumes:
       - name: api-server-config
