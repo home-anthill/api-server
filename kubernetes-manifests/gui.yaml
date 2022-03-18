@@ -5,38 +5,6 @@ metadata:
   name: gui-config
   namespace: ac
 data:
-#  default.conf: |-
-#    server {
-#      listen 80;
-#      listen  [::]:80;
-#      server_name  ac-ks89.eu www.ac-ks89.eu;
-#      access_log /var/log/nginx/appstore.access.log;
-#      error_log /var/log/nginx/appstore.error.log;
-#
-#      location / {
-#        root /etc/nginx/html/html;
-#        index  index.html index.htm;
-#        try_files $uri $uri/ /index.html;
-#      }
-#
-#      #     error_page  404              /404.html;
-#      #     error_page   500 502 503 504  /50x.html;
-#      #
-#      #     location = /50x.html {
-#      #       root   /usr/share/nginx/html;
-#      #     }
-#
-#      location /api {
-#        proxy_pass http://api-server-svc.ac.svc.cluster.local:80;
-#        proxy_set_header X-Forwarded-For $remote_addr;
-#        proxy_set_header Host            $http_host;
-#        # Following is necessary for Websocket support
-#        #       proxy_http_version 1.1;
-#        #       proxy_set_header Upgrade $http_upgrade;
-#        #       proxy_set_header Connection "upgrade";
-#      }
-#    }
-
   nginx.conf: |-
     events {
         worker_connections 1024;
@@ -52,31 +20,17 @@ data:
         listen 80;
         listen  [::]:80;
         server_name  ac-ks89.eu www.ac-ks89.eu;
-        access_log /var/log/nginx/appstore.access.log;
-        error_log /var/log/nginx/appstore.error.log;
 
         location / {
           root /etc/nginx/html/html;
           index  index.html index.htm;
           try_files $uri $uri/ /index.html;
         }
-    
-        #     error_page  404              /404.html;
-        #     error_page   500 502 503 504  /50x.html;
-        #
-        #     location = /50x.html {
-        #       root   /usr/share/nginx/html;
-        #     }
 
         location /api {
-          # remember to add the trailing '/' at the end
-          proxy_pass http://api-server-svc.ac.svc.cluster.local/;
+          proxy_pass http://api-server-svc.ac.svc.cluster.local:80;
           proxy_set_header X-Forwarded-For $remote_addr;
           proxy_set_header Host            $http_host;
-          # Following is necessary for Websocket support
-          #       proxy_http_version 1.1;
-          #       proxy_set_header Upgrade $http_upgrade;
-          #       proxy_set_header Connection "upgrade";
         }
       }
     }
@@ -104,17 +58,23 @@ spec:
             containerPort: 80
             protocol: TCP
         volumeMounts:
+#          - mountPath: "/home"
+#            name: ssl-pv-storage
+#            readOnly: false
           - name: gui-config
             mountPath: /etc/nginx/nginx.conf
             subPath: nginx.conf
             readOnly: true
-#          - name: gui-config
-#            mountPath: /etc/nginx/conf.d/default.conf
-#            subPath: default.conf
+    #          - name: gui-config
+    #            mountPath: /etc/nginx/conf.d/default.conf
+    #            subPath: default.conf
       volumes:
         - name: gui-config
           configMap:
             name: gui-config
+#        - name: ssl-pv-storage
+#          persistentVolumeClaim:
+#            claimName: pv-ssl-claim
 ---
 kind: Service
 apiVersion: v1
