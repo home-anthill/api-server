@@ -135,6 +135,11 @@ docker-compose up
 Visit `http://localhost:8085`
 
 
+## Kubernetes
+
+Follow the tutorial to install and configure Hetzner Cloud in `docs/hetzner-install.md`
+
+
 ## APIS
 
 APIs /api/v1/:

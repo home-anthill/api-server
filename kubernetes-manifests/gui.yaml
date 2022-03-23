@@ -81,9 +81,13 @@ apiVersion: v1
 metadata:
   name: ac-gui-svc
   namespace: ac
+  annotations:
+    # https://pkg.go.dev/github.com/hetznercloud/hcloud-cloud-controller-manager/internal/annotation#section-documentation
+    load-balancer.hetzner.cloud/name: "load-balancer-gui"
+    load-balancer.hetzner.cloud/location: "nbg1"
+    #    load-balancer.hetzner.cloud/type: lb11
 spec:
   type: LoadBalancer
-  loadBalancerIP: 34.122.127.229
   selector:
     app: ac-gui
   ports:

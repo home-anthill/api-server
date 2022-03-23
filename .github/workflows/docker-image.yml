@@ -5,6 +5,7 @@ on:
     paths-ignore:
       - 'device/'
       - 'kubernetes-manifests/'
+      - 'docs/'
     branches:
       - '**' # every branch
   pull_request:
