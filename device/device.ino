@@ -26,14 +26,15 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length);
 // ----------------------- WIFI -------------------------
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
-const char* serverName = "http://192.168.1.71:8082/api/register";
+const char* registerUrl = SERVER_URL;
 WiFiClient client;
 
 // -----------------------------------------------------
 // ---------------------- MQTT -------------------------
+// Library doc at https://pubsubclient.knolleary.net/api
+const char* mqttUrl = MQTT_URL;
 const int serverPortMqtt = 1883;
-IPAddress serverMqtt(192, 168, 1, 71);
-PubSubClient mqttClient(serverMqtt, serverPortMqtt, callbackMqtt, client);
+PubSubClient mqttClient(mqttUrl, serverPortMqtt, callbackMqtt, client);
 
 String savedUuid;
 Preferences preferences;
@@ -241,7 +242,7 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length) {
 
 void registerServer() {
   HTTPClient http;
-  http.begin(client, serverName);
+  http.begin(client, registerUrl);
   http.addHeader("Content-Type", "application/json; charset=utf-8");
   String macAddress = WiFi.macAddress();
   String httpRequestData = "{\"mac\": \"" + WiFi.macAddress() + 
