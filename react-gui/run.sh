@@ -12,6 +12,11 @@ then
   # Check here to setup chrontab: https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal
   # cronjob
   # 0 12 * * * /usr/bin/certbot renew --quiet
+
+  # start nginx with default config file '/etc/nginx/nginx.conf'
+  # and wait thanks to "daemon off;".
+  # Taken from official docker image https://github.com/nginxinc/docker-nginx/blob/92973a30900b2ed881d208d10cadade34bbbab33/Dockerfile-alpine.template#L123
+  nginx -g "daemon off;"
 else
   echo "nginx.conf not available in persistent volume '/home/nginx-conf/'"
 
@@ -25,12 +30,10 @@ else
 
   echo "Copying nginx.conf from persistent volume to the final destination"
   cp /etc/nginx/nginx.conf /home/nginx-conf/nginx.conf
+
+  # IMPORTANT
+  # no need to start in this case, because certbot already starts nginx automatically
+
+  # send signal to nginx (supported values: stop, quit, reopen, reload)
+  # nginx -s reload;
 fi
-
-# start nginx with default config file '/etc/nginx/nginx.conf'
-# and wait thanks to "daemon off;".
-# Taken from official docker image https://github.com/nginxinc/docker-nginx/blob/92973a30900b2ed881d208d10cadade34bbbab33/Dockerfile-alpine.template#L123
-nginx -g "daemon off;"
-
-# send signal to nginx (supported values: stop, quit, reopen, reload)
-# nginx -s reload;
