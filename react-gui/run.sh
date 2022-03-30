@@ -24,9 +24,9 @@ else
 fi
 
 # start nginx with default config file '/etc/nginx/nginx.conf'
-nginx
+# and wait thanks to "daemon off;".
+# Taken from official docker image https://github.com/nginxinc/docker-nginx/blob/92973a30900b2ed881d208d10cadade34bbbab33/Dockerfile-alpine.template#L123
+nginx -g "daemon off;"
 
 # send signal to nginx (supported values: stop, quit, reopen, reload)
 # nginx -s reload;
-
-sleep infinity
