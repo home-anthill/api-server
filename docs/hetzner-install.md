@@ -210,7 +210,7 @@ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manif
 
 Create a `metallb-config.yaml` file adding your Floating IPs:
 
-```bash
+```yaml
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -222,11 +222,25 @@ data:
     - name: default
       protocol: layer2
       addresses:
-      - <ac-gui-floating-ip_IP_ADDRESS>/24                 <----------------- add here your floating IP for the HTTP GUI
-      - <ac-mosquitto-floating-ip_IP_ADDRESS>/24           <----------------- add here your floating IP for the MQTT connection
+      - <ac-gui-floating-ip_IP_ADDRESS>/24                #<----------------- add here your floating IP for the HTTP GUI
+      - <ac-mosquitto-floating-ip_IP_ADDRESS>/24          #<----------------- add here your floating IP for the MQTT connection
 ```
 
 and apply it `kubectl apply -f metallb-config.yaml`
+
+
+## Prepare Persistent Volumes
+
+Two PVs are required to store nginx.conf and SSL certificates.
+Let's Encrypt certificates issued via Certbot are limited. You cannot register your domain multiple times, otherwise you'll be banned for many days.
+So, you need to store certificates and re-use they.
+
+Access to Hetzner server via SSH and prepare these two folders:
+
+```bash
+mkdir /root/lets-encrypt-certs
+mkdir /root/nginx-conf
+```
 
 
 ## Deploy application
@@ -236,6 +250,7 @@ Finally, you can deploy your app:
 
 ```bash
 kubectl apply -f kubernetes-manifests/namespace.yaml
+kubectl apply -f kubernetes-manifests/persistent-volume.yaml
 kubectl apply -f kubernetes-manifests/mosquitto.yaml
 kubectl apply -f kubernetes-manifests/api-devices.yaml
 kubectl apply -f kubernetes-manifests/api-server.yaml
@@ -255,3 +270,6 @@ A wwww <ac-gui-floating-ip_IP_ADDRESS>
 A @ <ac-mosquitto-floating-ip_IP_ADDRESS>
 A wwww <ac-mosquitto-floating-ip_IP_ADDRESS>
 ```
+
+After some time, you'll be able to navigate to the website via HTTP and to the Mosquitto server via MQTT connection.
+ESP32 device should already be working using insecure connections.
