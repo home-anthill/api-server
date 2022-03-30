@@ -9,6 +9,7 @@ then
   echo "Copying nginx.conf from persistent volume to the final destination"
   cp /home/nginx-conf/nginx.conf /etc/nginx/nginx.conf
   # certbot renew --dry-run
+  # Check here to setup chrontab: https://eff-certbot.readthedocs.io/en/stable/using.html#setting-up-automated-renewal
   # cronjob
   # 0 12 * * * /usr/bin/certbot renew --quiet
 else
@@ -22,6 +23,10 @@ else
   cp /etc/nginx/nginx.conf /home/nginx-conf/nginx.conf
 fi
 
-nginx -s reload;
+# start nginx with default config file '/etc/nginx/nginx.conf'
+nginx
+
+# send signal to nginx (supported values: stop, quit, reopen, reload)
+# nginx -s reload;
 
 sleep infinity
