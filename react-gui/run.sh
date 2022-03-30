@@ -16,7 +16,11 @@ else
   echo "nginx.conf not available in persistent volume '/home/nginx-conf/'"
 
   cp /home/nginx.conf /etc/nginx/nginx.conf
-  # certbot --nginx -m stefano.cappa.ks89@gmail.com --agree-tos -d ac-ks89.eu -n --test-cert
+
+  # --- get let's encrypt certificate from production server (https://letsencrypt.org/docs/rate-limits/)
+  # certbot --nginx -m stefano.cappa.ks89@gmail.com --agree-tos -d ac-ks89.eu -n
+
+  # --- get let's encrypt certificate from staging server (https://letsencrypt.org/docs/staging-environment/)
   certbot --nginx -m stefano.cappa.ks89@gmail.com --agree-tos -d ac-ks89.eu -d www.ac-ks89.eu -n --server https://acme-staging-v02.api.letsencrypt.org/directory
 
   echo "Copying nginx.conf from persistent volume to the final destination"
