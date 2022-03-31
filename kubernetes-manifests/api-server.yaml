@@ -71,12 +71,4 @@ spec:
   ports:
     - name: http
       protocol: TCP
-      # port exposes the Kubernetes service on the specified port within the cluster.
-      # Other pods within the cluster can communicate with this server on the specified port.
       port: 80
-      # TargetPort is the port on which the service will send requests to, that your pod will be listening on.
-      # Your application in the container will need to be listening on this port also.
-      targetPort: http
-      # NodePort exposes a service externally to the cluster by means of the target nodes IP address and the NodePort.
-      # NodePort is the default setting if the port field is not specified.
-      # nodePort: 30036
