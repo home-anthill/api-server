@@ -3,9 +3,11 @@ name: Docker Image CI
 on:
   push:
     paths-ignore:
-      - 'device/'
-      - 'kubernetes-manifests/'
-      - 'docs/'
+      - 'device/**'
+      - 'kubernetes-manifests/**'
+      - 'docs/**'
+      - '**.md'
+      - '**.MD'
     branches:
       - '**' # every branch
   pull_request:
