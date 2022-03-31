@@ -57,48 +57,45 @@ spec:
           - name: http
             containerPort: 80
             protocol: TCP
+          - name: https
+            containerPort: 443
+            protocol: TCP
         volumeMounts:
-#          - mountPath: "/home"
-#            name: ssl-pv-storage
-#            readOnly: false
           - name: gui-config
-            mountPath: /etc/nginx/nginx.conf
+            mountPath: /home/nginx.conf
             subPath: nginx.conf
             readOnly: true
-    #          - name: gui-config
-    #            mountPath: /etc/nginx/conf.d/default.conf
-    #            subPath: default.conf
+          - name: lets-encrypt-ssl-storage
+            mountPath: "/etc/letsencrypt/"
+          - name: nginx-conf-storage
+            mountPath: "/home/nginx-conf/"
       volumes:
         - name: gui-config
           configMap:
             name: gui-config
-#        - name: ssl-pv-storage
-#          persistentVolumeClaim:
-#            claimName: pv-ssl-claim
+        - name: lets-encrypt-ssl-storage
+          persistentVolumeClaim:
+            claimName: lets-encrypt-ssl-claim
+        - name: nginx-conf-storage
+          persistentVolumeClaim:
+            claimName: nginx-conf-claim
 ---
 kind: Service
 apiVersion: v1
 metadata:
   name: ac-gui-svc
   namespace: ac
-  annotations:
-    # https://pkg.go.dev/github.com/hetznercloud/hcloud-cloud-controller-manager/internal/annotation#section-documentation
-    load-balancer.hetzner.cloud/name: "load-balancer-gui"
-    load-balancer.hetzner.cloud/location: "nbg1"
-    #    load-balancer.hetzner.cloud/type: lb11
 spec:
+  loadBalancerIP: <ADD_YOUR_PUBLIC_FLOATING_IP_HERE>
   type: LoadBalancer
   selector:
     app: ac-gui
   ports:
     - name: http
       protocol: TCP
-      # port exposes the Kubernetes service on the specified port within the cluster.
-      # Other pods within the cluster can communicate with this server on the specified port.
       port: 80
-      # TargetPort is the port on which the service will send requests to, that your pod will be listening on.
-      # Your application in the container will need to be listening on this port also.
       targetPort: http
-      # NodePort exposes a service externally to the cluster by means of the target nodes IP address and the NodePort.
-      # NodePort is the default setting if the port field is not specified.
-      # nodePort: 30036
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: https
