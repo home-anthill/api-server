@@ -32,7 +32,10 @@ else
   cp /etc/nginx/nginx.conf /home/nginx-conf/nginx.conf
 
   # IMPORTANT
-  # no need to start in this case, because certbot already starts nginx automatically
+  # certbot already starts nginx automatically, so I quit and restart nginx to be sure that everything will be ok
+  nginx -s quit
+  sleep 2
+  nginx -g "daemon off;"
 
   # send signal to nginx (supported values: stop, quit, reopen, reload)
   # nginx -s reload;
