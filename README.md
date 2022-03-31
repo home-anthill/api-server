@@ -75,7 +75,7 @@ mosquitto_pub -m "{\"uuid\": \"uuid1\",\"profileToken\": \"profiletoken-1\",\"on
   Organization Name (eg, company) []:CERTIFICATE AUTHORITY
   Organizational Unit Name (eg, section) []:
   Common Name (eg, fully qualified host name) []:192.168.1.71
-  Email Address []:stefano.cappa.ks89@gmail.com
+  Email Address []:<YOUR_EMAIL_ADDRESS>
   ```
 
 2. Create certificate for the Mosquitto server
@@ -91,7 +91,7 @@ mosquitto_pub -m "{\"uuid\": \"uuid1\",\"profileToken\": \"profiletoken-1\",\"on
   Organization Name (eg, company) []:MQTT SERVER
   Organizational Unit Name (eg, section) []:MQTT
   Common Name (eg, fully qualified host name) []:192.168.1.71
-  Email Address []:stefano.cappa.ks89@gmail.com
+  Email Address []:<YOUR_EMAIL_ADDRESS>
   
   Please enter the following 'extra' attributes
   to be sent with your certificate request

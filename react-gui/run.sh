@@ -1,7 +1,7 @@
 #!/bin/sh
 
-#Certificate is saved at: /etc/letsencrypt/live/ac-ks89.eu/fullchain.pem
-#Key is saved at:         /etc/letsencrypt/live/ac-ks89.eu/privkey.pem
+#Certificate is saved at: /etc/letsencrypt/live/<DOMAIN>/fullchain.pem
+#Key is saved at:         /etc/letsencrypt/live/<DOMAIN>/privkey.pem
 
 if [[ -f /home/nginx-conf/nginx.conf ]]
 then
