@@ -185,6 +185,8 @@ func main() {
     config.AllowOrigins = []string{
       "http://api-server-svc.ac.svc.cluster.local",
       "http://api-server-svc.ac.svc.cluster.local:80",
+      "https://api-server-svc.ac.svc.cluster.local",
+      "https://api-server-svc.ac.svc.cluster.local:443",
       "http://localhost",
       "http://localhost:80",
       "http://localhost:8082",
@@ -260,7 +262,11 @@ func main() {
   }
 
   fmt.Println("GIN - up and running")
-  err = router.Run(":" + port)
+  err = router.RunTLS(
+    ":"+port,
+    "/etc/letsencrypt/live/ac-ks89.eu/fullchain.pem",
+    "/etc/letsencrypt/live/ac-ks89.eu/privkey.pem",
+  )
   if err != nil {
     logger.Error("Cannot start HTTP server", err)
     panic(err)
