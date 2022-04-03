@@ -76,6 +76,9 @@ func main() {
   fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
   fmt.Println("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
+  fmt.Println("HTTP_TLS = " + os.Getenv("HTTP_TLS"))
+  fmt.Println("HTTP_CERT_FILE = " + os.Getenv("HTTP_CERT_FILE"))
+  fmt.Println("HTTP_KEY_FILE = " + os.Getenv("HTTP_KEY_FILE"))
   fmt.Println("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
   fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
@@ -88,6 +91,9 @@ func main() {
   logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
   logger.Info("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
+  logger.Info("HTTP_TLS = " + os.Getenv("HTTP_TLS"))
+  logger.Info("HTTP_CERT_FILE = " + os.Getenv("HTTP_CERT_FILE"))
+  logger.Info("HTTP_KEY_FILE = " + os.Getenv("HTTP_KEY_FILE"))
   logger.Info("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
   logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
@@ -189,6 +195,8 @@ func main() {
       "https://api-server-svc.ac.svc.cluster.local:443",
       "http://localhost",
       "http://localhost:80",
+      "https://localhost",
+      "https://localhost:443",
       "http://localhost:8082",
       "http://localhost:8085",
       httpOrigin,
@@ -261,12 +269,17 @@ func main() {
     private.POST("/devices/:id/values/fanspeed", devices.PostFanSpeedDevice)
   }
 
-  fmt.Println("GIN - up and running")
-  err = router.RunTLS(
-    ":"+port,
-    "/etc/letsencrypt/live/ac-ks89.eu/fullchain.pem",
-    "/etc/letsencrypt/live/ac-ks89.eu/privkey.pem",
-  )
+  fmt.Println("GIN - up and running with port: " + port)
+  if os.Getenv("HTTP_TLS") == "true" {
+    fmt.Println("TLS enabled, running HTTPS server...")
+    err = router.RunTLS(
+      ":"+port,
+      os.Getenv("HTTP_CERT_FILE"),
+      os.Getenv("HTTP_KEY_FILE"),
+    )
+  } else {
+    err = router.Run(":" + port)
+  }
   if err != nil {
     logger.Error("Cannot start HTTP server", err)
     panic(err)
