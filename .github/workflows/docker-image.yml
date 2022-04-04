@@ -43,6 +43,13 @@ jobs:
           file: ./api-devices/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-devices:latest
+      - name: mosquitto - build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: ./mosquitto
+          file: ./mosquitto/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mosquitto:latest
       - name: gui - build and push
         uses: docker/build-push-action@v2
         with:
