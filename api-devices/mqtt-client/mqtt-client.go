@@ -96,16 +96,20 @@ func NewTLSConfig() *tls.Config {
 func InitMqtt() {
   //mqtt.DEBUG = log.New(os.Stdout, "", 0)
   //mqtt.ERROR = log.New(os.Stdout, "", 0)
-  mqttUrl := "mqtts://" + os.Getenv("MQTT_URL") + ":" + os.Getenv("MQTT_PORT")
-
-  tlsConfig := NewTLSConfig()
+  mqttUrl := os.Getenv("MQTT_URL") + ":" + os.Getenv("MQTT_PORT")
 
   opts := mqtt.NewClientOptions()
   opts.SetKeepAlive(5 * time.Second)
   opts.SetPingTimeout(2 * time.Second)
   opts.AddBroker(mqttUrl)
-  opts.SetClientID("apiDevices").SetTLSConfig(tlsConfig)
   opts.SetDefaultPublishHandler(defaultHandler)
+
+  if os.Getenv("MQTT_TLS") == "true" {
+    tlsConfig := NewTLSConfig()
+    opts.SetClientID("apiDevices").SetTLSConfig(tlsConfig)
+  } else {
+    opts.SetClientID("apiDevices")
+  }
 
   c = mqtt.NewClient(opts)
   if token := c.Connect(); token.Wait() && token.Error() != nil {
