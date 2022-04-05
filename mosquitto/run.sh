@@ -18,6 +18,6 @@ ls -la /certs
 
 sleep 2
 
-mosquitto -v -c /mosquitto/config/mosquitto.conf
+mosquitto -c /mosquitto/config/mosquitto.conf
 
 sleep infinity
