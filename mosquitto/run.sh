@@ -1,22 +1,40 @@
 #!/bin/sh
-
 set -e
 
-mkdir certs
-cp /etc/letsencrypt/archive/ac-ks89.eu/cert1.pem /certs/cert.pem
-cp /etc/letsencrypt/archive/ac-ks89.eu/fullchain1.pem /certs/fullchain.pem
-cp /etc/letsencrypt/archive/ac-ks89.eu/privkey1.pem /certs/privkey.pem
+# if not defined, apply default production server
+CERTBOT_SERVER=${CERTBOT_SERVER:?"https://acme-v02.api.letsencrypt.org/directory"}
 
-chgrp mosquitto /certs/cert.pem
-chgrp mosquitto /certs/fullchain.pem
-chgrp mosquitto /certs/privkey.pem
-chmod 444 /certs/cert.pem
-chmod 444 /certs/fullchain.pem
-chmod 444 /certs/privkey.pem
+# read env variables
+echo "Env variables:"
+echo "CERTBOT_EMAIL = ${CERTBOT_EMAIL}"
+echo "CERTBOT_DOMAIN = ${CERTBOT_DOMAIN}"
+echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
 
-ls -la /certs
+if [ -d "/etc/letsencrypt/live/${CERTBOT_DOMAIN}" ]
+then
+  echo "Certificates already exists"
+else
+  echo "Requesting certificates using certbot via production server"
+  certbot certonly --standalone -m "${CERTBOT_EMAIL}" --agree-tos -d ${CERTBOT_DOMAIN},www.${CERTBOT_DOMAIN} -n --server "${CERTBOT_SERVER}"
+  # staging server:
+  # certbot certonly --standalone -m "${CERTBOT_EMAIL" --agree-tos -d ${certbot_domain},www.${certbot_domain} -n --server https://acme-staging-v02.api.letsencrypt.org/directory
+fi
 
-sleep 2
+CERT_DIR=/etc/mosquitto/certs
+mkdir -p ${CERT_DIR}
+
+cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/cert.pem" ${CERT_DIR}/cert.pem
+cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/privkey.pem" ${CERT_DIR}/privkey.pem
+cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/chain.pem" ${CERT_DIR}/chain.pem
+
+# Set ownership to Mosquitto
+chown mosquitto: ${CERT_DIR}/cert.pem ${CERT_DIR}/privkey.pem ${CERT_DIR}/chain.pem
+
+# Ensure permissions are restrictive
+chmod 0600 ${CERT_DIR}/cert.pem ${CERT_DIR}/privkey.pem ${CERT_DIR}/chain.pem
+
+ls -la ${CERT_DIR}
+ps -a
 
 mosquitto -c /mosquitto/config/mosquitto.conf
 

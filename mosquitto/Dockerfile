@@ -1,9 +1,11 @@
 # syntax=docker/dockerfile:1
-
 FROM eclipse-mosquitto:2.0-openssl
 
-RUN apk update && apk add certbot certbot-nginx openssl
+RUN apk --update --no-cache add certbot certbot-nginx openssl
 
-COPY run.sh ./
+WORKDIR /ac
 
-ENTRYPOINT ["sh", "/run.sh"]
+COPY run.sh run.sh
+COPY mosquitto.conf /mosquitto/config/mosquitto.conf
+
+ENTRYPOINT ["sh", "run.sh"]
