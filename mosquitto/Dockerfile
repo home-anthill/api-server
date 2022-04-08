@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
+
 FROM eclipse-mosquitto:2.0-openssl
 
-RUN apk --update --no-cache add certbot certbot-nginx openssl
+# install certbot and openrc (container 'rc-service')
+RUN apk --update --no-cache add certbot openssl openrc
 
 WORKDIR /ac
 
