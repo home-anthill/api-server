@@ -16,7 +16,7 @@ RUN npm run build:prod
 
 FROM nginx:1.21.6-alpine
 # install certbot and openrc (container 'rc-service')
-RUN apk update --no-cache add certbot certbot-nginx openssl openrc
+RUN apk update && apk add --no-cache certbot certbot-nginx openssl openrc
 WORKDIR /
 COPY --from=builder /app/build/ /etc/nginx/html/html
 COPY --from=builder /app/run.sh /run.sh

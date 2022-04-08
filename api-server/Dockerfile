@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 FROM golang:1.17-alpine as builder
-RUN apk update && apk add curl make unzip protoc
+RUN apk update && apk add --no-cache curl make unzip protoc
 WORKDIR /app
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 COPY go.mod ./

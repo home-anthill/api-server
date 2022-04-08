@@ -3,7 +3,7 @@
 FROM eclipse-mosquitto:2.0-openssl
 
 # install certbot and openrc (container 'rc-service')
-RUN apk --update --no-cache add certbot openssl openrc
+RUN apk update && apk add --no-cache certbot openssl openrc
 
 WORKDIR /ac
 
