@@ -19,6 +19,7 @@ echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
 echo "BASE_NGINX_CONF_FILEPATH = ${BASE_NGINX_CONF_FILEPATH}"
 echo "NGINX_CONF_HOSTPATH = ${NGINX_CONF_HOSTPATH}"
 
+
 # https://techjogging.com/create-letsencrypt-certificate-alpine-nginx.html
 echo "Checking 'crond' existence"
 rc-service --list | grep -i crond
