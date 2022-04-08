@@ -26,6 +26,10 @@ WORKDIR /
 COPY --from=builder /app/build/ /etc/nginx/html/html
 COPY --from=builder /app/run.sh /run.sh
 
+# scripts to renew let's encrypt certs and to upgrade certbot automatically
+COPY --from=builder /app/certbot-renew.sh /etc/periodic/daily/certbot-renew.sh
+COPY --from=builder /app/upgrade-certbot.sh /etc/periodic/monthly/upgrade-certbot.sh
+
 RUN rm /etc/nginx/conf.d/default.conf
 
 EXPOSE 80 443 8085

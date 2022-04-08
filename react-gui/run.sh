@@ -19,28 +19,12 @@ echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
 echo "BASE_NGINX_CONF_FILEPATH = ${BASE_NGINX_CONF_FILEPATH}"
 echo "NGINX_CONF_HOSTPATH = ${NGINX_CONF_HOSTPATH}"
 
-
 # https://techjogging.com/create-letsencrypt-certificate-alpine-nginx.html
 echo "Checking 'crond' existence"
 rc-service --list | grep -i crond
-# rc-service crond start && rc-update add crond
-
-echo "Creating /etc/periodic/daily/renew-script.sh"
-cat << EOF | tee -a /etc/periodic/daily/renew-script.sh > /dev/null
-#!/bin/sh
-certbot renew
-EOF
-chmod a+x /etc/periodic/daily/renew-script.sh
+#rc-service crond start && rc-update add crond
 #run-parts --test /etc/periodic/weekly
-
-echo "Creating /etc/periodic/monthly/upgrade-certbot.sh"
-cat << EOF | tee -a /etc/periodic/monthly/upgrade-certbot.sh > /dev/null
-#!/bin/sh
-apk update certbot certbot-nginx openssl
-EOF
-chmod a+x /etc/periodic/monthly/upgrade-certbot.sh
 #run-parts --test /etc/periodic/monthly
-
 
 if [ -f "${NGINX_CONF_HOSTPATH}" ]
 then

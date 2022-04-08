@@ -10,6 +10,9 @@ RUN apk update && apk add --no-cache certbot openssl openrc busybox-initscripts
 WORKDIR /ac
 
 COPY run.sh run.sh
+COPY certbot-renew.sh /etc/periodic/daily/certbot-renew.sh
+COPY upgrade-certbot.sh /etc/periodic/monthly/upgrade-certbot.sh
+
 COPY mosquitto.conf /mosquitto/config/mosquitto.conf
 
 ENTRYPOINT ["sh", "run.sh"]
