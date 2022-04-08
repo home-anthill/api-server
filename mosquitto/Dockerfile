@@ -2,8 +2,10 @@
 
 FROM eclipse-mosquitto:2.0-openssl
 
-# install certbot and openrc (container 'rc-service')
-RUN apk update && apk add --no-cache certbot openssl openrc
+# install certbot and openssl (all required to enable certbot with standalone mode)
+# install openrc (contains 'rc-service') and busybox-initscripts to use rc-service crontab
+# if you don't add 'busybox-initscripts' you'll get error "rc-update: service `crond' does not exist"
+RUN apk update && apk add --no-cache certbot openssl openrc busybox-initscripts
 
 WORKDIR /ac
 
