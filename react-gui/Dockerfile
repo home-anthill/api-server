@@ -21,10 +21,10 @@ FROM nginx:1.21.6-alpine
 # if you don't add 'busybox-initscripts' you'll get error "rc-update: service `crond' does not exist"
 RUN apk update && apk add --no-cache certbot certbot-nginx openssl openrc busybox-initscripts
 
-WORKDIR /
+WORKDIR /ac
 
+COPY --from=builder /app/run.sh run.sh
 COPY --from=builder /app/build/ /etc/nginx/html/html
-COPY --from=builder /app/run.sh /run.sh
 
 # scripts to renew let's encrypt certs and to upgrade certbot automatically
 COPY --from=builder /app/certbot-renew.sh /etc/periodic/daily/certbot-renew.sh
@@ -32,6 +32,4 @@ COPY --from=builder /app/upgrade-certbot.sh /etc/periodic/monthly/upgrade-certbo
 
 RUN rm /etc/nginx/conf.d/default.conf
 
-EXPOSE 80 443 8085
-
-ENTRYPOINT ["sh", "/run.sh"]
+ENTRYPOINT ["sh", "run.sh"]
