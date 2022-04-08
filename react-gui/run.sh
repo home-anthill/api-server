@@ -25,12 +25,12 @@ echo "Checking 'crond' existence"
 rc-service --list | grep -i crond
 # rc-service crond start && rc-update add crond
 
-echo "Creating /etc/periodic/weekly/renew-script.sh"
+echo "Creating /etc/periodic/daily/renew-script.sh"
 cat << EOF | tee -a /etc/periodic/daily/renew-script.sh > /dev/null
 #!/bin/sh
 certbot renew
 EOF
-chmod a+x /etc/periodic/weekly/renew-script.sh
+chmod a+x /etc/periodic/daily/renew-script.sh
 #run-parts --test /etc/periodic/weekly
 
 echo "Creating /etc/periodic/monthly/upgrade-certbot.sh"
