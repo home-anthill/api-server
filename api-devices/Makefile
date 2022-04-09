@@ -1,14 +1,16 @@
 .DEFAULT_GOAL := build
 
-fmt:
-	go fmt ./...
-.PHONY:fmt
+# you cannot customize fmt to don't use tabs,
+# so at the moment I disabled this command
+#fmt:
+#	go fmt ./...
+#.PHONY:fmt
 
-lint: fmt
+lint:
 	golint ./...
-.PHONY:fmt
+.PHONY:lint
 
-vet: fmt
+vet:
 	go vet ./...
 	shadow ./...
 .PHONY:vet
