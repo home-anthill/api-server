@@ -22,14 +22,13 @@
 
 void callbackMqtt(char* topic, byte* payload, unsigned int length);
 
-// ------------------------------------------------------
-// ----------------------- WIFI -------------------------
-const char* ssid = SECRET_SSID; 
-const char* password = SECRET_PASS;
-const char* registerUrl = SERVER_URL;
-WiFiClientSecure client;
 // Given below is the CA Certificate "ISRG Root X1" by Let's Encrypt.
 // Expiration date June 2035.
+//
+// This ca_cert is applied to WifiClientSecure,
+// so it will be used with both HTTPS and MQTTS connections
+//
+// https://techtutorialsx.com/2017/11/18/esp32-arduino-https-get-request/
 const char* ca_cert = \
 "-----BEGIN CERTIFICATE-----\n" \
 "MIIFazCCA1OgAwIBAgIRAIIQz7DSQONZRGPgu2OCiwAwDQYJKoZIhvcNAQELBQAw\n" \
@@ -63,8 +62,12 @@ const char* ca_cert = \
 "emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=\n" \
 "-----END CERTIFICATE-----\n";
 
-
-
+// ------------------------------------------------------
+// ----------------------- WIFI -------------------------
+const char* ssid = SECRET_SSID; 
+const char* password = SECRET_PASS;
+const char* registerUrl = SERVER_URL;
+WiFiClientSecure client;
 // -----------------------------------------------------
 // ---------------------- MQTT -------------------------
 // Library doc at https://pubsubclient.knolleary.net/api
