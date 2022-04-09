@@ -16,7 +16,7 @@ export default function Devices() {
         'Authorization': 'Bearer ' + token
       };
       try {
-        const response = await axios.get('api/devices', {
+        const response = await axios.get('/api/devices', {
           headers
         })
         const data = response.data;

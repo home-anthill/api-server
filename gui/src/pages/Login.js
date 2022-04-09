@@ -21,7 +21,7 @@ export default function Login() {
       } else {
         console.log('getting login URL');
         try {
-          const response = await axios.get('api/login');
+          const response = await axios.get('/api/login');
           const data = response.data;
           console.log('responseData', data);
           if (data) {

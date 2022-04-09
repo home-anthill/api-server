@@ -16,7 +16,7 @@ export default function Homes() {
         'Authorization': 'Bearer ' + token
       };
       try {
-        const response = await axios.get('api/homes', {
+        const response = await axios.get('/api/homes', {
           headers
         })
         const data = response.data;
@@ -49,11 +49,11 @@ export default function Homes() {
     };
     try {
       // delete
-      await axios.delete(`api/homes/${home.id}`, {
+      await axios.delete(`/api/homes/${home.id}`, {
         headers
       })
       // get
-      const response = await axios.get('api/homes', {
+      const response = await axios.get('/api/homes', {
         headers
       })
       const data = response.data;

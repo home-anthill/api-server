@@ -18,7 +18,7 @@ export default function Navbar () {
         'Authorization': 'Bearer ' + token
       };
 
-      const response = await axios.get('api/profile', {
+      const response = await axios.get('/api/profile', {
         headers
       })
       const data = response.data;

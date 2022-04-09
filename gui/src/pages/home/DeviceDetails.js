@@ -28,7 +28,7 @@ export default function DeviceDetails() {
         'Authorization': 'Bearer ' + token
       };
       try {
-        const response = await axios.get('api/homes', {
+        const response = await axios.get('/api/homes', {
           headers
         })
         const data = response.data;
@@ -99,7 +99,7 @@ export default function DeviceDetails() {
       newRoom.devices.push(device.id);
     }
     try {
-      await axios.put(`api/homes/${selectedHome.id}/rooms/${selectedRoom.id}`,
+      await axios.put(`/api/homes/${selectedHome.id}/rooms/${selectedRoom.id}`,
         newRoom,
         {
           headers
@@ -120,7 +120,7 @@ export default function DeviceDetails() {
       'Authorization': 'Bearer ' + token
     };
     try {
-      await axios.delete(`api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`,
+      await axios.delete(`/api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`,
         {
           headers
         }
