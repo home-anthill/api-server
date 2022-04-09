@@ -28,8 +28,6 @@ WORKDIR /
 COPY --from=builder /api-devices /api-devices
 COPY --from=builder /app/cert /cert
 
-EXPOSE 50051
-
 ENV ENV="prod"
 
 ENTRYPOINT ["/api-devices"]

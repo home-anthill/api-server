@@ -29,6 +29,4 @@ COPY --from=builder /api-server /api-server
 COPY --from=builder /app/credentials.json /credentials.json
 COPY --from=builder /app/cert /cert
 
-EXPOSE 80 443
-
 ENTRYPOINT ["/api-server"]
