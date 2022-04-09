@@ -83,7 +83,7 @@ sudo sysctl --system
 ```
 
 
-## Check open ports
+## Check open ports (optional)
 
 Check port via telnet
 
@@ -271,5 +271,10 @@ A @ <ac-mosquitto-floating-ip_IP_ADDRESS>
 A wwww <ac-mosquitto-floating-ip_IP_ADDRESS>
 ```
 
-After some time, you'll be able to navigate to the website via HTTP and to the Mosquitto server via MQTT connection.
-ESP32 device should already be working using insecure connections.
+After some time, you'll be able to navigate to the website via HTTPS and to the Mosquitto server via MQTTS connection.
+ESP32 device should already be working using secure connections.
+
+If you have problems with certificates, you should check if certbot is started getting SSL certificates from Let's Encrypt.
+Certbot runs on these 2 pods:
+- gui
+- mosquitto
