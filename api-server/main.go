@@ -156,9 +156,9 @@ func main() {
   secureMiddleware := secure.New(getSecureOptions(httpOrigin))
   router.Use(func() gin.HandlerFunc {
     return func(c *gin.Context) {
-      err := secureMiddleware.Process(c.Writer, c.Request)
+      errSecure := secureMiddleware.Process(c.Writer, c.Request)
       // If there was an error, do not continue.
-      if err != nil {
+      if errSecure != nil {
         c.Abort()
         return
       }

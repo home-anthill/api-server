@@ -141,9 +141,9 @@ func (handler *Register) PostRegister(c *gin.Context) {
   // Set up a connection to the server.
   var securityDialOption grpc.DialOption
   if os.Getenv("GRPC_TLS") == "true" {
-    tlsCredentials, err := loadTLSCredentials(handler.logger)
-    if err != nil {
-      handler.logger.Fatal("cannot load TLS credentials: ", err)
+    tlsCredentials, errTLS := loadTLSCredentials(handler.logger)
+    if errTLS != nil {
+      handler.logger.Fatal("cannot load TLS credentials: ", errTLS)
     }
     securityDialOption = grpc.WithTransportCredentials(tlsCredentials)
     handler.logger.Info("gRPC TLS security enabled")
