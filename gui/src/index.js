@@ -7,16 +7,11 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import {removeToken} from "./auth/auth-utils";
 
-axios.defaults.baseURL = process.env.REACT_APP_BASEURL;
-
-console.log('window.location.href', window.location.href);
-console.log('window.location', window.location);
-
 const responseErrorHandler = error => {
   if (error.response.status === 401) {
     console.log('responseErrorHandler - 401');
     removeToken();
-    window.location.href = process.env.REACT_APP_BASEURL;
+    window.location.href = '/';
     // Add your logic to
     //  1. Redirect user to LOGIN
     //  2. Reset authentication from localstorage/sessionstorage
