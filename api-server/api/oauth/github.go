@@ -20,6 +20,7 @@ import (
   oauth2gh "golang.org/x/oauth2/github"
   "io/ioutil"
   "net/http"
+  "os"
   "strings"
   "time"
 )
@@ -121,6 +122,16 @@ func OauthAuth() gin.HandlerFunc {
       ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
       return
     }
+
+    // ATTENTION!!!
+    // if SINGLE_USER_LOGIN_EMAIL is defined, only an account with Email equals
+    // to the one defined in SINGLE_USER_LOGIN_EMAIL env variable can log in to this server.
+    if os.Getenv("SINGLE_USER_LOGIN_EMAIL") != "" && *githubClientUser.Email != os.Getenv("SINGLE_USER_LOGIN_EMAIL") {
+      logger.Error("SINGLE_USER_LOGIN_EMAIL is defined, so user with email = " + *githubClientUser.Email + "cannot log in")
+      ctx.AbortWithError(http.StatusForbidden, fmt.Errorf("user with email %s not admitted to this server", *githubClientUser.Email))
+      return
+    }
+
     dbGithubUser := models.Github{
       ID:        *githubClientUser.ID,
       Login:     *githubClientUser.Login,

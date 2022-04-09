@@ -83,6 +83,7 @@ func main() {
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
   fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
+  fmt.Println("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
 
   // 4. Print .env vars
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
@@ -98,6 +99,7 @@ func main() {
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
   logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
+  logger.Info("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
 
   ctx := context.Background()
 
