@@ -1,6 +1,7 @@
 {
   "name": "air-conditioner",
   "version": "1.0.0",
+  "homepage": ".",
   "private": true,
   "dependencies": {
     "axios": "^0.26.0",

@@ -9,6 +9,9 @@ import {removeToken} from "./auth/auth-utils";
 
 axios.defaults.baseURL = process.env.REACT_APP_BASEURL;
 
+console.log('window.location.href', window.location.href);
+console.log('window.location', window.location);
+
 const responseErrorHandler = error => {
   if (error.response.status === 401) {
     console.log('responseErrorHandler - 401');

@@ -2,15 +2,16 @@
 
 FROM node:16-alpine as builder
 
-WORKDIR /app
+WORKDIR /ac
 
-ENV PATH /app/node_modules/.bin:$PATH
+ENV PATH /ac/node_modules/.bin:$PATH
 
-COPY package*.json ./
+COPY package.json .
+COPY package-lock.json .
 
 RUN npm ci
 
-COPY . ./
+COPY . .
 
 RUN npm run build:prod
 
@@ -23,13 +24,14 @@ RUN apk update && apk add --no-cache certbot certbot-nginx openssl openrc busybo
 
 WORKDIR /ac
 
-COPY --from=builder /app/run.sh run.sh
-COPY --from=builder /app/build/ /etc/nginx/html/html
+COPY --from=builder /ac/run.sh run.sh
+COPY --from=builder /ac/build/ /etc/nginx/html/html
 
 # scripts to renew let's encrypt certs and to upgrade certbot automatically
-COPY --from=builder /app/certbot-renew.sh /etc/periodic/daily/certbot-renew.sh
-COPY --from=builder /app/upgrade-certbot.sh /etc/periodic/monthly/upgrade-certbot.sh
+COPY --from=builder /ac/certbot-renew.sh /etc/periodic/daily/certbot-renew.sh
+COPY --from=builder /ac/upgrade-certbot.sh /etc/periodic/monthly/upgrade-certbot.sh
 
+# remove nginx default configuration
 RUN rm /etc/nginx/conf.d/default.conf
 
 ENTRYPOINT ["sh", "run.sh"]
