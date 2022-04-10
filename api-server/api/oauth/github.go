@@ -123,15 +123,6 @@ func OauthAuth() gin.HandlerFunc {
       return
     }
 
-    // ATTENTION!!!
-    // if SINGLE_USER_LOGIN_EMAIL is defined, only an account with Email equals
-    // to the one defined in SINGLE_USER_LOGIN_EMAIL env variable can log in to this server.
-    if os.Getenv("SINGLE_USER_LOGIN_EMAIL") != "" && *githubClientUser.Email != os.Getenv("SINGLE_USER_LOGIN_EMAIL") {
-      logger.Error("SINGLE_USER_LOGIN_EMAIL is defined, so user with email = " + *githubClientUser.Email + "cannot log in")
-      ctx.AbortWithError(http.StatusForbidden, fmt.Errorf("user with email %s not admitted to this server", *githubClientUser.Email))
-      return
-    }
-
     dbGithubUser := models.Github{
       ID:        *githubClientUser.ID,
       Login:     *githubClientUser.Login,
@@ -139,6 +130,21 @@ func OauthAuth() gin.HandlerFunc {
       Email:     *githubClientUser.Email,
       AvatarURL: *githubClientUser.AvatarURL,
     }
+
+    fmt.Println("BEFORE singleUserLoginEmail")
+
+    // ATTENTION!!!
+    // if SINGLE_USER_LOGIN_EMAIL is defined, only an account with Email equals
+    // to the one defined in SINGLE_USER_LOGIN_EMAIL env variable can log in to this server.
+    singleUserLoginEmail := os.Getenv("SINGLE_USER_LOGIN_EMAIL")
+    fmt.Println("singleUserLoginEmail: " + singleUserLoginEmail)
+    if singleUserLoginEmail != "" && dbGithubUser.Email != singleUserLoginEmail {
+      logger.Error("SINGLE_USER_LOGIN_EMAIL is defined, so user with email = " + dbGithubUser.Email + "cannot log in")
+      ctx.AbortWithError(http.StatusForbidden, fmt.Errorf("user with email %s not admitted to this server", dbGithubUser.Email))
+      return
+    }
+
+    fmt.Println("AFTER singleUserLoginEmail")
 
     // find profile searching by github.id == githubClientUser.ID
     var profileFound models.Profile
