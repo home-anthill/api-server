@@ -1,6 +1,17 @@
 # syntax=docker/dockerfile:1
 FROM golang:1.17-alpine as builder
-RUN apk update && apk add --no-cache curl make unzip protoc
+RUN apk update && apk add --no-cache \
+    protoc \
+    make gcc musl-dev
+
+# install shadow
+RUN go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+
+# install protoc requirements based on https://grpc.io/docs/languages/go/quickstart/
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
+ENV PATH "$PATH:$(go env GOPATH)/bin"
+
 WORKDIR /app
 # pre-copy/cache go.mod for pre-downloading dependencies and only redownloading them in subsequent builds if they change
 COPY go.mod ./
@@ -9,24 +20,11 @@ RUN go mod download && go mod verify
 
 COPY . ./
 
-#RUN curl -LO https://github.com/protocolbuffers/protobuf/releases/download/v3.15.8/protoc-3.15.8-linux-x86_64.zip
-#RUN unzip protoc-3.15.8-linux-x86_64.zip -d $HOME/.local
-#RUN export PATH="$PATH:$HOME/.local/bin"
-#
-#RUN make proto
-#RUN protoc api/gRPC/*/*.proto \
-#    			--go_out=. \
-#    			--go_opt=paths=source_relative \
-#    			--go-grpc_out=. \
-#    			--go-grpc_opt=paths=source_relative \
-#    			--proto_path=.
-
-RUN go build -o /api-server .
+RUN make build
 
 FROM golang:1.17-alpine
 WORKDIR /
-COPY --from=builder /api-server /api-server
+COPY --from=builder /app/build/api-server /api-server
 COPY --from=builder /app/credentials.json /credentials.json
-COPY --from=builder /app/cert /cert
 
 ENTRYPOINT ["/api-server"]
