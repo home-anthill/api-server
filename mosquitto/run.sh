@@ -15,6 +15,7 @@ echo "Checking 'crond' existence"
 rc-service --list | grep -i crond
 # add syslog (required by crontab)
 rc-update add syslog boot
+mkdir -p /run/openrc
 touch /run/openrc/softlevel
 rc-service syslog start
 # start crontab
