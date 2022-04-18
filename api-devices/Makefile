@@ -28,10 +28,6 @@ build: vet proto
 	go build -o ./build/api-devices .
 .PHONY: build
 
-cert:
-	cd cert; ./gen.sh; cd ..
-.PHONY: cert
-
 air: vet proto
 	air
 .PHONY: air
