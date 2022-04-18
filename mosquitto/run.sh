@@ -21,13 +21,15 @@ echo "Enabling syslog"
 rc-update add syslog boot
 echo "Starting syslog"
 rc-service syslog start
+sleep 5
 # start crontab
 echo "Starting crond"
-rc-update add crond
+rc-update add crond default
 rc-service crond start
+sleep 5
 # check services
 echo "Checking running services"
-rc-status
+rc-status -a
 # to read log messages
 # tail -f /var/log/messages
 
