@@ -14,14 +14,19 @@ echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
 echo "Checking 'crond' existence"
 rc-service --list | grep -i crond
 # add syslog (required by crontab)
-rc-update add syslog boot
+echo "Preparing syslog"
 mkdir -p /run/openrc
 touch /run/openrc/softlevel
+echo "Enabling syslog"
+rc-update add syslog boot
+echo "Starting syslog"
 rc-service syslog start
 # start crontab
-rc-service crond start
+echo "Starting crond"
 rc-update add crond
+rc-service crond start
 # check services
+echo "Checking running services"
 rc-status
 # to read log messages
 # tail -f /var/log/messages
