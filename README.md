@@ -100,7 +100,7 @@ mosquitto_pub -m "{\"uuid\": \"uuid1\",\"profileToken\": \"profiletoken-1\",\"on
 
   openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 3650
 
-3. Kill mosquitto and resta it with this command:
+3. Kill mosquitto and restart it with this command:
 
   docker run -it --name mosquitto -p 1883:1883 -p 9001:9001 --rm -v $PWD/mosquitto-certs/server/certificates:/mosquitto/certificates -v $PWD/mosquitto-certs/mosquitto.conf:/mosquitto/config/mosquitto.conf -v /mosquitto/data -v /mosquitto/log eclipse-mosquitto
 
@@ -114,7 +114,7 @@ docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:latest
 ```
 
 
-## Docker compose 
+## Docker container 
 
 ```
 cd api-server
@@ -125,19 +125,27 @@ cd api-devices
 docker build --tag ks89/ac-api-devices .
 docker push ks89/ac-api-devices
 cd ..
-cd react-gui
+cd gui
 docker build --tag ks89/ac-gui .
 docker push ks89/ac-gui
 cd ..
-docker-compose up
+cd mosquitto
+docker build --tag ks89/mosquitto .
+docker push ks89/mosquitto
 ```
-
-Visit `http://localhost:8085`
 
 
 ## Kubernetes
 
 Follow the tutorial to install and configure Hetzner Cloud in `docs/hetzner-install.md`
+
+Install Helm, create a `custom-values.yaml` with your specific config and build your Kubernetes manifests:
+
+```
+helm template -f values.yaml -f custom-values.yaml . > kube-manifests.yaml
+```
+
+or install it directly.
 
 
 ## APIS
