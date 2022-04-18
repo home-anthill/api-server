@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+#set -e
 
 # if not defined, apply default production server
 CERTBOT_SERVER=${CERTBOT_SERVER:?"https://acme-v02.api.letsencrypt.org/directory"}
