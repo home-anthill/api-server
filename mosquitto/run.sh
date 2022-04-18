@@ -13,10 +13,17 @@ echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
 # https://techjogging.com/create-letsencrypt-certificate-alpine-nginx.html
 echo "Checking 'crond' existence"
 rc-service --list | grep -i crond
-# rc-service crond start
-# rc-update add crond
-#run-parts --test /etc/periodic/weekly
-#run-parts --test /etc/periodic/monthly
+# add syslog (required by crontab)
+rc-update add syslog boot
+touch /run/openrc/softlevel
+rc-service syslog start
+# start crontab
+rc-service crond start
+rc-update add crond
+# check services
+rc-status
+# to read log messages
+# tail -f /var/log/messages
 
 if [ -d "/etc/letsencrypt/live/${CERTBOT_DOMAIN}" ]
 then
