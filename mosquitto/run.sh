@@ -13,7 +13,8 @@ echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
 # https://techjogging.com/create-letsencrypt-certificate-alpine-nginx.html
 echo "Checking 'crond' existence"
 rc-service --list | grep -i crond
-#rc-service crond start && rc-update add crond
+# rc-service crond start
+# rc-update add crond
 #run-parts --test /etc/periodic/weekly
 #run-parts --test /etc/periodic/monthly
 

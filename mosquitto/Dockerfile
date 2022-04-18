@@ -15,4 +15,8 @@ COPY upgrade-certbot.sh /etc/periodic/monthly/upgrade-certbot.sh
 
 COPY mosquitto.conf /mosquitto/config/mosquitto.conf
 
+# to fix errors with crond
+# https://github.com/gliderlabs/docker-alpine/issues/437#issuecomment-494200575
+VOLUME ["/sys/fs/cgroup"]
+
 ENTRYPOINT ["sh", "run.sh"]
