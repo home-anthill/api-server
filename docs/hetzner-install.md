@@ -4,7 +4,7 @@
 
 From Hetzner Cloud UI create a server like this:
 
-REGION: Nuremberg
+REGION: Falkenstein
 OS type: Ubuntu 20.04
 Type: Standard - CPX11 - 2 vCPU - 4 GB RAM - 40 GB disk
 Volume: none
@@ -22,10 +22,10 @@ Name: what you like
 From Hetzner Cloud UI create 2 IPs:
 
 - name: ac-gui-floating-ip
-  location: Nuremberg (or Falkenstein)
+  location: Falkenstein
   protocol: IPV4
 - name: ac-mosquitto-floating-ip
-  location: Nuremberg (or Falkenstein)
+  location: Falkenstein
   protocol: IPV4
 
 From "Assigned to" column you need to choose the server created above.
@@ -208,27 +208,6 @@ kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manif
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
 ```
 
-Create a `metallb-config.yaml` file adding your Floating IPs:
-
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  namespace: metallb-system
-  name: config
-data:
-  config: |
-    address-pools:
-    - name: default
-      protocol: layer2
-      addresses:
-      - <ac-gui-floating-ip_IP_ADDRESS>/24                #<----------------- add here your floating IP for the HTTP GUI
-      - <ac-mosquitto-floating-ip_IP_ADDRESS>/24          #<----------------- add here your floating IP for the MQTT connection
-```
-
-and apply it `kubectl apply -f metallb-config.yaml`
-
-
 ## Prepare Persistent Volumes
 
 Two PVs are required to store nginx.conf and SSL certificates.
@@ -243,21 +222,7 @@ mkdir /root/nginx-conf
 ```
 
 
-## Deploy application
-
-Modify `loadBalancerIP` addresses in `kubernetes-manifests/mosquitto.yaml` and `kubernetes-manifests/gui.yaml` to use your FLoating IPs.
-Finally, you can deploy your app:
-
-```bash
-kubectl apply -f kubernetes-manifests/namespace.yaml
-kubectl apply -f kubernetes-manifests/persistent-volume.yaml
-kubectl apply -f kubernetes-manifests/mosquitto.yaml
-kubectl apply -f kubernetes-manifests/api-devices.yaml
-kubectl apply -f kubernetes-manifests/api-server.yaml
-kubectl apply -f kubernetes-manifests/gui.yaml
-```
-
-Check kubernetes services! You should see 2 LoadBalancers with the right Floating IPs assigned.
+## Update DNS records
 
 Update DNS records of your domains:
 
@@ -271,10 +236,78 @@ A @ <ac-mosquitto-floating-ip_IP_ADDRESS>
 A wwww <ac-mosquitto-floating-ip_IP_ADDRESS>
 ```
 
-After some time, you'll be able to navigate to the website via HTTPS and to the Mosquitto server via MQTTS connection.
-ESP32 device should already be working using secure connections.
 
-If you have problems with certificates, you should check if certbot is started getting SSL certificates from Let's Encrypt.
-Certbot runs on these 2 pods:
-- gui
-- mosquitto
+## Deploy application
+
+There are two options:
+- using `helm install`
+- using kubectl to manually deploy all files
+
+### Helm (extremely recommended)
+
+1. (optional step) If you want to see all manifests processed by Helm without deploying them, you can run:
+
+```bash
+cd helm/ac
+helm template -f values.yaml -f custom-values.yaml . > output-manifests.yaml
+```
+
+2. Create a custom values file `custom-values.yaml` with a specific configuration like:
+
+```yaml
+domains:
+  http: "YOUR_DOMAIN"
+  mqtt: "YOUR_MQTT_DOMAIN"
+
+mosquitto:
+  publicIp: "<ac-mosquitto-floating-ip_IP_ADDRESS>"
+  ssl:
+    enable: true
+    certbot:
+      email: "<YOUR_CERTIFICATE_EMAIL>"
+
+apiServer:
+  oauthClientId: "<GITHUB_OAUTH_CLIENT>"
+  oauthSecret: "<GITHUB_OAUTH_SECRET>"
+  singleUserLoginEmail: "<GITHUB_ACCOUNT_EMAIL_TO_LOGIN>"
+
+gui:
+  publicIp: "<ac-gui-floating-ip_IP_ADDRESS>"
+  ssl:
+    enable: true
+    certbot:
+      email: "<YOUR_CERTIFICATE_EMAIL>"
+
+mongodbUrl: "mongodb+srv://<MONGODB_ATLAS_USERNAME>:<MONGODB_ATLAS_PASSWORD>@cluster0.4wies.mongodb.net"
+```
+
+3. Deploy with Helm
+
+```bash
+cd helm/ac
+helm install -f values.yaml -f custom-values.yaml ac .
+```
+
+4. Check kubernetes services! You should see 2 LoadBalancers with the right Floating IPs assigned.
+   After some time, you'll be able to navigate to the website via HTTPS and to the Mosquitto server via MQTTS connection.
+   ESP32 device should already be working using secure connections.
+   If you have problems with certificates, you should check if certbot is started getting SSL certificates from Let's Encrypt.
+   Certbot runs on these 2 pods:
+   - gui
+   - mosquitto
+
+### Manually via kubectl
+
+1. Modify `loadBalancerIP` addresses in `kubernetes-manifests/mosquitto.yaml` and `kubernetes-manifests/gui.yaml` to use your Floating IPs.
+2. Update .yaml files to reflect your domain and configurations.
+3. Deploy all manifests in this order:
+
+```bash
+kubectl apply -f kubernetes-manifests/metalb.yaml
+kubectl apply -f kubernetes-manifests/namespace.yaml
+kubectl apply -f kubernetes-manifests/persistent-volume.yaml
+kubectl apply -f kubernetes-manifests/mosquitto.yaml
+kubectl apply -f kubernetes-manifests/api-devices.yaml
+kubectl apply -f kubernetes-manifests/api-server.yaml
+kubectl apply -f kubernetes-manifests/gui.yaml
+```
