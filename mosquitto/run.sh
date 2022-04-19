@@ -1,5 +1,9 @@
 #!/bin/sh
-#set -e
+set -e
+
+# Let's encrypt certificates
+#Certificate is saved at: /etc/letsencrypt/live/<DOMAIN>/fullchain.pem
+#Key is saved at:         /etc/letsencrypt/live/<DOMAIN>/privkey.pem
 
 # if not defined, apply default production server
 CERTBOT_SERVER=${CERTBOT_SERVER:?"https://acme-v02.api.letsencrypt.org/directory"}
@@ -28,8 +32,8 @@ sleep 5
 # start crontab
 echo "Starting crond"
 rc-update add crond default
-sleep 2
-rc-service crond start
+#sleep 2
+#rc-service crond start
 sleep 5
 # check services
 echo "Checking running services again"
