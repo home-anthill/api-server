@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.17-alpine as builder
+FROM golang:1.18-alpine as builder
 RUN apk update && apk add --no-cache \
     protoc \
     make gcc musl-dev
@@ -22,7 +22,7 @@ COPY . ./
 
 RUN make build
 
-FROM golang:1.17-alpine
+FROM golang:1.18-alpine
 WORKDIR /
 COPY --from=builder /app/build/api-devices /api-devices
 
