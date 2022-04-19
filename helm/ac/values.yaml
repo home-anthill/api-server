@@ -1,0 +1,50 @@
+# Default values for ac.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+namespace: ac
+domainName: "your-domain.com"
+
+domains:
+  http: "your-domain.com"
+  mqtt: "mqtt-domain.com"
+
+mosquitto:
+  image: "ks89/mosquitto"
+  letsEncryptCerts: "/root/lets-encrypt-certs-mqtt"
+  publicIp: "9.8.7.6"
+  ssl:
+    enable: false
+    certbot:
+      email: "your.email@emailexample.com"
+      # staging server is https://acme-staging-v02.api.letsencrypt.org/directory
+      server: "https://acme-v02.api.letsencrypt.org/directory"
+
+apiDevices:
+  image: "ks89/ac-api-devices"
+
+apiServer:
+  image: "ks89/ac-api-server"
+  oauthClientId: "dsda78d6as87d687asd6"
+  oauthSecret: "76d57asdas7ad68a7sa9SA9S6a8sa6S8A6sa7s98d76sa89s"
+  singleUserLoginEmail: "your.email@emailexample.com"
+
+gui:
+  image: "ks89/ac-gui"
+  nginxConf: "/root/nginx-conf"
+  letsEncryptCerts: "/root/lets-encrypt-certs"
+  publicIp: "1.2.3.4"
+  ssl:
+    enable: false
+    certbot:
+      email: "your.email@emailexample.com"
+      # staging server is https://acme-staging-v02.api.letsencrypt.org/directory
+      server: "https://acme-v02.api.letsencrypt.org/directory"
+
+
+mongodbUrl: "mongodb+srv://user:password@cluster0.1234.mongodb.net"
+
+rabbitmq:
+  enable: false
+  image: "rabbitmq:3-management"
+  user: "guest"
+  password: "guest"

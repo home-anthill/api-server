@@ -1,0 +1,87 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-devices-config
+  namespace: {{ .Values.namespace }}
+data:
+  .env_prod: |-
+    MONGODB_URL={{ .Values.mongodbUrl }}
+    RABBITMQ_ENABLE={{ .Values.rabbitmq.enable }}
+    RABBITMQ_URL=amqp://{{ .Values.rabbitmq.user }}:{{ .Values.rabbitmq.password }}@rabbitmq-svc.{{ .Values.namespace }}.svc.cluster.local:5672
+    {{- if .Values.mosquitto.ssl.enable }}
+    MQTT_URL=mqtts://mosquitto-svc.{{ .Values.namespace }}.svc.cluster.local
+    MQTT_PORT=8883
+    MQTT_TLS=true
+    MQTT_CA_FILE=/etc/letsencrypt/live/{{ .Values.domains.mqtt }}/chain.pem
+    MQTT_CERT_FILE=/etc/letsencrypt/live/{{ .Values.domains.mqtt }}/cert.pem
+    MQTT_KEY_FILE=/etc/letsencrypt/live/{{ .Values.domains.mqtt }}/privkey.pem
+    {{ else }}
+    MQTT_URL=mqtt://mosquitto-svc.{{ .Values.namespace }}.svc.cluster.local
+    MQTT_PORT=1883
+    MQTT_TLS=false
+    MQTT_CA_FILE=
+    MQTT_CERT_FILE=
+    MQTT_KEY_FILE=
+    {{ end -}}
+    GRPC_URL=0.0.0.0:50051
+    GRPC_TLS=false
+    CERT_FOLDER_PATH=
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ac-api-devices
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ac-api-devices
+  template:
+    metadata:
+      labels:
+        app: ac-api-devices
+    spec:
+      containers:
+      - name: ac-api-devices
+        image: {{ .Values.apiDevices.image }}
+        env:
+        - name: ENV
+          value: "prod"
+        ports:
+        - name: grpc
+          containerPort: 50051
+          protocol: TCP
+        volumeMounts:
+        - name: api-devices-config
+          mountPath: /.env_prod
+          subPath: .env_prod
+          readOnly: true
+        {{ if .Values.mosquitto.ssl.enable }}
+        - name: lets-encrypt-ssl-mqtt-storage
+          mountPath: "/etc/letsencrypt/"
+        {{ end }}
+      volumes:
+      - name: api-devices-config
+        configMap:
+          name: api-devices-config
+      {{ if .Values.mosquitto.ssl.enable }}
+      - name: lets-encrypt-ssl-mqtt-storage
+        persistentVolumeClaim:
+          claimName: lets-encrypt-ssl-mqtt-claim
+      {{ end }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: api-devices-svc
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: ac-api-devices
+  ports:
+  - name: grpc
+    protocol: TCP
+    port: 50051
+    targetPort: grpc

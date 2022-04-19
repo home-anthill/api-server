@@ -1,0 +1,113 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-server-config
+  namespace: {{ .Values.namespace }}
+data:
+  .env_prod: |-
+    MONGODB_URL={{ .Values.mongodbUrl }}
+    RABBITMQ_ENABLE={{ .Values.rabbitmq.enable }}
+    RABBITMQ_URL=amqp://{{ .Values.rabbitmq.user }}:{{ .Values.rabbitmq.password }}@rabbitmq-svc.{{ .Values.namespace }}.svc.cluster.local:5672
+    {{- if .Values.gui.ssl.enable }}
+    HTTP_SERVER=https://{{ .Values.domains.http }}
+    HTTP_PORT=443
+    HTTP_TLS=true
+    HTTP_CERT_FILE=/etc/letsencrypt/live/{{ .Values.domains.http }}/fullchain.pem
+    HTTP_KEY_FILE=/etc/letsencrypt/live/{{ .Values.domains.http }}/privkey.pem
+    {{ else }}
+    HTTP_SERVER=http://{{ .Values.domains.http }}
+    HTTP_PORT=80
+    HTTP_TLS=false
+    HTTP_CERT_FILE=
+    HTTP_KEY_FILE=
+    {{ end -}}
+    HTTP_CORS=false
+    GRPC_URL=api-devices-svc.{{ .Values.namespace }}.svc.cluster.local:50051
+    GRPC_TLS=false
+    CERT_FOLDER_PATH=
+    {{- if .Values.apiServer.singleUserLoginEmail }}
+    SINGLE_USER_LOGIN_EMAIL={{ .Values.apiServer.singleUserLoginEmail }}
+    {{ else }}
+    SINGLE_USER_LOGIN_EMAIL=
+    {{ end }}
+  credentials.json: |-
+    {
+      "clientid": "{{ .Values.apiServer.oauthClientId }}",
+      "secret": "{{ .Values.apiServer.oauthSecret }}"
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ac-api-server
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ac-api-server
+  template:
+    metadata:
+      labels:
+        app: ac-api-server
+    spec:
+      containers:
+      - name: ac-api-server
+        image: {{ .Values.apiServer.image }}
+        env:
+        - name: ENV
+          value: "prod"
+        ports:
+        {{- if .Values.gui.ssl.enable }}
+        - name: https
+          containerPort: 443
+          protocol: TCP
+        {{- else }}
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        {{- end }}
+        volumeMounts:
+        - name: api-server-config
+          mountPath: /.env_prod
+          subPath: .env_prod
+          readOnly: true
+        - name: api-server-config
+          mountPath: /credentials.json
+          subPath: credentials.json
+          readOnly: true
+        {{ if .Values.gui.ssl.enable }}
+        - name: lets-encrypt-ssl-storage
+          mountPath: "/etc/letsencrypt/"
+        {{ end }}
+      volumes:
+      - name: api-server-config
+        configMap:
+          name: api-server-config
+      {{ if .Values.gui.ssl.enable }}
+      - name: lets-encrypt-ssl-storage
+        persistentVolumeClaim:
+          claimName: lets-encrypt-ssl-claim
+      {{ end }}
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: api-server-svc
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    app: ac-api-server
+  ports:
+    {{- if .Values.gui.ssl.enable }}
+    - name: https
+      protocol: TCP
+      port: 443
+      targetPort: https
+    {{- else }}
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: http
+    {{- end }}

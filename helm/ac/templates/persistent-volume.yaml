@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nginx-conf-volume
+  namespace: {{ .Values.namespace }}
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Mi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: {{ .Values.gui.nginxConf }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nginx-conf-claim
+  namespace: {{ .Values.namespace }}
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Mi
+{{ if .Values.gui.ssl.enable }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: lets-encrypt-ssl-volume
+  namespace: {{ .Values.namespace }}
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 50Mi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: {{ .Values.gui.letsEncryptCerts }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lets-encrypt-ssl-claim
+  namespace: {{ .Values.namespace }}
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Mi
+{{ end }}
+{{ if .Values.mosquitto.ssl.enable }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: lets-encrypt-ssl-mqtt-volume
+  namespace: {{ .Values.namespace }}
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 50Mi
+  accessModes:
+    - ReadWriteMany
+  hostPath:
+    path: {{ .Values.mosquitto.letsEncryptCerts }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lets-encrypt-ssl-mqtt-claim
+  namespace: {{ .Values.namespace }}
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Mi
+{{ end }}
