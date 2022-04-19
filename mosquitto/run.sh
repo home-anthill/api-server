@@ -32,12 +32,13 @@ sleep 5
 # start crontab
 echo "Starting crond"
 rc-update add crond default
-#sleep 2
-#rc-service crond start
+sleep 2
+rc-service crond start
 sleep 5
 # check services
 echo "Checking running services again"
 rc-status -a
+crontab -l
 # to read log messages
 # tail -f /var/log/messages
 
