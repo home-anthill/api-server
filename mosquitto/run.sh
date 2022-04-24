@@ -64,10 +64,13 @@ if [ -z "${CERTBOT_EMAIL}" ] && [ -z "${CERTBOT_DOMAIN}" ] && [ -z "${CERTBOT_SE
   chmod 0600 ${CERT_DIR}/cert.pem ${CERT_DIR}/privkey.pem ${CERT_DIR}/chain.pem
 
   ls -la ${CERT_DIR}
+  ps -a
+
+  mosquitto -c /mosquitto/config/mosquitto.con
+else
+  ps -a
+
+  mosquitto -c /mosquitto/config/mosquitto-no-security.conf
 fi
-
-ps -a
-
-mosquitto -c /mosquitto/config/mosquitto.conf
 
 sleep infinity

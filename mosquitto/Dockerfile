@@ -20,6 +20,7 @@ COPY certbot-renew.sh /etc/periodic/daily/certbot-renew
 COPY upgrade-certbot.sh /etc/periodic/monthly/upgrade-certbot
 
 COPY mosquitto.conf /mosquitto/config/mosquitto.conf
+COPY mosquitto-no-security.conf /mosquitto/config/mosquitto-no-security.conf
 
 # to fix errors with crond
 # https://github.com/gliderlabs/docker-alpine/issues/437#issuecomment-494200575
