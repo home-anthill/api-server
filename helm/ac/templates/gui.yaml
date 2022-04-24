@@ -21,7 +21,9 @@ data:
       server {
         listen 80;
         listen  [::]:80;
+        {{- if .Values.domains.http }}
         server_name  {{ .Values.domains.http }} www.{{ .Values.domains.http }};
+        {{- end }}
 
         location / {
           root /etc/nginx/html/html;
@@ -60,6 +62,7 @@ spec:
       - name: ac-gui
         image: {{ .Values.gui.image }}
         env:
+          {{- if .Values.mosquitto.ssl.enable }}
           - name: CERTBOT_EMAIL
             value: {{ .Values.gui.ssl.certbot.email }}
           - name: CERTBOT_DOMAIN
@@ -67,6 +70,7 @@ spec:
           - name: CERTBOT_SERVER
             # use https://acme-staging-v02.api.letsencrypt.org/directory for staging server
             value: {{ .Values.gui.ssl.certbot.server }}
+          {{- end }}
           - name: BASE_NGINX_CONF_FILEPATH
             value: "/home/nginx.conf"
           - name: NGINX_CONF_HOSTPATH
@@ -86,23 +90,23 @@ spec:
             mountPath: /home/nginx.conf
             subPath: nginx.conf
             readOnly: true
+          - name: nginx-conf-storage
+            mountPath: "/home/nginx-conf/"
           {{ if .Values.gui.ssl.enable }}
           - name: lets-encrypt-ssl-storage
             mountPath: "/etc/letsencrypt/"
-          - name: nginx-conf-storage
-            mountPath: "/home/nginx-conf/"
           {{ end }}
       volumes:
         - name: gui-config
           configMap:
             name: gui-config
+        - name: nginx-conf-storage
+          persistentVolumeClaim:
+            claimName: nginx-conf-claim
         {{ if .Values.gui.ssl.enable }}
         - name: lets-encrypt-ssl-storage
           persistentVolumeClaim:
             claimName: lets-encrypt-ssl-claim
-        - name: nginx-conf-storage
-          persistentVolumeClaim:
-            claimName: nginx-conf-claim
         {{ end }}
 ---
 kind: Service

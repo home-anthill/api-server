@@ -16,6 +16,7 @@ spec:
       containers:
       - name: mosquitto
         image: {{ .Values.mosquitto.image }}
+        {{- if .Values.mosquitto.ssl.enable }}
         env:
         - name: CERTBOT_EMAIL
           value: {{ .Values.mosquitto.ssl.certbot.email }}
@@ -24,6 +25,7 @@ spec:
         - name: CERTBOT_SERVER
           # use https://acme-staging-v02.api.letsencrypt.org/directory for staging server
           value: {{ .Values.mosquitto.ssl.certbot.server }}
+        {{- end }}
         ports:
         # port 80 is required by certbot to get and renew certificates
         - name: http

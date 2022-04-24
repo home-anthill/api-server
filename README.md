@@ -39,6 +39,8 @@ protoc --go_out=. --go_opt=paths=source_relative \
 api-devices/register/register.proto
 ```
 
+or simply run `make build`
+
 
 ## RabbitMQ
 Run rabbitmq via Docker:
