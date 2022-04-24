@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-if [ -z "${CERTBOT_EMAIL}" ] && [ -z "${CERTBOT_DOMAIN}" ] && [ -z "${CERTBOT_SERVER}" ]; then
+if [ ${CERTBOT_EMAIL+x} ] && [ ${CERTBOT_DOMAIN+x} ] && [ ${CERTBOT_SERVER+x} ]; then
   # Let's encrypt certificates
   #Certificate is saved at: /etc/letsencrypt/live/<DOMAIN>/fullchain.pem
   #Key is saved at:         /etc/letsencrypt/live/<DOMAIN>/privkey.pem
