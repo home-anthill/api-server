@@ -9,7 +9,7 @@ echo "Env variables:"
 echo "BASE_NGINX_CONF_FILEPATH = ${BASE_NGINX_CONF_FILEPATH}"
 echo "NGINX_CONF_HOSTPATH = ${NGINX_CONF_HOSTPATH}"
 
-if [ -z "${CERTBOT_EMAIL}" ] && [ -z "${CERTBOT_DOMAIN}" ] && [ -z "${CERTBOT_SERVER}" ]; then
+if [ ${CERTBOT_EMAIL+x} ] && [ ${CERTBOT_DOMAIN+x} ] && [ ${CERTBOT_SERVER+x} ]; then
    # if not defined, apply default production server
   CERTBOT_SERVER=${CERTBOT_SERVER:?"https://acme-v02.api.letsencrypt.org/directory"}
 
