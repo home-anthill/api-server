@@ -239,14 +239,61 @@ A wwww <ac-mosquitto-floating-ip_IP_ADDRESS>
 
 ## Deploy application
 
-1. (optional step) If you want to see all manifests processed by Helm without deploying them, you can run:
+## Development without SLL and domain names
+
+1. Define personal config in a private repository
+
+Create a new private repository to store your secrets and private configurations, for instance `air-conditioner-server-config`
+
+2. Create a custom values file in `air-conditioner-server-config/custom-values.yaml` with a specific configuration like:
+
+```yaml
+domains:
+  # overwrite default http domain to don't use domain name
+  # in this way you'll be able to reach this web app and rest services via `gui.publicIp`
+  http: "<ac-gui-floating-ip_IP_ADDRESS>"
+  mqtt: "localhost"
+
+mosquitto:
+  publicIp: "<ac-mosquitto-floating-ip_IP_ADDRESS>"
+
+apiServer:
+  oauthClientId: "<GITHUB_OAUTH_CLIENT>"
+  oauthSecret: "<GITHUB_OAUTH_SECRET>"
+  singleUserLoginEmail: "<GITHUB_ACCOUNT_EMAIL_TO_LOGIN>"
+
+gui:
+  publicIp: "<ac-gui-floating-ip_IP_ADDRESS>"
+
+mongodbUrl: "mongodb+srv://<MONGODB_ATLAS_USERNAME>:<MONGODB_ATLAS_PASSWORD>@cluster0.4wies.mongodb.net"
+```
+
+3. (optional step) If you want to see all manifests processed by Helm without deploying them, you can run:
 
 ```bash
 cd helm/ac
-helm template -f values.yaml -f custom-values.yaml . > output-manifests.yaml
+helm template -f values.yaml -f ../../air-conditioner-server-config/custom-values.yaml . > output-manifests-no-ssl.yaml
 ```
 
-2. Create a custom values file `custom-values.yaml` with a specific configuration like:
+4. Deploy with Helm
+
+```bash
+cd helm/ac
+helm install -f values.yaml -f ../../air-conditioner-server-config/custom-values.yaml ac .
+```
+
+5. Check kubernetes services! You should see 2 LoadBalancers with the right Floating IPs assigned.
+   After some time, you'll be able to navigate to the website via HTTP and to the Mosquitto server via MQTT connection.
+
+
+
+## Production with SSL and domain names
+
+1. Define personal config in a private repository
+
+Create a new private repository to store your secrets and private configurations, for instance `air-conditioner-server-config`
+
+2. Create a custom values file in `air-conditioner-server-config/custom-values.yaml` with a specific configuration like:
 
 ```yaml
 domains:
@@ -275,14 +322,21 @@ gui:
 mongodbUrl: "mongodb+srv://<MONGODB_ATLAS_USERNAME>:<MONGODB_ATLAS_PASSWORD>@cluster0.4wies.mongodb.net"
 ```
 
-3. Deploy with Helm
+3. (optional step) If you want to see all manifests processed by Helm without deploying them, you can run:
 
 ```bash
 cd helm/ac
-helm install -f values.yaml -f custom-values.yaml ac .
+helm template -f values.yaml -f ../../air-conditioner-server-config/custom-values.yaml . > output-manifests.yaml
 ```
 
-4. Check kubernetes services! You should see 2 LoadBalancers with the right Floating IPs assigned.
+4. Deploy with Helm
+
+```bash
+cd helm/ac
+helm install -f values.yaml -f ../../air-conditioner-server-config/custom-values.yaml  ac .
+```
+
+5. Check kubernetes services! You should see 2 LoadBalancers with the right Floating IPs assigned.
    After some time, you'll be able to navigate to the website via HTTPS and to the Mosquitto server via MQTTS connection.
    ESP32 device should already be working using secure connections.
    If you have problems with certificates, you should check if certbot is started getting SSL certificates from Let's Encrypt.
