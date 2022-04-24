@@ -239,12 +239,6 @@ A wwww <ac-mosquitto-floating-ip_IP_ADDRESS>
 
 ## Deploy application
 
-There are two options:
-- using `helm install`
-- using kubectl to manually deploy all files
-
-### Helm (extremely recommended)
-
 1. (optional step) If you want to see all manifests processed by Helm without deploying them, you can run:
 
 ```bash
@@ -295,19 +289,3 @@ helm install -f values.yaml -f custom-values.yaml ac .
    Certbot runs on these 2 pods:
    - gui
    - mosquitto
-
-### Manually via kubectl
-
-1. Modify `loadBalancerIP` addresses in `kubernetes-manifests/mosquitto.yaml` and `kubernetes-manifests/gui.yaml` to use your Floating IPs.
-2. Update .yaml files to reflect your domain and configurations.
-3. Deploy all manifests in this order:
-
-```bash
-kubectl apply -f kubernetes-manifests/metalb.yaml
-kubectl apply -f kubernetes-manifests/namespace.yaml
-kubectl apply -f kubernetes-manifests/persistent-volume.yaml
-kubectl apply -f kubernetes-manifests/mosquitto.yaml
-kubectl apply -f kubernetes-manifests/api-devices.yaml
-kubectl apply -f kubernetes-manifests/api-server.yaml
-kubectl apply -f kubernetes-manifests/gui.yaml
-```
