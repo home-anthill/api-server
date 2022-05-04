@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+
 import axios from 'axios';
 
 import './Devices.css';
-import Values from '../../components/Values';
+import Values from '../../shared/Values';
 
 const DEFAULT_HOME = {name: '---', rooms: []};
 const DEFAULT_ROOM = {name: '---'};

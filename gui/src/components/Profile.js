@@ -4,7 +4,7 @@ import axios from 'axios';
 
 export default function Profile() {
   const {state} = useLocation();
-  const profile = state.profile?.profile;
+  const profile = state.profile;
 
   const [apiToken, setApiToken] = useState('********-****-****-****-************');
 

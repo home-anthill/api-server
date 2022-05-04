@@ -1,5 +1,5 @@
 import React from 'react';
-import Navbar from '../components/Navbar';
+import Navbar from '../shared/Navbar';
 import { Link, Outlet } from 'react-router-dom';
 
 export default function Main() {
@@ -7,8 +7,6 @@ export default function Main() {
     <div>
       <Navbar/>
       <main>
-        <Link to="/main/homes">Homes</Link>
-        <Link to="/main/devices">Devices</Link>
         <Outlet/>
       </main>
     </div>
