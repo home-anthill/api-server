@@ -104,10 +104,12 @@ function NewHomeDialog({onClose, open}) {
   const [home, setHome] = useState({name: '', location: ''});
 
   const handleClose = () => {
+    setHome({name: '', location: ''});
     onClose(false);
   };
 
   const handleAdd = (value) => {
+    setHome({name: '', location: ''});
     onClose(value);
   };
 
@@ -153,8 +155,7 @@ function NewHomeDialog({onClose, open}) {
       <DialogTitle>Create a new home</DialogTitle>
       <DialogContent>
         <DialogContentText>
-          To subscribe to this website, please enter your email address here. We
-          will send updates occasionally.
+          Create a new Home!
         </DialogContentText>
         <form onSubmit={submit}>
           <FormControl>
