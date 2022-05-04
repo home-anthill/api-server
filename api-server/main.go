@@ -200,7 +200,7 @@ func main() {
       "https://localhost",
       "https://localhost:443",
       "http://localhost:8082",
-      "http://localhost:8085",
+      "http://localhost:3000",
       httpOrigin,
     }
     router.Use(cors.New(config))
@@ -369,7 +369,7 @@ func getCsp() string {
     "https://*.googleusercontent.com/",
     "https://*.fbsbx.com/",
     "https://*.gstatic.com/",
-    "https://magal.li/",
+    "https://*.githubusercontent.com/",
   }
   connect := []string{
     "https://*.google.com/",
