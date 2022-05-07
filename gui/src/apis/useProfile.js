@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getHeaders } from '../auth/auth-utils'
+import { getHeaders } from './utils';
 
 const useProfile = () => {
   const [data, setData] = useState([]);

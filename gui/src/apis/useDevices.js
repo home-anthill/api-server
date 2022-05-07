@@ -1,13 +1,5 @@
 import { useEffect, useState } from 'react'
-
-function getHeaders() {
-  let token = localStorage.getItem('token');
-  let headers = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + token
-  };
-  return headers;
-}
+import { getHeaders } from './utils';
 
 const useDevices = () => {
   const [data, setData] = useState([]);

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { Typography, Fab, Dialog, DialogTitle, Button, DialogContent, DialogContentText, TextField, DialogActions, FormControl } from '@mui/material';
+import { useForm, Controller } from 'react-hook-form';
+
+import { Typography, Fab, Dialog, DialogTitle, Button, DialogContent, TextField, DialogActions, FormControl } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import PropTypes from 'prop-types';
 
-import axios from 'axios';
-
-import './Homes.css';
-
 import Home from '../../shared/Home';
 import useHomes from '../../apis/useHomes';
+import { getHeaders } from '../../apis/utils';
+
+import './Homes.css';
 
 export default function Homes() {
   const [open, setOpen] = useState(false);
@@ -28,14 +29,10 @@ export default function Homes() {
   }
 
   async function deleteHome(home) {
-    let token = localStorage.getItem('token');
-    let headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    };
     try {
-      await axios.delete(`/api/homes/${home.id}`, {
-        headers
+      await fetch(`/api/homes/${home.id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
       })
       setHomes([]);
     } catch (err) {
@@ -101,35 +98,34 @@ export default function Homes() {
 }
 
 function NewHomeDialog({onClose, open}) {
-  const [home, setHome] = useState({name: '', location: ''});
+  const defaultValues = {
+    nameInput: '',
+    locationInput: ''
+  };
+  const {handleSubmit, reset, control, getValues} = useForm({defaultValues});
 
   const handleClose = () => {
-    setHome({name: '', location: ''});
+    reset();
     onClose(false);
   };
 
   const handleAdd = (value) => {
-    setHome({name: '', location: ''});
+    reset();
     onClose(value);
   };
 
-  const submit = async e => {
-    e.preventDefault(); // prevent default submit
-
-    let token = localStorage.getItem('token');
-    let headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    };
+  const onAddHome = async () => {
+    const values = getValues();
     try {
-      await
-        axios.post(`/api/homes`, {
-          name: home.name,
-          location: home.location,
+      await fetch(`/api/homes`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          name: values.nameInput,
+          location: values.locationInput,
           rooms: []
-        }, {
-          headers
-        });
+        })
+      });
       handleAdd(true);
     } catch (err) {
       console.error('Cannot add a new home');
@@ -137,50 +133,47 @@ function NewHomeDialog({onClose, open}) {
     }
   }
 
-  const onChangeHomeName = value => {
-    setHome(prevState => ({
-      ...prevState,
-      name: value
-    }));
-  }
-  const onChangeHomeLocation = value => {
-    setHome(prevState => ({
-      ...prevState,
-      location: value
-    }));
-  }
-
   return (
     <Dialog open={open} onClose={handleClose}>
       <DialogTitle>Create a new home</DialogTitle>
       <DialogContent>
-        <DialogContentText>
-          Create a new Home!
-        </DialogContentText>
-        <form onSubmit={submit}>
+        <form onSubmit={handleSubmit((data) => onAddHome())} className="form">
           <FormControl>
-            <TextField
-              id="name-input"
-              variant="outlined"
-              required
-              value={home.name}
-              onChange={e => onChangeHomeName(e.target.value)}
-              label="Name"/>
+            <Controller
+              render={({field}) =>
+                <TextField
+                  id="name-input"
+                  variant="outlined"
+                  label="Name"
+                  {...field} />
+              }
+              name="nameInput"
+              rules={{required: true, maxLength: 15}}
+              control={control}
+            />
           </FormControl>
           <FormControl>
-            <TextField
-              id="location-input"
-              variant="outlined"
-              required
-              value={home.location}
-              onChange={e => onChangeHomeLocation(e.target.value)}
-              label="Location"/>
+            <Controller
+              render={({field}) =>
+                <TextField
+                  sx={{
+                    marginLeft: '15px'
+                  }}
+                  id="location-input"
+                  variant="outlined"
+                  label="Location"
+                  {...field} />
+              }
+              name="locationInput"
+              rules={{required: true, maxLength: 15}}
+              control={control}
+            />
           </FormControl>
         </form>
       </DialogContent>
       <DialogActions>
         <Button onClick={() => handleClose()}>Cancel</Button>
-        <Button onClick={submit}>Add</Button>
+        <Button onClick={() => onAddHome()}>Add</Button>
       </DialogActions>
     </Dialog>
   );

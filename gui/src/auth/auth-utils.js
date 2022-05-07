@@ -16,10 +16,3 @@ export function setToken(token, tokenName = TOKEN_NAME) {
 export function removeToken(tokenName = TOKEN_NAME) {
   localStorage.removeItem(tokenName);
 }
-
-export function getHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + localStorage.getItem('token')
-  };
-}
