@@ -1,8 +1,16 @@
-import React, { useNavigate } from 'react-router-dom';
+import React  from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import './Devices.css';
+import { Typography, Button, IconButton, CardContent, CardActions, Collapse, Card } from '@mui/material';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 import useDevices from '../../apis/useDevices';
+import { getHeaders } from '../../apis/utils';
+
+import './Devices.css';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export default function Devices() {
   const {
@@ -10,6 +18,7 @@ export default function Devices() {
     loading: devicesLoading,
     error: devicesError,
   } = useDevices();
+
   const navigate = useNavigate();
 
   function showDeviceDetails(device) {
@@ -17,8 +26,11 @@ export default function Devices() {
   }
 
   return (
-    <div className="App">
-      <h1>Devices</h1>
+    <div className="Devices">
+      <Typography variant="h2" component="h1">
+        Devices
+      </Typography>
+      <div className="HomesContainer">
       {devicesError ? (
         <div className="error">
           Something went wrong:
@@ -31,14 +43,34 @@ export default function Devices() {
       ) : devicesData && devicesData.length ? (
         <>
           {devicesData.map((device) => (
-            <div className="device" key={device.id}>
-              <p onClick={() => showDeviceDetails(device)}>{device.name} - {device.manufacturer} - {device.model}</p>
-            </div>
+            <Card variant="outlined"
+                  sx={{
+                    margin: "12px",
+                    minWidth: "250px"
+                  }}>
+              <CardContent>
+                <Typography variant="h5" component="div">
+                  {device.name}
+                </Typography>
+                <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+                  {device.manufacturer}
+                </Typography>
+                <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
+                  {device.model}
+                </Typography>
+              </CardContent>
+              <CardActions>
+                <IconButton aria-label="settings" onClick={() => showDeviceDetails(device)}>
+                  <SettingsIcon />
+                </IconButton>
+              </CardActions>
+            </Card>
           ))}
         </>
       ) : (
         'No devices'
       )}
+      </div>
     </div>
   )
 }

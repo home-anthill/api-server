@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import axios from 'axios';
+
+import { getHeaders } from '../apis/utils';
+import { Avatar, Button, Typography } from '@mui/material';
+
+import './Profile.css';
 
 export default function Profile() {
   const {state} = useLocation();
@@ -10,36 +14,44 @@ export default function Profile() {
 
   async function regenerateApiToken() {
     try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      };
-      const response = await axios.post(`/api/profiles/${profile.id}/tokens`,
-        {},
-        {
-          headers
-        }
-      );
-      const data = response.data;
-      console.log('ApiToken response: ', data);
-      setApiToken(data.apiToken);
+      const response = await fetch(`/api/profiles/${profile.id}/tokens`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({})
+      });
+      const body = await response.json();
+      console.log('ApiToken response: ', body);
+      setApiToken(body.apiToken);
     } catch (err) {
       console.error('Cannot re-generate API Token');
     }
   }
 
   return (
-    <div className="App">
-      <h1>Profile</h1>
-      <p>Login: {profile.github?.login}</p>
-      <p>Name: {profile.github?.name}</p>
-      <p>Email: {profile.github?.email}</p>
-      <img src={profile.github?.avatarURL} />
-      <br />
-      <p>{apiToken}</p>
-      <button onClick={regenerateApiToken}>Regenerate APIToken</button>
+    <div className="Profile">
+      <Typography variant="h2" component="h1">
+        Profile
+      </Typography>
+      <div className="ProfileContainer">
+        <Typography variant="h5" component="div" gutterBottom>
+          {profile.github?.login}
+        </Typography>
+        <Typography variant="h5" component="div" gutterBottom>
+          {profile.github?.name}
+        </Typography>
+        <Typography sx={{ fontSize: 12 }} variant="h5" component="div" gutterBottom>
+          {profile.github?.email}
+        </Typography>
+        <br />
+        <Avatar
+          alt="profile"
+          src={profile.github?.avatarURL}
+          sx={{ width: 256, height: 256 }}
+        />
+        <br />
+        <p>{apiToken}</p>
+        <Button onClick={regenerateApiToken}>Regenerate APIToken</Button>
+      </div>
     </div>
   )
 }
-

@@ -1,4 +1,4 @@
-.Devices {
+.DeviceDetails {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -6,11 +6,20 @@
   margin-top: 20px;
 }
 
-.DevicesContainer {
+.DeviceDetailsContainer {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
   justify-content: space-around;
   flex-wrap: wrap;
-  margin: 40px;
+  margin-top: 40px;
+  margin-bottom: 20px;
+}
+
+.divider {
+  margin-top: 40px;
+  margin-bottom: 30px;
+  height: 1px;
+  width: 80%;
+  background-color: #ffffff1a;
 }
