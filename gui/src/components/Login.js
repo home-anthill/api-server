@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import axios from 'axios';
 import { Button, Link, Typography } from '@mui/material';
 
 import './Login.css';
@@ -24,11 +23,11 @@ export default function Login() {
       } else {
         console.log('getting login URL');
         try {
-          const response = await axios.get('/api/login');
-          const data = response.data;
-          console.log('responseData', data);
-          if (data) {
-            const loginURL = data.loginURL;
+          const response = await fetch('/api/login');
+          const body = await response.json();
+          console.log('responseData', body);
+          if (body) {
+            const loginURL = body.loginURL;
             console.log('loginURL found:', loginURL)
             setState({loginURL: loginURL});
           }

@@ -1,8 +1,6 @@
 import React, {useEffect, useState} from "react";
 import { useNavigate } from 'react-router-dom';
 
-import axios from 'axios';
-
 import './Navbar.css';
 import logoPng from '../air-conditioner.png'
 
@@ -17,6 +15,7 @@ import Container from '@mui/material/Container';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
+import { getHeaders } from '../apis/utils';
 
 export default function Navbar () {
   const [profile, setProfile] = useState([]);
@@ -29,17 +28,11 @@ export default function Navbar () {
 
   useEffect(() => {
     async function fn() {
-      let token = localStorage.getItem('token');
-      let headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      };
-
-      const response = await axios.get('/api/profile', {
-        headers
-      })
-      const data = response.data;
-      setProfile(data.profile);
+      const response = await fetch('/api/profile', {
+        headers: getHeaders()
+      });
+      const body = await response.json();
+      setProfile(body.profile);
     }
 
     fn();

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import axios from 'axios';
-
 import './Devices.css';
+
 import Values from '../../shared/Values';
+
+import { getHeaders } from '../../apis/utils';
 
 const DEFAULT_HOME = {name: '---', rooms: []};
 const DEFAULT_ROOM = {name: '---'};
@@ -23,18 +24,12 @@ export default function DeviceDetails() {
   useEffect(() => {
     async function fn() {
       console.log('useEffect 1 - fn');
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      };
       try {
-        const response = await axios.get('/api/homes', {
-          headers
+        const response = await fetch('/api/homes', {
+          headers: getHeaders()
         })
-        const data = response.data;
-        console.log('Homes: ', data);
-        const homes = [DEFAULT_HOME, ...data];
+        const body = await response.json();
+        const homes = [DEFAULT_HOME, ...body];
         setHomes(homes);
 
         let homeFound;
@@ -88,11 +83,6 @@ export default function DeviceDetails() {
 
   async function onSave() {
     console.log('onSave', {selectedHome, selectedRoom});
-    const token = localStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    };
     const newRoom = Object.assign({}, selectedRoom);
     if (!newRoom.devices) {
       newRoom.devices = [device.id];
@@ -100,12 +90,11 @@ export default function DeviceDetails() {
       newRoom.devices.push(device.id);
     }
     try {
-      await axios.put(`/api/homes/${selectedHome.id}/rooms/${selectedRoom.id}`,
-        newRoom,
-        {
-          headers
-        }
-      );
+      await fetch(`/api/homes/${selectedHome.id}/rooms/${selectedRoom.id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(newRoom)
+      });
       // navigate back
       navigate(-1);
     } catch (err) {
@@ -115,17 +104,11 @@ export default function DeviceDetails() {
 
   async function onRemove() {
     console.log('onRemove');
-    const token = localStorage.getItem('token');
-    const headers = {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + token
-    };
     try {
-      await axios.delete(`/api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`,
-        {
-          headers
-        }
-      );
+      await fetch(`/api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
       // navigate back
       navigate(-1);
     } catch (err) {

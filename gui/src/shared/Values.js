@@ -1,30 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+
+import { getHeaders } from '../apis/utils';
 
 export default function Values({device}) {
-  let token = localStorage.getItem('token');
-  let headers = {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer ' + token
-  };
-
   const [value, setValue] = useState({});
 
   useEffect(() => {
     async function fn() {
       console.log('useEffect 1 - fn');
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-      };
       try {
-        const response = await axios.get(`/api/devices/${device.id}/values`, {
-          headers
-        })
-        const data = response.data;
-        console.log('Values: ', data);
-        setValue(data);
+        const response = await fetch(`/api/devices/${device.id}/values`, {
+          headers: getHeaders()
+        });
+        const body = await response.json();
+        console.log('Values: ', body);
+        setValue(body);
       } catch (err) {
         console.error('Cannot get homes');
       }
@@ -34,53 +24,63 @@ export default function Values({device}) {
   }, []);
 
   async function setOnOff() {
-    const response = await axios.post(`/api/devices/${device.id}/values/onoff`, {
-      on: value.on
-    }, {
-      headers
-    })
-    const data = response.data;
-    console.log('response', data);
+    const response = await fetch(`/api/devices/${device.id}/values/onoff`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        on: value.on
+      })
+    });
+    const body = await response.json();
+    console.log('response', body);
   }
 
   async function setTemperature() {
-    const response = await axios.post(`/api/devices/${device.id}/values/temperature`, {
-      temperature: value.temperature
-    }, {
-      headers
-    })
-    const data = response.data;
-    console.log('response', data);
+    const response = await fetch(`/api/devices/${device.id}/values/temperature`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        temperature: value.temperature
+      })
+    });
+    const body = await response.json();
+    console.log('response', body);
   }
 
   async function setMode() {
-    const response = await axios.post(`/api/devices/${device.id}/values/mode`, {
-      mode: value.mode
-    }, {
-      headers
-    })
-    const data = response.data;
-    console.log('response', data);
+    const response = await fetch(`/api/devices/${device.id}/values/mode`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        mode: value.mode
+      })
+    });
+    const body = await response.json();
+    console.log('response', body);
   }
 
   async function setFanMode() {
-    const response = await axios.post(`/api/devices/${device.id}/values/fanmode`, {
-      fanMode: value.fanMode
-    }, {
-      headers
-    })
-    const data = response.data;
-    console.log('response', data);
+    const response = await fetch(`/api/devices/${device.id}/values/fanmode`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        fanMode: value.fanMode
+      })
+    });
+    const body = await response.json();
+    console.log('response', body);
   }
 
   async function setFanSpeed() {
-    const response = await axios.post(`/api/devices/${device.id}/values/fanspeed`, {
-      fanSpeed: value.fanSpeed
-    }, {
-      headers
-    })
-    const data = response.data;
-    console.log('response', data);
+    const response = await fetch(`/api/devices/${device.id}/values/fanspeed`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify({
+        fanSpeed: value.fanSpeed
+      })
+    });
+    const body = await response.json();
+    console.log('response', body);
   }
 
   return (

@@ -15,7 +15,7 @@ const useHomes = (homes) => {
         setLoading(true);
         const response = await fetch('/api/homes', {
           headers: getHeaders()
-        })
+        });
         if (!response.ok) {
           const text = await response.text();
           throw new Error(`Unable to read homes: ${text}`);
