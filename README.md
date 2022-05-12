@@ -1,6 +1,39 @@
 # Air Conditioner 
 
-To install and configure this project, please follow this official tutorial `docs/hetzner-install.md`
+Personal project to control a Beko air conditioner using an ESP32 with an IR emitter.
+On server-side I create a Kubernetes cluster with a simple microservices architecture.
+
+## Architecture
+
+<br/>
+<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/air-condirioner-architecture.png" alt="@ks89/air-conditioner">
+<br/>
+
+## Install
+
+### Server
+
+To install and configure please follow this official tutorial `docs/hetzner-install.md`
+
+### Device
+
+At the moment, the only supported device is ESP32S2 (DevKit-C)
+
+1. Rename `secrets.h.template` to `secrets.h`
+2. Modify `secrets.h` with your configuration. The most important values are wi-fi credentials, api-token, server-url and mqtt-url.
+
+    ```
+    #define SECRET_SSID "WIFI_SSID"
+    #define SECRET_PASS "WIFI_PASSWORD"
+    ...
+    #define API_TOKEN "API_TOKEN_FROM_PROFILE_PAGE"
+    #define SERVER_URL "https://SERVER.COM/api/register"
+    #define MQTT_URL "MQTT-SERVER.COM"
+    ```
+   
+   To generate the API_TOKEN you have to login to the gui via `https://<SERVER.COM>` with GitHub, then click on the profile icon (upper right corner of the page) to open the profile page.
+   In that page, you can re-generate the api-token and copy it in `secrets.h`.
+5. Build and flash the firmware via Arduino IDE
 
 <br/>
 
