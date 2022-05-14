@@ -8,17 +8,16 @@
 
 .DeviceDetailsContainer {
   display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: space-around;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   margin-top: 40px;
   margin-bottom: 20px;
 }
 
-.divider {
-  margin-top: 40px;
-  margin-bottom: 30px;
+.DeviceDetailsDivider {
+  margin-top: 10px;
+  margin-bottom: 10px;
   height: 1px;
   width: 80%;
   background-color: #ffffff1a;

@@ -2,7 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
-import { Typography, Button, TextField, FormControl, Stack, Paper, IconButton } from '@mui/material';
+import { Typography, Button, TextField, FormControl, Stack, IconButton } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import DeleteIcon from '@mui/icons-material/Delete';
 
@@ -155,7 +155,7 @@ export default function EditHome() {
       </div>
       <Button variant="outlined" onClick={() => onAddHome()}>Save Home</Button>
 
-      <div className="divider"></div>
+      <div className="EditHomeDivider"></div>
 
       <Typography variant="h2" component="h1">
         Rooms

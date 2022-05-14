@@ -1,16 +1,12 @@
 import React  from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { Typography, Button, IconButton, CardContent, CardActions, Collapse, Card } from '@mui/material';
+import { Typography, IconButton, CardContent, CardActions, Card } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 
 import useDevices from '../../apis/useDevices';
-import { getHeaders } from '../../apis/utils';
 
 import './Devices.css';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export default function Devices() {
   const {
@@ -44,6 +40,7 @@ export default function Devices() {
         <>
           {devicesData.map((device) => (
             <Card variant="outlined"
+                  key={device.id}
                   sx={{
                     margin: "12px",
                     minWidth: "250px"
