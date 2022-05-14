@@ -66,7 +66,7 @@ if [ ${CERTBOT_EMAIL+x} ] && [ ${CERTBOT_DOMAIN+x} ] && [ ${CERTBOT_SERVER+x} ];
   ls -la ${CERT_DIR}
   ps -a
 
-  mosquitto -c /mosquitto/config/mosquitto.con
+  mosquitto -c /mosquitto/config/mosquitto.conf
 else
   ps -a
 
