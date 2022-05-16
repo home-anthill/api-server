@@ -1,11 +1,13 @@
 # Heztner cloud with Kubernetes
 
+Based on https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
+
 ## Server creation
 
 From Hetzner Cloud UI create a server like this:
 
 REGION: Falkenstein
-OS type: Ubuntu 20.04
+OS type: Ubuntu 22.04
 Type: Standard - CPX11 - 2 vCPU - 4 GB RAM - 40 GB disk
 Volume: none
 Network: none
@@ -67,19 +69,23 @@ Make sure that the br_netfilter module is loaded. This can be done by running ls
 As a requirement for your Linux Node's iptables to correctly see bridged traffic, you should ensure net.bridge.bridge-nf-call-iptables is set to 1 in your sysctl config.
 
 ```bash
-sudo modprobe br_netfilter
-
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
+overlay
 br_netfilter
 EOF
 
+sudo modprobe overlay
+sudo modprobe br_netfilter
+
+# sysctl params required by setup, params persist across reboots
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
 net.bridge.bridge-nf-call-ip6tables = 1
-net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward                 = 1
 EOF
 
+# Apply sysctl params without reboot
 sudo sysctl --system
-
 ```
 
 
@@ -98,48 +104,55 @@ telnet 127.0.0.1 6443
 ```
 
 
-## Installing Docker Engine
+## Installing containerd (manually)
+
+Taken from https://github.com/containerd/containerd/blob/main/docs/getting-started.md
 
 ```bash
-sudo apt install ca-certificates curl gnupg lsb-release
 
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+wget https://github.com/containerd/containerd/releases/download/v1.6.4/containerd-1.6.4-linux-amd64.tar.gz
+tar Cxzvf /usr/local containerd-1.6.4-linux-amd64.tar.gz
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+cp containerd.service /etc/systemd/system/
+chmod 664 /etc/systemd/system/containerd.service
 
-sudo apt update && sudo apt install docker-ce docker-ce-cli containerd.io -y
+wget https://github.com/opencontainers/runc/releases/download/v1.1.2/runc.amd64
+install -m 755 runc.amd64 /usr/local/sbin/runc
 
-sudo systemctl start docker && sudo systemctl enable docker 
+wget https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz
+mkdir -p /opt/cni/bin
+tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.1.1.tgz
 
-sudo systemctl status docker
+# generate default config.toml for containerd
+mkdir -p /etc/containerd
+containerd config default > /etc/containerd/config.toml
+
+# start containerd
+sudo systemctl enable containerd
+sudo systemctl start containerd
+sudo systemctl status containerd
 ```
 
 
-## Configure Cgroup Driver
+## Configure systemd cgroup driver
 
-To do this, you can adjust the Docker configuration using the following command on each node:
+To use the systemd cgroup driver in `/etc/containerd/config.toml` with runc, set
 
-```bash
-cat <<EOF | sudo tee /etc/docker/daemon.json
-{
-  "exec-opts": ["native.cgroupdriver=systemd"],
-  "log-driver": "json-file",
-  "log-opts": {
-    "max-size": "100m"
-  },
-  "storage-driver": "overlay2"
-}
-EOF
+```
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+    ...
+    [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+        SystemdCgroup = true
 ```
 
-or more details, see configuring a cgroup driver in the official Kubernetes doc.
-Once you’ve adjusted the configuration on each node, restart the Docker service and its corresponding daemon.
-
+If you apply this change, make sure to restart containerd:
 ```bash
-sudo systemctl daemon-reload && sudo systemctl restart docker
+sudo systemctl restart containerd
+sudo systemctl status containerd
 ```
 
-With Docker up and running, the next step is to install kubeadm, kubelet, and kubectl on each node.
+With containerd up and running, the next step is to install kubeadm, kubelet, and kubectl on each node.
 
 
 ## Installing kubeadm, kubelet, and kubectl
@@ -155,13 +168,14 @@ echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https:/
 sudo apt-get update
 sudo apt-get install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
-
 ```
 
 The last line with the apt-mark hold command is optional, but highly recommended. This will prevent these packages from being updated until you unhold them.
 
 
 ## Initialize kubeadm:
+
+Taken from https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/
 
 ```bash
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
@@ -207,6 +221,13 @@ chmod 700 get_helm.sh
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
 kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
 ```
+
+And fix taint error for MetalLB if you see error: `0/1 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }. preemption: 0/1 nodes are available: 1 Preemption is not helpful for scheduling.`.
+
+```bash
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+```
+
 
 ## Prepare Persistent Volumes
 
@@ -326,14 +347,14 @@ mongodbUrl: "mongodb+srv://<MONGODB_ATLAS_USERNAME>:<MONGODB_ATLAS_PASSWORD>@clu
 
 ```bash
 cd helm/ac
-helm template -f values.yaml -f ../../air-conditioner-server-config/custom-values.yaml . > output-manifests.yaml
+helm template -f values.yaml -f ../../../air-conditioner-server-config/custom-values.yaml . > output-manifests.yaml
 ```
 
 4. Deploy with Helm
 
 ```bash
 cd helm/ac
-helm install -f values.yaml -f ../../air-conditioner-server-config/custom-values.yaml  ac .
+helm install -f values.yaml -f ../../../air-conditioner-server-config/custom-values.yaml  ac .
 ```
 
 5. Check kubernetes services! You should see 2 LoadBalancers with the right Floating IPs assigned.
