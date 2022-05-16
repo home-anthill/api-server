@@ -5,40 +5,17 @@ set -e
 #Certificate is saved at: /etc/letsencrypt/live/<DOMAIN>/fullchain.pem
 #Key is saved at:         /etc/letsencrypt/live/<DOMAIN>/privkey.pem
 
-# read env variables
-echo "Env variables:"
-echo "CERTBOT_EMAIL = ${CERTBOT_EMAIL}"
-echo "CERTBOT_DOMAIN = ${CERTBOT_DOMAIN}"
-echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
+LOG_FILE=/etc/letsencrypt/certbot-cronjob.log
+
+touch ${LOG_FILE}
 
 if [ -d "/etc/letsencrypt/live/${CERTBOT_DOMAIN}" ]
 then
-  echo "Certificates already exists"
+  echo "$(date) - Certificates already exists. Try to renew it via certbot." >> ${LOG_FILE}
+  # https://techjogging.com/create-letsencrypt-certificate-alpine-nginx.html
+  echo "$(date) - Calling 'certbot renew'..." >> ${LOG_FILE}
+  certbot renew >> ${LOG_FILE}
+  echo "$(date) - Certbot renew executed!" >> ${LOG_FILE}
 else
-  echo "Requesting certificates using certbot via production server"
-#  certbot certonly --standalone -m "${CERTBOT_EMAIL}" --agree-tos -d ${CERTBOT_DOMAIN},www.${CERTBOT_DOMAIN} -n --server "${CERTBOT_SERVER}"
-  # staging server:
-  # certbot certonly --standalone -m "${CERTBOT_EMAIL" --agree-tos -d ${certbot_domain},www.${certbot_domain} -n --server https://acme-staging-v02.api.letsencrypt.org/directory
+  echo "$(date) - Certificates not available. Nothing to renew."
 fi
-
-CERT_DIR=/etc/mosquitto/certs
-mkdir -p ${CERT_DIR}
-
-ls /etc/letsencrypt/
-
-touch /etc/letsencrypt/cron.log
-echo "chron executed." >> /etc/letsencrypt/cron.log
-
-
-#cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/cert.pem" ${CERT_DIR}/cert.pem
-#cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/privkey.pem" ${CERT_DIR}/privkey.pem
-#cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/chain.pem" ${CERT_DIR}/chain.pem
-#
-## Set ownership to Mosquitto
-#chown mosquitto: ${CERT_DIR}/cert.pem ${CERT_DIR}/privkey.pem ${CERT_DIR}/chain.pem
-#
-## Ensure permissions are restrictive
-#chmod 0600 ${CERT_DIR}/cert.pem ${CERT_DIR}/privkey.pem ${CERT_DIR}/chain.pem
-
-ls -la ${CERT_DIR}
-ps -a
