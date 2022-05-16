@@ -38,5 +38,3 @@ ls /etc/letsencrypt/
 
 ls -la ${CERT_DIR}
 ps -a
-
-sleep infinity
