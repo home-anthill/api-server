@@ -57,3 +57,10 @@ jobs:
           file: ./gui/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-gui:latest
+      - name: certbot - build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: ./certbot
+          file: ./certbot/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-certbot:latest
