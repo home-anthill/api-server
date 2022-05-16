@@ -26,6 +26,10 @@ mkdir -p ${CERT_DIR}
 
 ls /etc/letsencrypt/
 
+touch /etc/letsencrypt/cron.log
+echo "chron executed." >> /etc/letsencrypt/cron.log
+
+
 #cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/cert.pem" ${CERT_DIR}/cert.pem
 #cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/privkey.pem" ${CERT_DIR}/privkey.pem
 #cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/chain.pem" ${CERT_DIR}/chain.pem
