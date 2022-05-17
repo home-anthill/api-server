@@ -6,7 +6,10 @@ metadata:
   labels:
     type: local
 spec:
-  storageClassName: manual
+  storageClassName: ""
+  claimRef:
+    name: nginx-conf-claim
+    namespace: {{ .Values.namespace }}
   capacity:
     storage: 10Mi
   accessModes:
@@ -20,7 +23,8 @@ metadata:
   name: nginx-conf-claim
   namespace: {{ .Values.namespace }}
 spec:
-  storageClassName: manual
+  storageClassName: ""
+  volumeName: nginx-conf-volume
   accessModes:
     - ReadWriteMany
   resources:
@@ -36,7 +40,10 @@ metadata:
   labels:
     type: local
 spec:
-  storageClassName: manual
+  storageClassName: ""
+  claimRef:
+    name: lets-encrypt-ssl-claim
+    namespace: {{ .Values.namespace }}
   capacity:
     storage: 50Mi
   accessModes:
@@ -50,7 +57,8 @@ metadata:
   name: lets-encrypt-ssl-claim
   namespace: {{ .Values.namespace }}
 spec:
-  storageClassName: manual
+  storageClassName: ""
+  volumeName: lets-encrypt-ssl-volume
   accessModes:
     - ReadWriteMany
   resources:
@@ -67,7 +75,10 @@ metadata:
   labels:
     type: local
 spec:
-  storageClassName: manual
+  storageClassName: ""
+  claimRef:
+    name: lets-encrypt-ssl-mqtt-claim
+    namespace: {{ .Values.namespace }}
   capacity:
     storage: 50Mi
   accessModes:
@@ -81,7 +92,8 @@ metadata:
   name: lets-encrypt-ssl-mqtt-claim
   namespace: {{ .Values.namespace }}
 spec:
-  storageClassName: manual
+  storageClassName: ""
+  volumeName: lets-encrypt-ssl-mqtt-volume
   accessModes:
     - ReadWriteMany
   resources:
