@@ -2,6 +2,17 @@
 
 Based on https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/
 
+## Environment
+
+- Ubuntu 22.04 LTS
+- Kubernetes 1.24
+- Flannel 0.17.0
+- MetalLB 0.12.1
+- containerd 1.6.4
+- runc 1.1.2
+- cni-plugins 1.1.1
+
+
 ## Server creation
 
 From Hetzner Cloud UI create a server like this:
