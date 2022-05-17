@@ -40,6 +40,10 @@ gui:
       # staging server is https://acme-staging-v02.api.letsencrypt.org/directory
       server: "https://acme-v02.api.letsencrypt.org/directory"
 
+certbot:
+  image: "ks89/ac-certbot"
+  guiRenewSchedule: "0 0 * * *"
+  mqttRenewSchedule: "0 0 * * *"
 
 mongodbUrl: "mongodb+srv://user:password@cluster0.1234.mongodb.net"
 
