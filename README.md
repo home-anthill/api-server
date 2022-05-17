@@ -35,6 +35,13 @@ At the moment, the only supported device is ESP32S2 (DevKit-C)
    In that page, you can re-generate the api-token and copy it in `secrets.h`.
 5. Build and flash the firmware via Arduino IDE
 
+
+## :fire: Releases :fire:
+
+- 05/18/2022 - 1.0.0-alpha.2 - [HERE](https://github.com/Ks89/air-conditioner/releases)
+- 05/15/2022 - 1.0.0-alpha.1 - [HERE](https://github.com/Ks89/air-conditioner/releases)
+
+
 <br/>
 
 # :copyright: License :copyright:
