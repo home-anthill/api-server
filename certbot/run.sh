@@ -5,15 +5,28 @@ set -e
 #Certificate is saved at: /etc/letsencrypt/live/<DOMAIN>/fullchain.pem
 #Key is saved at:         /etc/letsencrypt/live/<DOMAIN>/privkey.pem
 
-LOG_FILE=/etc/letsencrypt/certbot-cronjob.log
+# read env variables
+echo "Env variables:"
+echo "CERTBOT_DOMAIN = ${CERTBOT_DOMAIN}"
 
+ls /etc/letsencrypt
+
+# define and create logfile
+LOG_FILE=/etc/letsencrypt/certbot-cronjob.log
+echo ${LOG_FILE}
 touch ${LOG_FILE}
 
-if [ -d "/etc/letsencrypt/live/${CERTBOT_DOMAIN}" ]
-then
-  echo "$(date) - Certificates already exists. Try to renew it via certbot." >> ${LOG_FILE}
+if [ ${CERTBOT_DOMAIN+x} ] && [ -d "/etc/letsencrypt/live/${CERTBOT_DOMAIN}" ]; then
+  echo "$(date) - Certificates already exists!" >> ${LOG_FILE}
+
+  echo "$(date) - Calling 'apk update certbot certbot-nginx openssl'..." >> ${LOG_FILE}
+  # update certbot to use always the latest stable version
+  apk update certbot certbot-nginx openssl >> ${LOG_FILE}
+  echo "$(date) - Certbot updated!" >> ${LOG_FILE}
+
   # https://techjogging.com/create-letsencrypt-certificate-alpine-nginx.html
   echo "$(date) - Calling 'certbot renew'..." >> ${LOG_FILE}
+  # renew certificates (if required) and send the result to the logfile
   certbot renew >> ${LOG_FILE}
   echo "$(date) - Certbot renew executed!" >> ${LOG_FILE}
 else

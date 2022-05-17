@@ -239,6 +239,7 @@ Access to Hetzner server via SSH and prepare these two folders:
 
 ```bash
 mkdir /root/lets-encrypt-certs
+mkdir /root/lets-encrypt-certs-mqtt
 mkdir /root/nginx-conf
 ```
 
