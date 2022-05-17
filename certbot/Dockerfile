@@ -4,7 +4,7 @@ FROM alpine:latest
 
 # install certbot and openssl (all required to enable certbot with standalone mode)
 RUN apk update && apk add --no-cache \
-    certbot openssl
+    certbot certbot-nginx openssl
 
 WORKDIR /ac
 
