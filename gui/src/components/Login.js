@@ -4,7 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Link, Typography } from '@mui/material';
 
 import './Login.css';
+
 import { isLoggedIn } from '../auth/auth-utils';
+import { getApi } from '../apis/api';
+
 import logoPng from '../air-conditioner.png'
 
 export default function Login() {
@@ -23,14 +26,9 @@ export default function Login() {
       } else {
         console.log('getting login URL');
         try {
-          const response = await fetch('/api/login');
-          const body = await response.json();
-          console.log('responseData', body);
-          if (body) {
-            const loginURL = body.loginURL;
-            console.log('loginURL found:', loginURL)
-            setState({loginURL: loginURL});
-          }
+          const result = await getApi('/api/login', null);
+          const loginURL = result?.loginURL;
+          setState({loginURL: loginURL});
         } catch (err) {
           console.error('Cannot login', err);
         }

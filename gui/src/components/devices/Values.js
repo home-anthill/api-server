@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 
-import { getHeaders } from '../../apis/utils';
+import { Button, FormControl, FormControlLabel, Switch, TextField } from '@mui/material';
 
 import './Values.css';
 
-import { Button, Checkbox, FormControl, FormControlLabel, Switch, TextField } from '@mui/material';
+import { getApi, postApi } from '../../apis/api';
 
 export default function Values({device}) {
   const [onOff, setOnOff] = useState(false);
@@ -16,17 +16,12 @@ export default function Values({device}) {
   useEffect(() => {
     async function fn() {
       try {
-        const response = await fetch(`/api/devices/${device.id}/values`, {
-          headers: getHeaders()
-        });
-        const body = await response.json();
-        console.log('Values: ', body);
-
-        setOnOff(body.on);
-        setTemperature(body.temperature);
-        setMode(body.mode);
-        setFanMode(body.fanMode);
-        setFanSpeed(body.fanSpeed);
+        const response = await getApi(`/api/devices/${device.id}/values`);
+        setOnOff(response.on);
+        setTemperature(response.temperature);
+        setMode(response.mode);
+        setFanMode(response.fanMode);
+        setFanSpeed(response.fanSpeed);
       } catch (err) {
         console.error('Cannot get homes');
       }
@@ -36,63 +31,33 @@ export default function Values({device}) {
   }, []);
 
   async function postOnOff() {
-    const response = await fetch(`/api/devices/${device.id}/values/onoff`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({
-        on: onOff
-      })
+    await postApi(`/api/devices/${device.id}/values/onoff`, {
+      on: onOff
     });
-    const body = await response.json();
-    console.log('response', body);
   }
 
   async function postTemperature() {
-    const response = await fetch(`/api/devices/${device.id}/values/temperature`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({
-        temperature: temperature
-      })
+    await postApi(`/api/devices/${device.id}/values/temperature`, {
+      temperature: temperature
     });
-    const body = await response.json();
-    console.log('response', body);
   }
 
   async function postMode() {
-    const response = await fetch(`/api/devices/${device.id}/values/mode`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({
-        mode: mode
-      })
+    await postApi(`/api/devices/${device.id}/values/mode`, {
+      mode: mode
     });
-    const body = await response.json();
-    console.log('response', body);
   }
 
   async function postFanMode() {
-    const response = await fetch(`/api/devices/${device.id}/values/fanmode`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({
-        fanMode: fanMode
-      })
+    await postApi(`/api/devices/${device.id}/values/fanmode`, {
+      fanMode: fanMode
     });
-    const body = await response.json();
-    console.log('response', body);
   }
 
   async function postFanSpeed() {
-    const response = await fetch(`/api/devices/${device.id}/values/fanspeed`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body: JSON.stringify({
-        fanSpeed: fanSpeed
-      })
+    await postApi(`/api/devices/${device.id}/values/fanspeed`, {
+      fanSpeed: fanSpeed
     });
-    const body = await response.json();
-    console.log('response', body);
   }
 
   function handleOnOffChange(event) {

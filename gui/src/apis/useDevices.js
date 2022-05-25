@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getHeaders } from './utils';
+
+import { getApi } from './api';
 
 const useDevices = () => {
   const [data, setData] = useState([]);
@@ -12,16 +13,9 @@ const useDevices = () => {
     (async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/devices', {
-          headers: getHeaders()
-        })
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Unable to read devices: ${text}`);
-        }
-        const body = await response.json();
+        const response = await getApi('/api/devices')
         if (!didCancel) {
-          setData(body);
+          setData(response);
         }
       } catch (err) {
         setError(err);

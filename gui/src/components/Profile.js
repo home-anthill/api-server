@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { getHeaders } from '../apis/utils';
 import { Avatar, Button, Typography } from '@mui/material';
 
 import './Profile.css';
+
+import { postApi } from '../apis/api';
 
 export default function Profile() {
   const {state} = useLocation();
@@ -13,15 +14,13 @@ export default function Profile() {
   const [apiToken, setApiToken] = useState('********-****-****-****-************');
 
   async function regenerateApiToken() {
+    if (!profile) {
+      console.error('Cannot regenerate API Token, Profile not found!');
+      return;
+    }
     try {
-      const response = await fetch(`/api/profiles/${profile.id}/tokens`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({})
-      });
-      const body = await response.json();
-      console.log('ApiToken response: ', body);
-      setApiToken(body.apiToken);
+      const response = await postApi(`/api/profiles/${profile.id}/tokens`, {});
+      setApiToken(response?.apiToken);
     } catch (err) {
       console.error('Cannot re-generate API Token');
     }
@@ -34,18 +33,18 @@ export default function Profile() {
       </Typography>
       <div className="ProfileContainer">
         <Typography variant="h5" component="div" gutterBottom>
-          {profile.github?.login}
+          {profile?.github?.login}
         </Typography>
         <Typography variant="h5" component="div" gutterBottom>
-          {profile.github?.name}
+          {profile?.github?.name}
         </Typography>
         <Typography sx={{ fontSize: 12 }} variant="h5" component="div" gutterBottom>
-          {profile.github?.email}
+          {profile?.github?.email}
         </Typography>
         <br />
         <Avatar
           alt="profile"
-          src={profile.github?.avatarURL}
+          src={profile?.github?.avatarURL}
           sx={{ width: 256, height: 256 }}
         />
         <br />

@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import Values from './Values';
-
 import { Button, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
 
-import { getHeaders } from '../../apis/utils';
-
 import './DeviceDetails.css';
+
+import Values from './Values';
+
+import { deleteApi, getApi, putApi } from '../../apis/api';
 
 const DEFAULT_HOME = {id: 'h0', name: '---', location: '', rooms: []};
 const DEFAULT_ROOM = {id: 'r0', name: '---'};
@@ -26,11 +26,8 @@ export default function DeviceDetails() {
   useEffect(() => {
     async function fn() {
       try {
-        const response = await fetch('/api/homes', {
-          headers: getHeaders()
-        })
-        const body = await response.json();
-        const homes = [DEFAULT_HOME, ...body];
+        const response = await getApi('/api/homes');
+        const homes = [DEFAULT_HOME, ...response];
         setHomes(homes);
 
         let homeFound = DEFAULT_HOME;
@@ -92,11 +89,7 @@ export default function DeviceDetails() {
       newRoom.devices.push(device.id);
     }
     try {
-      await fetch(`/api/homes/${selectedHome.id}/rooms/${selectedRoom.id}`, {
-        method: 'PUT',
-        headers: getHeaders(),
-        body: JSON.stringify(newRoom)
-      });
+      await putApi(`/api/homes/${selectedHome.id}/rooms/${selectedRoom.id}`, newRoom);
       // navigate back
       navigate(-1);
     } catch (err) {
@@ -107,10 +100,7 @@ export default function DeviceDetails() {
   async function onRemove() {
     console.log('onRemove');
     try {
-      await fetch(`/api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-      });
+      await deleteApi(`/api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`);
       // navigate back
       navigate(-1);
     } catch (err) {
@@ -125,7 +115,7 @@ export default function DeviceDetails() {
       </Typography>
       <div className="DeviceDetailsContainer">
         <Typography variant="h5" component="h2">
-          {device.name} - {device.manufacturer} - {device.model}
+          {device?.name} - {device?.manufacturer} - {device?.model}
         </Typography>
         <br/>
 

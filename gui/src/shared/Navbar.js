@@ -1,9 +1,6 @@
 import React, {useEffect, useState} from "react";
 import { useNavigate } from 'react-router-dom';
 
-import './Navbar.css';
-import logoPng from '../air-conditioner.png'
-
 import AppBar from '@mui/material/AppBar';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
@@ -15,7 +12,12 @@ import Container from '@mui/material/Container';
 import Avatar from '@mui/material/Avatar';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
-import { getHeaders } from '../apis/utils';
+
+import './Navbar.css';
+
+import logoPng from '../air-conditioner.png'
+
+import { getApi } from '../apis/api';
 
 export default function Navbar () {
   const [profile, setProfile] = useState([]);
@@ -28,11 +30,8 @@ export default function Navbar () {
 
   useEffect(() => {
     async function fn() {
-      const response = await fetch('/api/profile', {
-        headers: getHeaders()
-      });
-      const body = await response.json();
-      setProfile(body.profile);
+      const response = await getApi('/api/profile')
+      setProfile(response.profile);
     }
 
     fn();

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getHeaders } from './utils';
+
+import { getApi } from './api';
 
 const useHomes = (homes) => {
   const [data, setData] = useState([]);
@@ -13,16 +14,9 @@ const useHomes = (homes) => {
     (async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/homes', {
-          headers: getHeaders()
-        });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Unable to read homes: ${text}`);
-        }
-        const body = await response.json();
+        const response = await getApi('/api/homes');
         if (!didCancel) {
-          setData(body);
+          setData(response);
         }
       } catch (err) {
         setError(err);

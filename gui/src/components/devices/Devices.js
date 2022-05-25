@@ -18,6 +18,10 @@ export default function Devices() {
   const navigate = useNavigate();
 
   function showDeviceDetails(device) {
+    if (!device) {
+      console.error(`Cannot show device detail - 'id' is missing`);
+      return;
+    }
     navigate(`/main/devices/${device.id}`, {state: {device}});
   }
 
@@ -40,20 +44,20 @@ export default function Devices() {
         <>
           {devicesData.map((device) => (
             <Card variant="outlined"
-                  key={device.id}
+                  key={device?.id}
                   sx={{
                     margin: "12px",
                     minWidth: "250px"
                   }}>
               <CardContent>
                 <Typography variant="h5" component="div">
-                  {device.name}
+                  {device?.name}
                 </Typography>
                 <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                  {device.manufacturer}
+                  {device?.manufacturer}
                 </Typography>
                 <Typography sx={{ fontSize: 14 }} color="text.secondary" gutterBottom>
-                  {device.model}
+                  {device?.model}
                 </Typography>
               </CardContent>
               <CardActions>

@@ -2,13 +2,14 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useForm, Controller, useFieldArray } from 'react-hook-form';
+
 import { Typography, Button, TextField, FormControl, Stack, IconButton } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import DeleteIcon from '@mui/icons-material/Delete';
 
-import { getHeaders } from '../../apis/utils';
-
 import './EditHome.css';
+
+import { deleteApi, postApi, putApi } from '../../apis/api';
 
 export default function EditHome() {
   const { state } = useLocation();
@@ -36,16 +37,11 @@ export default function EditHome() {
   const onAddHome = async () => {
     const values = getValues();
     try {
-      const response = await fetch(`/api/homes/${homeInput.id}`, {
-        method: 'PUT',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          name: values.nameInput,
-          location: values.locationInput,
-          // cannot change room with this api
-        })
-      })
-      console.log('response', response);
+      await putApi(`/api/homes/${homeInput.id}`, {
+        name: values.nameInput,
+        location: values.locationInput,
+        // cannot change room with this api
+      });
       // navigate back
       navigate(-1);
     } catch (err) {
@@ -63,11 +59,7 @@ export default function EditHome() {
     }
     try {
       // remove remove from server
-      const response = await fetch(`/api/homes/${homeInput.id}/rooms/${room.id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-      })
-      console.log('response', response);
+      await deleteApi(`/api/homes/${homeInput.id}/rooms/${room.id}`);
       // navigate back
       navigate(-1);
     } catch (err) {
@@ -80,31 +72,21 @@ export default function EditHome() {
     const rooms = roomsForm.getValues().rooms;
     try {
       for (let room of rooms) {
-        let response;
         if (room.id) {
           console.log('ADDING NEW ROOM', room);
-          response = await fetch(`/api/homes/${homeInput.id}/rooms/${room.id}`, {
-            method: 'PUT',
-            headers: getHeaders(),
-            body: JSON.stringify({
-              name: room.name,
-              floor: +room.floor
-              // cannot change room with this api
-            })
+          await putApi(`/api/homes/${homeInput.id}/rooms/${room.id}`, {
+            name: room.name,
+            floor: +room.floor
+            // cannot change room with this api
           });
         } else {
           console.log('UPDATING ROOM', room);
-          response = await fetch(`/api/homes/${homeInput.id}/rooms`, {
-            method: 'POST',
-            headers: getHeaders(),
-            body: JSON.stringify({
-              name: room.name,
-              floor: +room.floor
-              // cannot change room with this api
-            })
+          await postApi(`/api/homes/${homeInput.id}/rooms`, {
+            name: room.name,
+            floor: +room.floor
+            // cannot change room with this api
           });
         }
-        console.log('response', response);
       }
       // navigate back
       navigate(-1);

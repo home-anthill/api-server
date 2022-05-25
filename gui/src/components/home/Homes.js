@@ -2,16 +2,16 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useForm, Controller } from 'react-hook-form';
+import PropTypes from 'prop-types';
 
 import { Typography, Fab, Dialog, DialogTitle, Button, DialogContent, TextField, DialogActions, FormControl } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import PropTypes from 'prop-types';
-
-import Home from '../../shared/Home';
-import useHomes from '../../apis/useHomes';
-import { getHeaders } from '../../apis/utils';
 
 import './Homes.css';
+
+import { deleteApi, postApi } from '../../apis/api';
+import Home from '../../shared/Home';
+import useHomes from '../../apis/useHomes';
 
 export default function Homes() {
   const [open, setOpen] = useState(false);
@@ -30,10 +30,7 @@ export default function Homes() {
 
   async function deleteHome(home) {
     try {
-      await fetch(`/api/homes/${home.id}`, {
-        method: 'DELETE',
-        headers: getHeaders()
-      })
+      await deleteApi(`/api/homes/${home.id}`)
       setHomes([]);
     } catch (err) {
       console.error(`Cannot delete home with id = ${home.id}`);
@@ -117,14 +114,10 @@ function NewHomeDialog({onClose, open}) {
   const onAddHome = async () => {
     const values = getValues();
     try {
-      await fetch(`/api/homes`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({
-          name: values.nameInput,
-          location: values.locationInput,
-          rooms: []
-        })
+      await postApi(`/api/homes`, {
+        name: values.nameInput,
+        location: values.locationInput,
+        rooms: []
       });
       handleAdd(true);
     } catch (err) {
