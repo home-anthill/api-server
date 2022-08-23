@@ -35,3 +35,8 @@ air: vet proto
 test:
 	ENV=testing go test ./...
 .PHONY: test
+
+deps:
+	go get -u
+	go mod tidy
+.PHONY: deps
