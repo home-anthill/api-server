@@ -6,10 +6,10 @@ Based on https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/i
 
 - Ubuntu 22.04 LTS
 - Kubernetes 1.24
-- Flannel 0.17.0
-- MetalLB 0.12.1
-- containerd 1.6.4
-- runc 1.1.2
+- Flannel 0.19.1
+- MetalLB 0.13.4
+- containerd 1.6.8
+- runc 1.1.4
 - cni-plugins 1.1.1
 
 
@@ -121,14 +121,14 @@ Taken from https://github.com/containerd/containerd/blob/main/docs/getting-start
 
 ```bash
 
-wget https://github.com/containerd/containerd/releases/download/v1.6.4/containerd-1.6.4-linux-amd64.tar.gz
-tar Cxzvf /usr/local containerd-1.6.4-linux-amd64.tar.gz
+wget https://github.com/containerd/containerd/releases/download/v1.6.8/containerd-1.6.8-linux-amd64.tar.gz
+tar Cxzvf /usr/local containerd-1.6.8-linux-amd64.tar.gz
 
 wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
 cp containerd.service /etc/systemd/system/
 chmod 664 /etc/systemd/system/containerd.service
 
-wget https://github.com/opencontainers/runc/releases/download/v1.1.2/runc.amd64
+wget https://github.com/opencontainers/runc/releases/download/v1.1.4/runc.amd64
 install -m 755 runc.amd64 /usr/local/sbin/runc
 
 wget https://github.com/containernetworking/plugins/releases/download/v1.1.1/cni-plugins-linux-amd64-v1.1.1.tgz
@@ -203,7 +203,7 @@ MetalLB reports some incompatibilities with different CNI plugins, so I chose fl
 
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.17.0/Documentation/kube-flannel.yml
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/v0.19.1/Documentation/kube-flannel.yml
 ```
 
 Patch Flannel deployment to tolerate 'uninitialized' taint:
@@ -229,8 +229,7 @@ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scrip
 chmod 700 get_helm.sh
 ./get_helm.sh
 
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/namespace.yaml
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.12.1/manifests/metallb.yaml
+kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.4/config/manifests/metallb-native.yaml
 ```
 
 And fix taint error for MetalLB if you see error: `0/1 nodes are available: 1 node(s) had untolerated taint {node-role.kubernetes.io/control-plane: }. preemption: 0/1 nodes are available: 1 Preemption is not helpful for scheduling.`.
