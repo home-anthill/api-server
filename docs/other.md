@@ -110,7 +110,7 @@ docker run -it --name mosquitto -p 1883:1883 -p 9001:9001 --rm -v $PWD/mosquitto
 Install mongodb in docker with:
 
 ```
-docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:latest
+docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:5
 ```
 
 
