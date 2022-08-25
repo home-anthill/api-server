@@ -118,27 +118,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
   device.CreatedAt = time.Now()
   device.ModifiedAt = time.Now()
 
-  _, errInsert := handler.collection.InsertOne(handler.ctx, device)
-  if errInsert != nil {
-    handler.logger.Error("REST - POST - PostRegister - Cannot insert the new device")
-    c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot insert the new device"})
-    return
-  }
-
-  // push AC.ID to profile.devices
-  _, errUpd := handler.collectionProfiles.UpdateOne(
-    handler.ctx,
-    bson.M{"_id": profileFound.ID},
-    bson.M{"$push": bson.M{"devices": device.ID}},
-  )
-  if errUpd != nil {
-    handler.logger.Error("REST - POST - PostRegister - Cannot update profile with the new device")
-    c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update your profile with the new device"})
-    return
-  }
-
-  // TODO TODO TODO TODO If here it fails, I should remove the paired device, otherwise I won't be able to register it again
-  // Set up a connection to the server.
+  // Set up a connection to the gRPC server.
   var securityDialOption grpc.DialOption
   if os.Getenv("GRPC_TLS") == "true" {
     tlsCredentials, errTLS := loadTLSCredentials(handler.logger)
@@ -164,6 +144,31 @@ func (handler *Register) PostRegister(c *gin.Context) {
   // Contact the server and print out its response.
   ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
   defer cancel()
+
+  // ATTENTION
+  // -------------------------------------------------------
+  // I reach this point only if I can connect to gRPC SERVER
+  // -------------------------------------------------------
+
+  // Insert device into api-server database
+  _, errInsert := handler.collection.InsertOne(handler.ctx, device)
+  if errInsert != nil {
+    handler.logger.Error("REST - POST - PostRegister - Cannot insert the new device")
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot insert the new device"})
+    return
+  }
+  // push AC.ID to profile.devices into api-server database
+  _, errUpd := handler.collectionProfiles.UpdateOne(
+    handler.ctx,
+    bson.M{"_id": profileFound.ID},
+    bson.M{"$push": bson.M{"devices": device.ID}},
+  )
+  if errUpd != nil {
+    handler.logger.Error("REST - POST - PostRegister - Cannot update profile with the new device")
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update your profile with the new device"})
+    return
+  }
+
   r, err := client.Register(ctx, &register.RegisterRequest{
     Id:             device.ID.Hex(),
     Uuid:           device.UUID,
