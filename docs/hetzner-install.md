@@ -375,3 +375,13 @@ helm install -f values.yaml -f ../../../air-conditioner-server-config/custom-val
    Certbot runs on these 2 pods:
    - gui
    - mosquitto
+
+## Optional stuff
+
+### Add a Metric server (TODO)
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+Not working, so find a tutorial to install it and enable it. Example https://particule.io/en/blog/kubeadm-metrics-server/

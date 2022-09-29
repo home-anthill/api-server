@@ -42,7 +42,11 @@ or simply run `make build`
 
 ## RabbitMQ
 Run rabbitmq via Docker:
-`docker run -d --name rabbitmq -p 8080:15672 -p 5672:5672 rabbitmq:3-management`
+`docker pull rabbitmq:management`
+`docker run -d --name rabbitmq --hostname my-rabbit -p 8080:15672 -p 5672:5672 rabbitmq:management`
+
+
+docker run -d --hostname my-rabbit --name some-rabbit rabbitmq:3
 
 Access with:
 - user: guest
@@ -110,7 +114,7 @@ docker run -it --name mosquitto -p 1883:1883 -p 9001:9001 --rm -v $PWD/mosquitto
 Install mongodb in docker with:
 
 ```
-docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:5
+docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:6
 ```
 
 
