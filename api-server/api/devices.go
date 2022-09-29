@@ -2,7 +2,7 @@ package api
 
 import (
   device3 "api-server/api/gRPC/device"
-  "api-server/errors"
+  custom_errors "api-server/custom-errors"
   "api-server/models"
   "fmt"
   "github.com/gin-gonic/contrib/sessions"
@@ -220,7 +220,7 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
   response, errSend := client.GetStatus(ctx, &device3.StatusRequest{
     Id:           device.ID.Hex(),
     Mac:          device.Mac,
-    ProfileToken: profile.ApiToken, // RENAME TO ApiToken in proto3
+    ProfileToken: profile.ApiToken, // FIXME RENAME TO ApiToken in proto3
   })
 
   if errSend != nil {
@@ -467,8 +467,8 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
   conn, err := grpc.DialContext(contextBg, handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
   if err != nil {
     handler.logger.Error("gRPC - sendViaGrpc - cannot connect via gRPC", err)
-    return errors.GrpcSendError{
-      Status:  errors.ConnectionError,
+    return custom_errors.GrpcSendError{
+      Status:  custom_errors.ConnectionError,
       Message: "Cannot connect to api-devices",
     }
   }
@@ -537,8 +537,8 @@ func (handler *Devices) sendViaGrpc(device *models.Device, value interface{}, ap
     return errSend
   default:
     handler.logger.Error("gRPC - sendViaGrpc - unknown type")
-    return errors.GrpcSendError{
-      Status:  errors.BadParams,
+    return custom_errors.GrpcSendError{
+      Status:  custom_errors.BadParams,
       Message: "Cannot cast value",
     }
   }

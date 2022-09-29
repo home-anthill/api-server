@@ -2,17 +2,18 @@
 //
 // Air Conditioner control system APIs.
 //
-//	Schemes: http
-//  Host: localhost
-//	BasePath: /
-//	Version: 1.0.0
-//	Contact: Stefano Cappa https://github.com/Ks89
+//		Schemes: http
+//	 Host: localhost
+//		BasePath: /
+//		Version: 1.0.0
+//		Contact: Stefano Cappa https://github.com/Ks89
 //
-//	Consumes:
-//	- application/json
+//		Consumes:
+//		- application/json
 //
-//	Produces:
-//	- application/json
+//		Produces:
+//		- application/json
+//
 // swagger:meta
 package main
 
@@ -80,6 +81,10 @@ func main() {
   fmt.Println("HTTP_CERT_FILE = " + os.Getenv("HTTP_CERT_FILE"))
   fmt.Println("HTTP_KEY_FILE = " + os.Getenv("HTTP_KEY_FILE"))
   fmt.Println("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
+  fmt.Println("HTTP_SENSOR_SERVER = " + os.Getenv("HTTP_SENSOR_SERVER"))
+  fmt.Println("HTTP_SENSOR_PORT = " + os.Getenv("HTTP_SENSOR_PORT"))
+  fmt.Println("HTTP_SENSOR_REGISTER_API = " + os.Getenv("HTTP_SENSOR_REGISTER_API"))
+  fmt.Println("HTTP_SENSOR_KEEPALIVE_API = " + os.Getenv("HTTP_SENSOR_KEEPALIVE_API"))
   fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
   fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
@@ -96,6 +101,10 @@ func main() {
   logger.Info("HTTP_CERT_FILE = " + os.Getenv("HTTP_CERT_FILE"))
   logger.Info("HTTP_KEY_FILE = " + os.Getenv("HTTP_KEY_FILE"))
   logger.Info("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
+  logger.Info("HTTP_SENSOR_SERVER = " + os.Getenv("HTTP_SENSOR_SERVER"))
+  logger.Info("HTTP_SENSOR_PORT = " + os.Getenv("HTTP_SENSOR_PORT"))
+  logger.Info("HTTP_SENSOR_REGISTER_API = " + os.Getenv("HTTP_SENSOR_REGISTER_API"))
+  logger.Info("HTTP_SENSOR_KEEPALIVE_API = " + os.Getenv("HTTP_SENSOR_KEEPALIVE_API"))
   logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
   logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
