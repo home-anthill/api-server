@@ -14,6 +14,7 @@ import (
   "go.uber.org/zap"
   "golang.org/x/net/context"
   "google.golang.org/grpc"
+  "google.golang.org/grpc/credentials/insecure"
   "net/http"
   "os"
   "reflect"
@@ -206,7 +207,7 @@ func (handler *Devices) GetValuesDevice(c *gin.Context) {
   }
 
   // Set up a connection to the server.
-  conn, err := grpc.Dial(handler.grpcTarget, grpc.WithInsecure(), grpc.WithBlock())
+  conn, err := grpc.Dial(handler.grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
   if err != nil {
     handler.logger.Error("REST - GET - GetValuesDevice - cannot establish gRPC connection")
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values - connection error"})

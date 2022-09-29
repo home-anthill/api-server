@@ -18,6 +18,7 @@ import (
   "golang.org/x/net/context"
   "google.golang.org/grpc"
   "google.golang.org/grpc/credentials"
+  "google.golang.org/grpc/credentials/insecure"
   "io"
   "net/http"
   "os"
@@ -326,12 +327,7 @@ func buildSecurityDialOption() (grpc.DialOption, bool, error) {
   }
 
   // if security is not enabled, use the insecure version
-  // *******************************************************
-  // FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX
-  // FIXME FIX THIS because it's deprecated
-  // FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX FIX
-  // *******************************************************
-  securityDialOption = grpc.WithInsecure()
+  securityDialOption = grpc.WithTransportCredentials(insecure.NewCredentials())
   return securityDialOption, false, nil
 }
 
