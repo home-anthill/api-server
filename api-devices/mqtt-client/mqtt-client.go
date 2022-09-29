@@ -6,7 +6,6 @@ import (
   "crypto/x509"
   "fmt"
   mqtt "github.com/eclipse/paho.mqtt.golang"
-  "io/ioutil"
   "os"
   "strings"
   "time"
@@ -57,7 +56,7 @@ func NewTLSConfig() *tls.Config {
   // Alternatively, manually add CA certificates to
   // default openssl CA bundle.
   certpool := x509.NewCertPool()
-  pemCerts, err := ioutil.ReadFile(os.Getenv("MQTT_CA_FILE"))
+  pemCerts, err := os.ReadFile(os.Getenv("MQTT_CA_FILE"))
   if err == nil {
     certpool.AppendCertsFromPEM(pemCerts)
   }
