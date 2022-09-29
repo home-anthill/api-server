@@ -20,11 +20,11 @@ type Auth struct {
 }
 
 // Create a struct that will be encoded to a JWT.
-// We add jwt.StandardClaims as an embedded type, to provide fields like expiry time
+// We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
 type Claims struct {
   ID   int64  `json:"id"`
   Name string `json:"name"`
-  jwt.StandardClaims
+  jwt.RegisteredClaims
 }
 
 // For HMAC signing method, the key can be any []byte. It is recommended to generate
@@ -51,8 +51,9 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
   claims := &Claims{
     ID:   profile.Github.ID,
     Name: profile.Github.Name,
-    StandardClaims: jwt.StandardClaims{
-      ExpiresAt: expirationTime.Unix(),
+    RegisteredClaims: jwt.RegisteredClaims{
+      ExpiresAt: jwt.NewNumericDate(expirationTime),
+      //Issuer: "air-conditioner",
     },
   }
   token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

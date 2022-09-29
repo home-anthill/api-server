@@ -2,6 +2,7 @@ package oauth
 
 import (
   "api-server/models"
+  "context"
   "crypto/rand"
   "encoding/base64"
   "encoding/gob"
@@ -18,7 +19,6 @@ import (
   "go.uber.org/zap"
   "golang.org/x/oauth2"
   oauth2gh "golang.org/x/oauth2/github"
-  "io/ioutil"
   "net/http"
   "os"
   "strings"
@@ -49,7 +49,7 @@ func Setup(redirectURL string, credFile string, scopes []string, secret []byte, 
   // read credential from external json file
   // with clientid and secret
   var credentials Credentials
-  file, err := ioutil.ReadFile(credFile)
+  file, err := os.ReadFile(credFile)
   if err != nil {
     glog.Fatalf("[Gin-OAuth] File error: %v\n", err)
   }
@@ -115,9 +115,9 @@ func OauthAuth() gin.HandlerFunc {
     }
 
     // create a new GitHub API client to perform authentication
-    client := github.NewClient(conf.Client(oauth2.NoContext, tok))
+    client := github.NewClient(conf.Client(context.TODO(), tok))
     var githubClientUser *github.User
-    githubClientUser, _, err = client.Users.Get(oauth2.NoContext, "")
+    githubClientUser, _, err = client.Users.Get(context.TODO(), "")
     if err != nil {
       ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
       return

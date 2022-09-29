@@ -14,6 +14,8 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/joho/godotenv v1.4.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/onsi/ginkgo/v2 v2.2.0
+	github.com/onsi/gomega v1.20.2
 	github.com/rabbitmq/amqp091-go v1.4.0
 	github.com/unrolled/secure v1.12.0
 	go.mongodb.org/mongo-driver v1.10.1
@@ -34,6 +36,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gomodule/redigo v2.0.0+incompatible // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/securecookie v1.1.1 // indirect
@@ -62,4 +65,5 @@ require (
 	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
