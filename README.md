@@ -38,6 +38,7 @@ At the moment, the only supported device is ESP32S2 (DevKit-C)
 
 ## :fire: Releases :fire:
 
+- ??/??/2022 - 1.0.0-alpha.5 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 08/26/2022 - 1.0.0-alpha.4 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 05/25/2022 - 1.0.0-alpha.3 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 05/18/2022 - 1.0.0-alpha.2 - [HERE](https://github.com/Ks89/air-conditioner/releases)
