@@ -1,0 +1,27 @@
+[package]
+name = "rust-register"
+version = "1.0.0"
+edition = "2021"
+
+[[bin]]
+name = "register"
+path = "src/main.rs"
+
+[lib]
+name = "register"
+path = "src/lib.rs"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+panic = "abort"
+
+[dependencies]
+rocket = { version = "0.5.0-rc.2", features = ["uuid", "secrets", "json"] }
+serde = "1.0.144"
+uuid = { version = "1.1.2", features = ["v4", "fast-rng", "macro-diagnostics"] }
+mongodb = "2.1.0"
+dotenv = "0.15.0"
+futures = "0.3"
+serde_json = "1.0.85"
