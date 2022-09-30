@@ -17,7 +17,7 @@ To install and configure please follow this official tutorial `docs/hetzner-inst
 
 ### Device
 
-At the moment, the only supported device is ESP32S2 (DevKit-C)
+At the moment, the only supported device is ESP32 S2 (DevKit-C)
 
 1. Rename `secrets.h.template` to `secrets.h`
 2. Modify `secrets.h` with your configuration. The most important values are wi-fi credentials, api-token, server-url and mqtt-url.

@@ -67,12 +67,14 @@ const char* ca_cert = \
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
 const char* registerUrl = SERVER_URL;
-WiFiClientSecure client;
+//WiFiClientSecure client; // secure
+WiFiClient client;
 // -----------------------------------------------------
 // ---------------------- MQTT -------------------------
 // Library doc at https://pubsubclient.knolleary.net/api
 const char* mqttUrl = MQTT_URL;
-const int serverPortMqtt = 8883;
+const int serverPortMqtt = 1883;
+// const int serverPortMqtt = 8883; // secure
 PubSubClient mqttClient(mqttUrl, serverPortMqtt, callbackMqtt, client);
 
 String savedUuid;
@@ -113,27 +115,6 @@ void reconnect() {
     }
   }
 }
-
-// void notifyValue(char* type, char* uuid) {
-//   char payloadToSend[20];
-//   DynamicJsonDocument payloadMsg(256);
-//   switch(type) {
-//     case "onoff":
-//       payloadMsg["on"] = true;
-//       break;
-//     case "temperature":
-//       break;
-//     case "mode":
-//       break;
-//     case "fanspeed":
-//       break;
-//     case "fanmode":
-//       break;
-//   }
-//   serializeJson(payloadMsg, payloadToSend);
-
-//   mqttClient.publish("devices/4d28731c-fd5a-420e-9e46-8816de6d053d/notify/onoff", payloadToSend);
-// }
 
 void callbackMqtt(char* topic, byte* payload, unsigned int length) {
   Serial.println("callbackMqtt - called");
@@ -282,24 +263,30 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length) {
 void registerServer() {
   HTTPClient http;
   // client.setInsecure(); //skip verification
-  client.setCACert(ca_cert);
+  //client.setCACert(ca_cert);  // secure
   http.begin(client, registerUrl);
 
   http.addHeader("Content-Type", "application/json; charset=utf-8");
+
   String macAddress = WiFi.macAddress();
+  String features = "[";
+  features += "{\"type\": \"controller\",\"name\": \"ac\",\"enable\": true,\"priority\": 1}";
+  features += "]";
+
   String httpRequestData = "{\"mac\": \"" + WiFi.macAddress() + 
-    "\",\"name\": \"" + NAME + 
     "\",\"manufacturer\": \"" + MANUFACTURER +
     "\",\"model\": \"" + MODEL +
-    "\",\"type\": \"" + TYPE +
-    "\",\"APIToken\": \"" + API_TOKEN + "\"}";
+    "\",\"apiToken\": \"" + API_TOKEN +   
+    "\",\"features\": " + features + "}";
+
+  Serial.println(httpRequestData);
   const int httpResponseCode = http.POST(httpRequestData);
   if (httpResponseCode <= 0) {
     Serial.print("registerServer - Error on sending POST with httpResponseCode = ");
     Serial.println(httpResponseCode);
     http.end();
 
-    Serial.println("registerServer - Retrying in 3 seconds...");
+    Serial.println("registerServer - Retrying in 60 seconds...");
     delay(60000);
     registerServer();
     return;
@@ -308,9 +295,14 @@ void registerServer() {
   Serial.print("registerServer - httpResponseCode = ");
   Serial.println(httpResponseCode);
 
+  if (httpResponseCode != HTTP_CODE_OK && httpResponseCode != HTTP_CODE_CONFLICT) {
+    Serial.println("registerServer - Bad httpResponseCode! Cannot register this device");
+    return;
+  }
+
   if (httpResponseCode == HTTP_CODE_OK) {
     Serial.println("registerServer - HTTP_CODE_OK");
-    StaticJsonDocument<500> staticDoc;
+    StaticJsonDocument<2048> staticDoc;
     DeserializationError err = deserializeJson(staticDoc, http.getStream());
     // There is no need to check for specific reasons,
     // because err evaluates to true/false in this case,
@@ -320,15 +312,12 @@ void registerServer() {
       serializeJsonPretty(staticDoc, Serial);
       const char* uuidValue = staticDoc["uuid"];
       const char* macValue = staticDoc["mac"];
-      const char* nameValue = staticDoc["name"];
       const char* manufacturerValue = staticDoc["manufacturer"];
       const char* modelValue = staticDoc["model"];
       Serial.print("registerServer - uuidValue: ");
       Serial.println(uuidValue);
       Serial.print("registerServer - macValue: ");
       Serial.println(macValue);
-      Serial.print("registerServer - nameValue: ");
-      Serial.println(nameValue);
       Serial.print("registerServer - manufacturerValue: ");
       Serial.println(manufacturerValue);
       Serial.print("registerServer - modelValue: ");
@@ -349,7 +338,7 @@ void registerServer() {
       //   return;
       // }
 
-      preferences.begin("ac", false); 
+      preferences.begin("device", false); 
       String uuidStr = String(uuidValue);
       size_t len = preferences.putString("uuid", uuidStr);
       preferences.end();
@@ -361,8 +350,7 @@ void registerServer() {
     } else {
       Serial.println("cannot deserialize register JSON payload");
     }
-  }
-  if (httpResponseCode == HTTP_CODE_CONFLICT) {
+  } else if (httpResponseCode == HTTP_CODE_CONFLICT) {
     Serial.println("registerServer - HTTP_CODE_CONFLICT - already registered");
   }
 }
@@ -372,6 +360,7 @@ void setup() {
   // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
   delay(4000);
 
+  Serial.println(F("--------------- WiFi ----------------"));
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -389,7 +378,7 @@ void setup() {
   registerServer();
 
   Serial.println("setup - Getting saved UUID from preferences...");
-  preferences.begin("ac", false); 
+  preferences.begin("device", false); 
   savedUuid = preferences.getString("uuid", "");
   preferences.end();
 

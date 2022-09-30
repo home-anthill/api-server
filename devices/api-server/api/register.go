@@ -128,6 +128,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
     return
   }
 
+  insertDate := time.Now()
   device = models.Device{}
   device.ID = primitive.NewObjectID()
   device.UUID = uuid.NewString()
@@ -135,8 +136,8 @@ func (handler *Register) PostRegister(c *gin.Context) {
   device.Manufacturer = registerBody.Manufacturer
   device.Model = registerBody.Model
   device.Features = registerBody.Features
-  device.CreatedAt = time.Now()
-  device.ModifiedAt = time.Now()
+  device.CreatedAt = insertDate
+  device.ModifiedAt = insertDate
 
   // if it's an AC device => call gRPC
   // otherwise REST call to sensor service
@@ -165,7 +166,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
     handler.logger.Info("REST - PostRegister - sensor device registered successfully")
   }
 
-  handler.logger.Debugf("REST - PostRegister - registered device = %v", device)
+  handler.logger.Debugf("REST - PostRegister - registered device = %#v", device)
   c.JSON(http.StatusOK, device)
 }
 
@@ -226,7 +227,6 @@ func (handler *Register) registerControllerViaGRPC(device *models.Device, profil
   defer conn.Close()
   client := register.NewRegistrationClient(conn)
 
-  // ATTENTION
   // -------------------------------------------------------
   // I reach this point only if I can connect to gRPC SERVER
   // -------------------------------------------------------

@@ -6,6 +6,24 @@ import (
   "go.uber.org/zap/zapcore"
 )
 
+//var once sync.Once
+//
+//var singleInstance *zap.SugaredLogger
+
+//func getInstance() *zap.SugaredLogger {
+//  if singleInstance == nil {
+//    once.Do(
+//      func() {
+//        fmt.Println("Creating single instance now.")
+//        singleInstance = InitLogger()
+//      })
+//  } else {
+//    fmt.Println("Single instance already created.")
+//  }
+//
+//  return singleInstance
+//}
+
 func InitLogger() *zap.SugaredLogger {
   writerSyncer := getLogWriter()
   encoder := getEncoder()
