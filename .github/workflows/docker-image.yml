@@ -3,7 +3,8 @@ name: Docker Image CI
 on:
   push:
     paths-ignore:
-      - 'device/**'
+      - 'devices/device/**'
+      - 'sensors/sensor/**'
       - 'kubernetes-manifests/**'
       - 'docs/**'
       - '**.md'
@@ -32,15 +33,15 @@ jobs:
       - name: api-server - build and push
         uses: docker/build-push-action@v2
         with:
-          context: ./api-server
-          file: ./api-server/Dockerfile
+          context: ./devices/api-server
+          file: ./devices/api-server/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-server:latest
       - name: api-devices - build and push
         uses: docker/build-push-action@v2
         with:
-          context: ./api-devices
-          file: ./api-devices/Dockerfile
+          context: ./devices/api-devices
+          file: ./devices/api-devices/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-devices:latest
       - name: mosquitto - build and push
