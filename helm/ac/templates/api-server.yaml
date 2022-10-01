@@ -23,6 +23,12 @@ data:
     HTTP_KEY_FILE=
     {{ end -}}
     HTTP_CORS=false
+    {{- if .Values.apiServer.sensors.enable }}
+    HTTP_SENSOR_SERVER=http://{{ .Values.domains.http }}
+    HTTP_SENSOR_PORT=80
+    HTTP_SENSOR_REGISTER_API=/register/
+    HTTP_SENSOR_KEEPALIVE_API=/keepalive/
+    {{ end -}}
     GRPC_URL=api-devices-svc.{{ .Values.namespace }}.svc.cluster.local:50051
     GRPC_TLS=false
     CERT_FOLDER_PATH=
