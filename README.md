@@ -44,6 +44,12 @@ At the moment, the only supported device is ESP32 S2 (DevKit-C)
 - 05/18/2022 - 1.0.0-alpha.2 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 05/15/2022 - 1.0.0-alpha.1 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 
+<br/>
+
+## Local development
+
+To setup this project on your PC to develop and run these microservices, please take a look at `docs/local-development.md`
+
 
 <br/>
 
