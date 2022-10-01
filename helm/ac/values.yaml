@@ -27,6 +27,8 @@ apiServer:
   oauthClientId: "dsda78d6as87d687asd6"
   oauthSecret: "76d57asdas7ad68a7sa9SA9S6a8sa6S8A6sa7s98d76sa89s"
   singleUserLoginEmail: "your.email@emailexample.com"
+  sensors:
+    enable: true
 
 gui:
   image: "ks89/ac-gui"
