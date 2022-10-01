@@ -37,6 +37,7 @@ test:
 .PHONY: test
 
 deps:
+	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
 	go get -u
 	go mod tidy
 .PHONY: deps
