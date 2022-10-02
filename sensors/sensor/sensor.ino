@@ -7,25 +7,27 @@
 #include <PubSubClient.h>
 // eeprom lib has been deprecated for esp32, the recommended way is to use Preferences
 #include <Preferences.h>
-
-// include the TimeAlarms library
+// include the TimeAlarms library (https://www.arduino.cc/reference/en/libraries/timealarms/)
 #include <Time.h>
-// include TimeAlarms lib (https://www.arduino.cc/reference/en/libraries/timealarms/)
 #include <TimeAlarms.h>
-const int dhtDelay = 60; // seconds
-
-// REQUIRES the following Arduino libraries:
-// - DHT Sensor Library: https://github.com/adafruit/DHT-sensor-library
-// - Adafruit Unified Sensor Lib: https://github.com/adafruit/Adafruit_Sensor
+// include DHT libraries:
+// - DHT Sensor: https://github.com/adafruit/DHT-sensor-library
+// - Adafruit Unified Sensor: https://github.com/adafruit/Adafruit_Sensor
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <DHT_U.h>
-#define DHTPIN 4 // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT22 // DHT 22 (AM2302)
-DHT_Unified dht(DHTPIN, DHTTYPE);
 
 
 #include "secrets.h"
+
+
+// ------------------------------------------------------
+// ----------------------- DHT --------------------------
+#define DHTPIN 4 // Digital pin connected to the DHT sensor
+#define DHTTYPE DHT22 // DHT 22 (AM2302)
+DHT_Unified dht(DHTPIN, DHTTYPE);
+const int dhtDelay = 60; // seconds
+
 
 // Given below is the CA Certificate "ISRG Root X1" by Let's Encrypt.
 // Expiration date June 2035.
@@ -67,32 +69,48 @@ const char* ca_cert = \
 "emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=\n" \
 "-----END CERTIFICATE-----\n";
 
+
 // ------------------------------------------------------
 // ----------------------- WIFI -------------------------
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
-const char* registerUrl = SERVER_URL;
+# if SSL==true
+WiFiClientSecure client;
+# else 
 WiFiClient client;
+# endif
+
+
 // -----------------------------------------------------
 // ---------------------- MQTT -------------------------
 // Library doc at https://pubsubclient.knolleary.net/api
 const char* mqttUrl = MQTT_URL;
-const int serverPortMqtt = 1883;
-PubSubClient mqttClient(mqttUrl, serverPortMqtt, client);
+const int mqttPort = MQTT_PORT;
+PubSubClient mqttClient(mqttUrl, mqttPort, client);
+
 
 String savedUuid;
 Preferences preferences;
 
-void subscribeSensors(const char* command) {
-  const char* sensors = "sensors/";
-  const uint totalLength = sizeof(char) * (strlen(sensors) + savedUuid.length() + strlen(command) + 1);
-  char* topic = (char*)malloc(totalLength);
-  strlcpy(topic, sensors, totalLength);
-  strlcat(topic, savedUuid.c_str(), totalLength);
-  strlcat(topic, command, totalLength);
-  Serial.print("subscribeSensors - topic: ");
-  Serial.println(topic);
-  mqttClient.subscribe(topic);
+char* getRegisterUrl() {
+  Serial.println("getRegisterUrl - creating url based on secrets.h config...");
+  # if SSL==true
+  const char* httpProtocol = "https://";
+  # else 
+  const char* httpProtocol = "http://";
+  # endif
+  const char* serverDomain = SERVER_DOMAIN;
+  const char* serverPortPrefix = ":";
+  const char* serverPort = SERVER_PORT;
+  const char* serverPath = SERVER_PATH;
+  const uint totalLength = sizeof(char) * (strlen(httpProtocol) + strlen(serverDomain) + strlen(serverPortPrefix) + strlen(serverPort) + strlen(serverPath) + 1);
+  char* registerUrl = (char*)malloc(totalLength);
+  strlcpy(registerUrl, httpProtocol, totalLength);
+  strlcat(registerUrl, serverDomain, totalLength);
+  strlcat(registerUrl, serverPortPrefix, totalLength);
+  strlcat(registerUrl, serverPort, totalLength);
+  strlcat(registerUrl, serverPath, totalLength);
+  return registerUrl;
 }
 
 void reconnect() { 
@@ -114,6 +132,7 @@ void reconnect() {
 }
 
 void notifyValue(char* type, float value) {
+  Serial.println("notifyValue - called with type=" + String(type));
   // check if type is supported
   if (strcmp(type, "temperature") != 0 && strcmp(type, "humidity") != 0  && strcmp(type, "light") != 0) {
     Serial.println("notifyValue - Cannot send data. Unsupported type=" + String(type));
@@ -137,15 +156,21 @@ void notifyValue(char* type, float value) {
   strlcat(topic, "/", totalLength);
   strlcat(topic, type, totalLength);
 
+  Serial.println("notifyValue - publishing topic=" + String(topic));
   mqttClient.publish(topic, payloadToSend);
 }
 
 void registerServer() {
   HTTPClient http;
-  // client.setInsecure(); //skip verification
-  //client.setCACert(ca_cert);
-  http.begin(client, registerUrl);
+  # if SSL==true
+  client.setCACert(ca_cert);
+  # endif
 
+  char* registerUrl = getRegisterUrl();
+  Serial.print("registerServer - RegisterUrl: ");
+  Serial.println(registerUrl);
+
+  http.begin(client, registerUrl);
   http.addHeader("Content-Type", "application/json; charset=utf-8");
 
   String macAddress = WiFi.macAddress();
@@ -155,14 +180,15 @@ void registerServer() {
   features += "{\"type\": \"sensor\",\"name\": \"light\",\"enable\": true,\"priority\": 1}";
   features += "]";
 
- String httpRequestData = "{\"mac\": \"" + WiFi.macAddress() + 
+ String registerPayload = "{\"mac\": \"" + WiFi.macAddress() + 
     "\",\"manufacturer\": \"" + MANUFACTURER +
     "\",\"model\": \"" + MODEL +
     "\",\"apiToken\": \"" + API_TOKEN +   
     "\",\"features\": " + features + "}";
 
-  Serial.println(httpRequestData);
-  const int httpResponseCode = http.POST(httpRequestData);
+  Serial.print("registerServer - Register with payload: ");
+  Serial.println(registerPayload);
+  const int httpResponseCode = http.POST(registerPayload);
   if (httpResponseCode <= 0) {
     Serial.print("registerServer - Error on sending POST with httpResponseCode = ");
     Serial.println(httpResponseCode);
@@ -226,13 +252,16 @@ void registerServer() {
       preferences.end();
       if (len != strlen(uuidValue)) {
         Serial.println("************* ERROR **************");
-        Serial.println("setup - Cannot SAVE UUID in Preferences");
+        Serial.println("registerServer - Cannot SAVE UUID in Preferences");
         Serial.println("**********************************");
+        return;
       }
     } else {
-      Serial.println("cannot deserialize register JSON payload");
+      Serial.println("registerServer - cannot deserialize register JSON payload");
+      return;
     }
   } else if (httpResponseCode == HTTP_CODE_CONFLICT) {
+    // this is not an error, it appears every reboot after the first registration
     Serial.println("registerServer - HTTP_CODE_CONFLICT - already registered");
   }
 
@@ -242,26 +271,25 @@ void registerServer() {
 }
 
 void notifyDht() {
-  Serial.println("notifyDht called");
-  // Get temperature event and print its value.
+  Serial.println("notifyDht - called");
   sensors_event_t event;
   dht.temperature().getEvent(&event);
   if (isnan(event.temperature)) {
-      Serial.println(F("Error reading temperature!"));
+      Serial.println("notifyDht - Error reading temperature!");
   } else {
-      Serial.print(F("Temperature: "));
+      Serial.print("notifyDht - Temperature: ");
       Serial.print(event.temperature);
-      Serial.println(F("°C"));
+      Serial.println("°C");
       notifyValue("temperature", event.temperature);
   }
   // Get humidity event and print its value.
   dht.humidity().getEvent(&event);
   if (isnan(event.relative_humidity)) {
-      Serial.println(F("Error reading humidity!"));
+      Serial.println("notifyDht - Error reading humidity!");
   } else {
-      Serial.print(F("Humidity: "));
+      Serial.print("notifyDht - Humidity: ");
       Serial.print(event.relative_humidity);
-      Serial.println(F("%"));
+      Serial.println("%");
       notifyValue("humidity", event.relative_humidity);
   }
 }
@@ -271,39 +299,56 @@ void setup() {
   // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
   delay(4000);
 
+  # if SSL==true
+  Serial.println("setup - Running with SSL enabled");
+  # else 
+  Serial.println("setup - Running WITHOUT SSL");
+  # endif
+
+  Serial.println("------------------------------------");
   // Initialize DHT device
   dht.begin();
-  // Print temperature sensor details.
   sensor_t sensor;
+  // Print temperature sensor details.
   dht.temperature().getSensor(&sensor);
-  Serial.println(F("------------------------------------"));
-  Serial.println(F("Temperature Sensor"));
-  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
-  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
-  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
-  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("°C"));
-  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("°C"));
-  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("°C"));
-  Serial.println(F("------------------------------------"));
+  Serial.println(F("setup - Temperature Sensor"));
+  Serial.print(F("setup - Sensor Type: "));
+  Serial.println(sensor.name);
+  Serial.print(F("setup - Driver Ver:  "));
+  Serial.println(sensor.version);
+  Serial.print(F("setup - Unique ID:   "));
+  Serial.println(sensor.sensor_id);
+  Serial.print(F("setup - Max Value:   "));
+  Serial.print(sensor.max_value); Serial.println(F("°C"));
+  Serial.print(F("setup - Min Value:   "));
+  Serial.print(sensor.min_value); Serial.println(F("°C"));
+  Serial.print(F("setup - Resolution:  "));
+  Serial.print(sensor.resolution); Serial.println(F("°C"));
+  Serial.println("------------------------------------");
   // Print humidity sensor details.
   dht.humidity().getSensor(&sensor);
-  Serial.println(F("Humidity Sensor"));
-  Serial.print  (F("Sensor Type: ")); Serial.println(sensor.name);
-  Serial.print  (F("Driver Ver:  ")); Serial.println(sensor.version);
-  Serial.print  (F("Unique ID:   ")); Serial.println(sensor.sensor_id);
-  Serial.print  (F("Max Value:   ")); Serial.print(sensor.max_value); Serial.println(F("%"));
-  Serial.print  (F("Min Value:   ")); Serial.print(sensor.min_value); Serial.println(F("%"));
-  Serial.print  (F("Resolution:  ")); Serial.print(sensor.resolution); Serial.println(F("%"));
-  Serial.println(F("------------------------------------"));
+  Serial.println(F("setup - Humidity Sensor"));
+  Serial.print(F("setup - Sensor Type: "));
+  Serial.println(sensor.name);
+  Serial.print(F("setup - Driver Ver:  "));
+  Serial.println(sensor.version);
+  Serial.print(F("setup - Unique ID:   "));
+  Serial.println(sensor.sensor_id);
+  Serial.print(F("setup - Max Value:   "));
+  Serial.print(sensor.max_value); Serial.println(F("%"));
+  Serial.print(F("setup - Min Value:   "));
+  Serial.print(sensor.min_value); Serial.println(F("%"));
+  Serial.print(F("setup - Resolution:  "));
+  Serial.print(sensor.resolution); Serial.println(F("%"));
+  Serial.println("------------------------------------");
 
-  Serial.println(F("--------------- WiFi ----------------"));
+  Serial.println("--------------- WiFi ----------------");
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
 
-  Serial.println("");
   Serial.println("setup - WiFi connected!");
   Serial.print("setup - IP address: ");
   Serial.println(WiFi.localIP());
@@ -334,6 +379,5 @@ void loop() {
 
   mqttClient.loop();
 
-  //delay(1000);
   Alarm.delay(1000);
 }

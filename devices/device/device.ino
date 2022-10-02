@@ -12,7 +12,6 @@
 #include <IRremote.h>
 // #include <IRremoteESP8266.h>
 // #include <IRsend.h>
-
 // config IRremoteESP8266
 // const uint16_t irGpio = 4;  // ESP8266 GPIO pin to use. Recommended: 4 (D2).
 // IRsend irsend(irGpio);  // Set the GPIO to be used to sending the message.
@@ -62,25 +61,52 @@ const char* ca_cert = \
 "emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=\n" \
 "-----END CERTIFICATE-----\n";
 
+
 // ------------------------------------------------------
 // ----------------------- WIFI -------------------------
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
-const char* registerUrl = SERVER_URL;
-//WiFiClientSecure client; // secure
+# if SSL==true
+WiFiClientSecure client;
+# else 
 WiFiClient client;
+# endif
+
+
 // -----------------------------------------------------
 // ---------------------- MQTT -------------------------
 // Library doc at https://pubsubclient.knolleary.net/api
 const char* mqttUrl = MQTT_URL;
-const int serverPortMqtt = 1883;
-// const int serverPortMqtt = 8883; // secure
-PubSubClient mqttClient(mqttUrl, serverPortMqtt, callbackMqtt, client);
+const int mqttPort = MQTT_PORT;
+PubSubClient mqttClient(mqttUrl, mqttPort, callbackMqtt, client);
+
 
 String savedUuid;
 Preferences preferences;
 
+char* getRegisterUrl() {
+  Serial.println("getRegisterUrl - creating url based on secrets.h config...");
+  # if SSL==true
+  const char* httpProtocol = "https://";
+  # else 
+  const char* httpProtocol = "http://";
+  # endif
+  const char* serverDomain = SERVER_DOMAIN;
+  const char* serverPortPrefix = ":";
+  const char* serverPort = SERVER_PORT;
+  const char* serverPath = SERVER_PATH;
+  const uint totalLength = sizeof(char) * (strlen(httpProtocol) + strlen(serverDomain) + strlen(serverPortPrefix) + strlen(serverPort) + strlen(serverPath) + 1);
+  char* registerUrl = (char*)malloc(totalLength);
+  strlcpy(registerUrl, httpProtocol, totalLength);
+  strlcat(registerUrl, serverDomain, totalLength);
+  strlcat(registerUrl, serverPortPrefix, totalLength);
+  strlcat(registerUrl, serverPort, totalLength);
+  strlcat(registerUrl, serverPath, totalLength);
+  return registerUrl;
+}
+
 void subscribeDevices(const char* command) {
+  Serial.print("subscribeDevices - creating topic based on command...");
   const char* devices = "devices/";
   const uint totalLength = sizeof(char) * (strlen(devices) + savedUuid.length() + strlen(command) + 1);
   char* topic = (char*)malloc(totalLength);
@@ -262,8 +288,14 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length) {
 
 void registerServer() {
   HTTPClient http;
-  // client.setInsecure(); //skip verification
-  //client.setCACert(ca_cert);  // secure
+  # if SSL==true
+  client.setCACert(ca_cert);
+  # endif
+
+  char* registerUrl = getRegisterUrl();
+  Serial.print("registerServer - RegisterUrl: ");
+  Serial.println(registerUrl);
+
   http.begin(client, registerUrl);
 
   http.addHeader("Content-Type", "application/json; charset=utf-8");
@@ -273,14 +305,15 @@ void registerServer() {
   features += "{\"type\": \"controller\",\"name\": \"ac\",\"enable\": true,\"priority\": 1}";
   features += "]";
 
-  String httpRequestData = "{\"mac\": \"" + WiFi.macAddress() + 
+  String registerPayload = "{\"mac\": \"" + WiFi.macAddress() + 
     "\",\"manufacturer\": \"" + MANUFACTURER +
     "\",\"model\": \"" + MODEL +
     "\",\"apiToken\": \"" + API_TOKEN +   
     "\",\"features\": " + features + "}";
 
-  Serial.println(httpRequestData);
-  const int httpResponseCode = http.POST(httpRequestData);
+  Serial.print("registerServer - Register with payload: ");
+  Serial.println(registerPayload);
+  const int httpResponseCode = http.POST(registerPayload);
   if (httpResponseCode <= 0) {
     Serial.print("registerServer - Error on sending POST with httpResponseCode = ");
     Serial.println(httpResponseCode);
@@ -344,11 +377,14 @@ void registerServer() {
       preferences.end();
       if (len != strlen(uuidValue)) {
         Serial.println("************* ERROR **************");
-        Serial.println("setup - Cannot SAVE UUID in Preferences");
+        Serial.println("registerServer - Cannot SAVE UUID in Preferences");
         Serial.println("**********************************");
+        return;
       }
     } else {
-      Serial.println("cannot deserialize register JSON payload");
+      // this is not an error, it appears every reboot after the first registration
+      Serial.println("registerServer - cannot deserialize register JSON payload");
+      return;
     }
   } else if (httpResponseCode == HTTP_CODE_CONFLICT) {
     Serial.println("registerServer - HTTP_CODE_CONFLICT - already registered");
@@ -360,14 +396,19 @@ void setup() {
   // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
   delay(4000);
 
-  Serial.println(F("--------------- WiFi ----------------"));
+  # if SSL==true
+  Serial.println("setup - Running with SSL enabled");
+  # else 
+  Serial.println("setup - Running WITHOUT SSL");
+  # endif
+
+  Serial.println("--------------- WiFi ----------------");
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
 
-  Serial.println("");
   Serial.println("setup - WiFi connected!");
   Serial.print("setup - IP address: ");
   Serial.println(WiFi.localIP());
@@ -388,8 +429,6 @@ void setup() {
     Serial.println("**********************************");
     return;
   }
- 
-  // irsend.begin();
   
   delay(1500);
 }
