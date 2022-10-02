@@ -17,14 +17,14 @@ message StatusRequest {
   string  id = 1;
   string  uuid = 2;
   string          mac = 3;
-  string  profile_token = 4;
+  string  api_token = 4;
 }
 
 message OnOffValueRequest {
   string  id = 1;
   string  uuid = 2;
   string          mac = 3;
-  string  profile_token = 4;
+  string  api_token = 4;
   bool              on = 5;
 }
 
@@ -32,7 +32,7 @@ message TemperatureValueRequest {
   string  id = 1;
   string  uuid = 2;
   string          mac = 3;
-  string  profile_token = 4;
+  string  api_token = 4;
   int32  temperature = 5;
 }
 
@@ -40,7 +40,7 @@ message ModeValueRequest {
   string  id = 1;
   string  uuid = 2;
   string          mac = 3;
-  string  profile_token = 4;
+  string  api_token = 4;
   int32         mode = 5;
 }
 
@@ -48,7 +48,7 @@ message FanModeValueRequest {
   string  id = 1;
   string  uuid = 2;
   string          mac = 3;
-  string  profile_token = 4;
+  string  api_token = 4;
   int32          fan_mode = 5;
 }
 
@@ -56,7 +56,7 @@ message FanSpeedValueRequest {
   string  id = 1;
   string  uuid = 2;
   string          mac = 3;
-  string  profile_token = 4;
+  string  api_token = 4;
   int32        fan_speed = 5;
 }
 

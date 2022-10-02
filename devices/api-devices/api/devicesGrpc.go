@@ -69,9 +69,9 @@ func (handler *DevicesGrpc) SetOnOff(ctx context.Context, in *device.OnOffValueR
   }
 
   onOffValue := models.OnOffValue{
-    Uuid:         in.Uuid,
-    ProfileToken: in.ProfileToken,
-    On:           in.On,
+    Uuid:     in.Uuid,
+    ApiToken: in.ApiToken,
+    On:       in.On,
   }
   messageJSON, err := json.Marshal(onOffValue)
   if err != nil {
@@ -109,9 +109,9 @@ func (handler *DevicesGrpc) SetTemperature(ctx context.Context, in *device.Tempe
   }
 
   temperatureValue := models.TemperatureValue{
-    Uuid:         in.Uuid,
-    ProfileToken: in.ProfileToken,
-    Temperature:  int(in.Temperature),
+    Uuid:        in.Uuid,
+    ApiToken:    in.ApiToken,
+    Temperature: int(in.Temperature),
   }
   messageJSON, err := json.Marshal(temperatureValue)
   if err != nil {
@@ -149,9 +149,9 @@ func (handler *DevicesGrpc) SetMode(ctx context.Context, in *device.ModeValueReq
   }
 
   modeValue := models.ModeValue{
-    Uuid:         in.Uuid,
-    ProfileToken: in.ProfileToken,
-    Mode:         int(in.Mode),
+    Uuid:     in.Uuid,
+    ApiToken: in.ApiToken,
+    Mode:     int(in.Mode),
   }
   messageJSON, err := json.Marshal(modeValue)
   if err != nil {
@@ -189,9 +189,9 @@ func (handler *DevicesGrpc) SetFanMode(ctx context.Context, in *device.FanModeVa
   }
 
   fanModeValue := models.FanModeValue{
-    Uuid:         in.Uuid,
-    ProfileToken: in.ProfileToken,
-    FanMode:      int(in.FanMode),
+    Uuid:     in.Uuid,
+    ApiToken: in.ApiToken,
+    FanMode:  int(in.FanMode),
   }
   messageJSON, err := json.Marshal(fanModeValue)
   if err != nil {
@@ -229,9 +229,9 @@ func (handler *DevicesGrpc) SetFanSpeed(ctx context.Context, in *device.FanSpeed
   }
 
   fanSpeedValue := models.FanSpeedValue{
-    Uuid:         in.Uuid,
-    ProfileToken: in.ProfileToken,
-    FanSpeed:     int(in.FanSpeed),
+    Uuid:     in.Uuid,
+    ApiToken: in.ApiToken,
+    FanSpeed: int(in.FanSpeed),
   }
   messageJSON, err := json.Marshal(fanSpeedValue)
   if err != nil {
