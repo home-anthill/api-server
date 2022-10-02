@@ -4,12 +4,11 @@ import (
   "api-server/api/gRPC/register"
   "api-server/custom-errors"
   "api-server/models"
+  "api-server/utils"
   "bytes"
-  "crypto/tls"
-  "crypto/x509"
   "encoding/json"
-  "fmt"
   "github.com/gin-gonic/gin"
+  "github.com/go-playground/validator/v10"
   "github.com/google/uuid"
   "go.mongodb.org/mongo-driver/bson"
   "go.mongodb.org/mongo-driver/bson/primitive"
@@ -17,33 +16,21 @@ import (
   "go.uber.org/zap"
   "golang.org/x/net/context"
   "google.golang.org/grpc"
-  "google.golang.org/grpc/credentials"
-  "google.golang.org/grpc/credentials/insecure"
   "io"
   "net/http"
   "os"
   "time"
 )
 
-//
-//type ErrorCode int
-//
-//const (
-//  DbInsertError          ErrorCode = -100
-//  DbUpdateError                    = -101
-//  RemoteGRPCNotAvailable           = -200
-//  RemoteHTTPNotAvailable           = -300
-//)
-
-type DeviceRequest struct {
-  Mac          string           `json:"mac"`
-  Manufacturer string           `json:"manufacturer"`
-  Model        string           `json:"model"`
-  ApiToken     string           `json:"apiToken"`
-  Features     []models.Feature `json:"features"`
+type deviceRegisterReq struct {
+  Mac          string           `json:"mac" validate:"required,mac"`
+  Manufacturer string           `json:"manufacturer" validate:"required,min=3,max=50"`
+  Model        string           `json:"model" validate:"required,min=3,max=20"`
+  ApiToken     string           `json:"apiToken" validate:"required,uuid4"`
+  Features     []models.Feature `json:"features" validate:"required,dive"`
 }
 
-type RegisterSensorRequest struct {
+type sensorRegisterReq struct {
   Uuid           string `json:"uuid"`
   Mac            string `json:"mac"`
   Manufacturer   string `json:"manufacturer"`
@@ -60,13 +47,32 @@ type Register struct {
   grpcTarget         string
   keepAliveSensorUrl string
   registerSensorUrl  string
+  validate           *validator.Validate
 }
 
-func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection) *Register {
+func ControllerDeviceValidation(sl validator.StructLevel) {
+  deviceReq, _ := sl.Current().Interface().(deviceRegisterReq)
+  var isController = false
+  for _, feature := range deviceReq.Features {
+    if feature.Type == models.Controller {
+      isController = true
+    }
+  }
+  if isController && len(deviceReq.Features) > 1 {
+    sl.ReportError(deviceReq.Features, "features", "Features", "features", "")
+  }
+}
+
+func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, validate *validator.Validate) *Register {
   grpcUrl := os.Getenv("GRPC_URL")
   sensorServerUrl := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
   keepAliveSensorUrl := sensorServerUrl + os.Getenv("HTTP_SENSOR_KEEPALIVE_API")
   registerSensorUrl := sensorServerUrl + os.Getenv("HTTP_SENSOR_REGISTER_API")
+
+  // add custom validators
+  // validator to check that a controller device can have only one feature
+  validate.RegisterStructValidation(ControllerDeviceValidation, deviceRegisterReq{})
+
   return &Register{
     collection:         collection,
     collectionProfiles: collectionProfiles,
@@ -75,34 +81,29 @@ func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mon
     grpcTarget:         grpcUrl,
     keepAliveSensorUrl: keepAliveSensorUrl,
     registerSensorUrl:  registerSensorUrl,
+    validate:           validate,
   }
 }
 
 func (handler *Register) PostRegister(c *gin.Context) {
   handler.logger.Info("REST - PostRegister called")
 
-  // receive a payload from devices with
-  var registerBody DeviceRequest
+  var registerBody deviceRegisterReq
   if err := c.ShouldBindJSON(&registerBody); err != nil {
     handler.logger.Errorf("REST - PostRegister - Cannot bind request body. Err = %v\n", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
     return
   }
 
-  // validate features
-  if !hasValidFeaturesTypes(registerBody.Features) {
-    handler.logger.Error("REST - PostRegister - features types can be either 'controller' or 'sensor'")
-    c.JSON(http.StatusBadRequest, gin.H{"error": "feature type must be 'controller' or 'sensor'"})
+  err := handler.validate.Struct(registerBody)
+  if err != nil {
+    handler.logger.Errorf("REST - PostRegister - request body is not valid, err %#v", err)
+    var errFields = utils.GetErrorMessage(err)
+    c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
     return
   }
 
-  // a device with a feature.type = 'controller' (like an air-conditioner) can have only one feature
   isController := hasControllerFeature(registerBody.Features)
-  if isController && len(registerBody.Features) > 1 {
-    handler.logger.Error("REST - PostRegister - devices with feature type == 'controller' can have only one feature")
-    c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid features - controllers cannot have multiple features"})
-    return
-  }
 
   // search if profile token exists and retrieve profile
   var profileFound models.Profile
@@ -117,12 +118,12 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
   // search and skip db add if device already exists
   var device models.Device
-  err := handler.collection.FindOne(handler.ctx, bson.M{
+  err = handler.collection.FindOne(handler.ctx, bson.M{
     "mac": registerBody.Mac,
   }).Decode(&device)
   if err == nil {
     handler.logger.Error("REST - PostRegister - Device already registered")
-    // if err == nil => ac found in db (already exists)
+    // if err == nil => device found in db (already exists)
     // skip register process returning "already registered"
     c.JSON(http.StatusConflict, gin.H{"message": "Already registered"})
     return
@@ -139,7 +140,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
   device.CreatedAt = insertDate
   device.ModifiedAt = insertDate
 
-  // if it's an AC device => call gRPC
+  // if it's a controller device => call gRPC
   // otherwise REST call to sensor service
 
   if isController {
@@ -185,7 +186,7 @@ func (handler *Register) registerSensorViaHTTP(device *models.Device, profileFou
   }
 
   // do the real call to the remote registration service
-  payload := RegisterSensorRequest{
+  payload := sensorRegisterReq{
     Uuid:           device.UUID,
     Mac:            device.Mac,
     Manufacturer:   device.Manufacturer,
@@ -209,8 +210,9 @@ func (handler *Register) registerSensorViaHTTP(device *models.Device, profileFou
 }
 
 func (handler *Register) registerControllerViaGRPC(device *models.Device, profileFound *models.Profile) (string, string, error) {
+  handler.logger.Info("gRPC - registerControllerViaGRPC - Sending register via gRPC...")
   // Set up a connection to the gRPC server.
-  securityDialOption, isSecure, err := buildSecurityDialOption()
+  securityDialOption, isSecure, err := utils.BuildSecurityDialOption()
   if err != nil {
     return "", "", custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot create securityDialOption to prepare the gRPC connection")
   }
@@ -222,7 +224,11 @@ func (handler *Register) registerControllerViaGRPC(device *models.Device, profil
   defer cancelBg()
   conn, err := grpc.DialContext(contextBg, handler.grpcTarget, securityDialOption, grpc.WithBlock())
   if err != nil {
-    return "", "", custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot connect to remote register service via gRPC")
+    handler.logger.Error("gRPC - registerControllerViaGRPC - cannot connect via gRPC", err)
+    return "", "", custom_errors.GrpcSendError{
+      Status:  custom_errors.ConnectionError,
+      Message: "Cannot connect to api-devices",
+    }
   }
   defer conn.Close()
   client := register.NewRegistrationClient(conn)
@@ -283,7 +289,7 @@ func (handler *Register) insertDevice(device *models.Device, profile *models.Pro
   if errInsert != nil {
     return custom_errors.Wrap(http.StatusInternalServerError, errInsert, "Cannot insert the new device")
   }
-  // push AC.ID to profile.devices into api-server database
+  // push device.ID to profile.devices into api-server database
   _, errUpd := handler.collectionProfiles.UpdateOne(
     handler.ctx,
     bson.M{"_id": profile.ID},
@@ -293,51 +299,6 @@ func (handler *Register) insertDevice(device *models.Device, profile *models.Pro
     return custom_errors.Wrap(http.StatusInternalServerError, errUpd, "Cannot update profile with the new device")
   }
   return nil
-}
-
-func loadTLSCredentials() (credentials.TransportCredentials, error) {
-  // Load certificate of the CA who signed server's certificate
-  pemServerCA, err := os.ReadFile(os.Getenv("CERT_FOLDER_PATH") + "/ca-cert.pem")
-  if err != nil {
-    return nil, err
-  }
-
-  certPool := x509.NewCertPool()
-  if !certPool.AppendCertsFromPEM(pemServerCA) {
-    return nil, fmt.Errorf("failed to add server CA's certificate")
-  }
-
-  // Create the credentials and return it
-  config := &tls.Config{
-    RootCAs: certPool,
-  }
-
-  return credentials.NewTLS(config), nil
-}
-
-func buildSecurityDialOption() (grpc.DialOption, bool, error) {
-  var securityDialOption grpc.DialOption
-  if os.Getenv("GRPC_TLS") == "true" {
-    tlsCredentials, errTLS := loadTLSCredentials()
-    if errTLS != nil {
-      return nil, false, custom_errors.Wrap(http.StatusInternalServerError, errTLS, "loadTLSCredentials cannot read certificates")
-    }
-    securityDialOption = grpc.WithTransportCredentials(tlsCredentials)
-    return securityDialOption, true, nil
-  }
-
-  // if security is not enabled, use the insecure version
-  securityDialOption = grpc.WithTransportCredentials(insecure.NewCredentials())
-  return securityDialOption, false, nil
-}
-
-func hasValidFeaturesTypes(features []models.Feature) bool {
-  for _, feature := range features {
-    if feature.Type != models.Controller && feature.Type != models.Sensor {
-      return false
-    }
-  }
-  return true
 }
 
 func hasControllerFeature(features []models.Feature) bool {

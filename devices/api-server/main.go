@@ -18,7 +18,6 @@
 package main
 
 import (
-  "api-server/amqp-subscriber"
   "api-server/api"
   "api-server/api/oauth"
   "context"
@@ -27,6 +26,7 @@ import (
   limits "github.com/gin-contrib/size"
   "github.com/gin-gonic/contrib/gzip"
   "github.com/gin-gonic/gin"
+  "github.com/go-playground/validator/v10"
   "github.com/joho/godotenv"
   "github.com/unrolled/secure"
   "go.mongodb.org/mongo-driver/mongo"
@@ -43,6 +43,7 @@ const DbName = "api-server"
 var auth *api.Auth
 var homes *api.Homes
 var devices *api.Devices
+var devicesValues *api.DevicesValues
 var profiles *api.Profiles
 var register *api.Register
 
@@ -73,8 +74,6 @@ func main() {
 
   fmt.Println("ENVIRONMENT = " + os.Getenv("ENV"))
   fmt.Println("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
-  fmt.Println("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
-  fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
   fmt.Println("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
   fmt.Println("HTTP_TLS = " + os.Getenv("HTTP_TLS"))
@@ -89,12 +88,11 @@ func main() {
   fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
   fmt.Println("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
+  fmt.Println("JWT_PASSWORD = " + os.Getenv("JWT_PASSWORD"))
 
   // 4. Print .env vars
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
   logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
-  logger.Info("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
-  logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
   logger.Info("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
   logger.Info("HTTP_TLS = " + os.Getenv("HTTP_TLS"))
@@ -109,6 +107,11 @@ func main() {
   logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
   logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
   logger.Info("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
+  logger.Info("JWT_PASSWORD = " + os.Getenv("JWT_PASSWORD"))
+
+  if os.Getenv("JWT_PASSWORD") == "" {
+    panic(fmt.Errorf("'JWT_PASSWORD' environment variable is mandatory"))
+  }
 
   ctx := context.Background()
 
@@ -141,28 +144,29 @@ func main() {
   collectionHomes := client.Database(DbName).Collection(collNameHomes)
   collectionDevices := client.Database(DbName).Collection(collNameDevices)
 
-  // 7. Create API instances
+  // 7. Create a singleton validator instance
+  // Validate is designed to be used as a singleton instance.
+  // It caches information about struct and validations.
+  validate := validator.New()
+
+  // 8. Create API instances
   auth = api.NewAuth(ctx, logger, collectionProfiles)
-  homes = api.NewHomes(ctx, logger, collectionHomes, collectionProfiles)
+  homes = api.NewHomes(ctx, logger, collectionHomes, collectionProfiles, validate)
   devices = api.NewDevices(ctx, logger, collectionDevices, collectionProfiles, collectionHomes)
+  devicesValues = api.NewDevicesValues(ctx, logger, collectionDevices, collectionProfiles, collectionHomes, validate)
   profiles = api.NewProfiles(ctx, logger, collectionProfiles)
-  register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles)
+  register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles, validate)
 
-  // 8. Init AMQP and open connection
-  if os.Getenv("RABBITMQ_ENABLE") == "true" {
-    amqp.InitAmqpSubscriber(logger)
-  }
-
-  // 9. Init WebSocket and start it
+  // ?. Init WebSocket and start it
   //  hubInstance := ws.GetInstance()
   //  go hubInstance.Run()
 
-  // 10. Instantiate GIN and apply some middlewares
+  // 9. Instantiate GIN and apply some middlewares
   fmt.Println("GIN - Initializing...")
   router := gin.Default()
   router.Use(gzip.Gzip(gzip.DefaultCompression))
 
-  // 10bis. apply security config to GIN
+  // 9bis. apply security config to GIN
   fmt.Println("GIN - starting SECURE middleware...")
   secureMiddleware := secure.New(getSecureOptions(httpOrigin))
   router.Use(func() gin.HandlerFunc {
@@ -180,18 +184,18 @@ func main() {
     }
   }())
 
-  // 10tris. fix a max POST payload size
+  // 9tris. fix a max POST payload size
   fmt.Println("GIN - set mac POST payload size")
   router.Use(limits.RequestSizeLimiter(1024 * 1024))
 
-  // 11. Upgrade an http GET to start websocket
-  // implement websocket to receive realtime events from rabbitmq via AMQP
+  // 10. Upgrade an http GET to start websocket
+  // implement websocket to receive realtime events
   // TODO this service should be protected by auth
   //router.GET("/ws", func(c *gin.Context) {
   //  ws.ServeWs(c.Writer, c.Request)
   //})
 
-  // 12. Configure CORS
+  // 11. Configure CORS
   // - No origin allowed by default
   // - GET,POST, PUT, HEAD methods
   // - Credentials share disabled
@@ -217,7 +221,7 @@ func main() {
     fmt.Println("GIN - CORS disabled")
   }
 
-  // 13. Configure Gin to serve a Single Page Application
+  // 12. Configure Gin to serve a Single Page Application
   // GIN is terrible with SPA, because you can configure static.serve
   // but if you refresh the SPA it will return an error, and you cannot add something like /*
   // The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
@@ -240,7 +244,7 @@ func main() {
     fmt.Println("GIN - Skipping NoRoute config, because it's running in production mode")
   }
 
-  // 14. Configure OAUTH 2 authentication
+  // 13. Configure OAUTH 2 authentication
   redirectURL := httpOrigin + "/api/callback/"
   credFile := "./credentials.json"
   scopes := []string{"repo"} // select your scope - https://developer.github.com/v3/oauth/#scopes
@@ -253,7 +257,7 @@ func main() {
   authorized.Use(oauth.OauthAuth())
   authorized.GET("", auth.LoginCallback)
 
-  // 15. Define /api group protected via JWTMiddleware
+  // 14. Define /api group protected via JWTMiddleware
   private := router.Group("/api")
   private.Use(auth.JWTMiddleware())
   {
@@ -272,12 +276,12 @@ func main() {
     private.GET("/devices", devices.GetDevices)
     private.DELETE("/devices/:id", devices.DeleteDevice)
 
-    private.GET("/devices/:id/values", devices.GetValuesDevice)
-    private.POST("/devices/:id/values/onoff", devices.PostOnOffDevice)
-    private.POST("/devices/:id/values/temperature", devices.PostTemperatureDevice)
-    private.POST("/devices/:id/values/mode", devices.PostModeDevice)
-    private.POST("/devices/:id/values/fanmode", devices.PostFanModeDevice)
-    private.POST("/devices/:id/values/fanspeed", devices.PostFanSpeedDevice)
+    private.GET("/devices/:id/values", devicesValues.GetValuesDevice)
+    private.POST("/devices/:id/values/onoff", devicesValues.PostOnOffDevice)
+    private.POST("/devices/:id/values/temperature", devicesValues.PostTemperatureDevice)
+    private.POST("/devices/:id/values/mode", devicesValues.PostModeDevice)
+    private.POST("/devices/:id/values/fanmode", devicesValues.PostFanModeDevice)
+    private.POST("/devices/:id/values/fanspeed", devicesValues.PostFanSpeedDevice)
   }
 
   fmt.Println("GIN - up and running with port: " + port)

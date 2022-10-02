@@ -5,9 +5,7 @@ import (
   "time"
 )
 
-// swagger:parameters rooms newRoom
 type Room struct {
-  //swagger:ignore
   ID         primitive.ObjectID   `json:"id" bson:"_id"`
   Name       string               `json:"name" bson:"name"`
   Floor      int                  `json:"floor" bson:"floor"`

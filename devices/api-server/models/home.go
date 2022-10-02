@@ -5,9 +5,7 @@ import (
   "time"
 )
 
-// swagger:parameters acs newACs
 type Home struct {
-  //swagger:ignore
   ID         primitive.ObjectID `json:"id" bson:"_id"`
   Name       string             `json:"name" bson:"name"`
   Location   string             `json:"location" bson:"location"`

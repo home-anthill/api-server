@@ -7,6 +7,7 @@ require (
 	github.com/gin-contrib/size v0.0.0-20220829131622-0fc0bc875336
 	github.com/gin-gonic/contrib v0.0.0-20201101042839-6a891bf89f19
 	github.com/gin-gonic/gin v1.8.1
+	github.com/go-playground/validator/v10 v10.11.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/golang/glog v1.0.0
 	github.com/google/go-github v17.0.0+incompatible
@@ -14,22 +15,21 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/joho/godotenv v1.4.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/rabbitmq/amqp091-go v1.5.0
 	github.com/unrolled/secure v1.13.0
 	go.mongodb.org/mongo-driver v1.10.2
 	go.uber.org/zap v1.23.0
-	golang.org/x/net v0.0.0-20220930213112-107f3e3c3b0b
+	golang.org/x/net v0.0.0-20221002022538-bcab6841153b
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
 )
 
 require (
+	github.com/BurntSushi/toml v1.2.0 // indirect
 	github.com/boj/redistore v0.0.0-20180917114910-cd5dcc76aeff // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
-	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect

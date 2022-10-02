@@ -10,6 +10,7 @@ import (
   "go.uber.org/zap"
   "net/http"
   "net/url"
+  "os"
   "time"
 )
 
@@ -19,9 +20,9 @@ type Auth struct {
   logger     *zap.SugaredLogger
 }
 
-// Create a struct that will be encoded to a JWT.
+// claims Creates a struct that will be encoded to a JWT.
 // We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
-type Claims struct {
+type claims struct {
   ID   int64  `json:"id"`
   Name string `json:"name"`
   jwt.RegisteredClaims
@@ -30,7 +31,7 @@ type Claims struct {
 // For HMAC signing method, the key can be any []byte. It is recommended to generate
 // a key using crypto/rand or something equivalent. You need the same key for signing
 // and validating.
-var jwtKey = []byte("secretkey")
+var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
 
 func NewAuth(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *Auth {
   return &Auth{
@@ -44,16 +45,14 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
   handler.logger.Info("REST - GET - LoginCallback called")
 
   var profile = c.Value("profile").(models.Profile)
-  //fmt.Println("LoginCallback with profile = ", profile)
 
-  expirationTime := time.Now().Add(20 * time.Minute)
+  expirationTime := time.Now().Add(60 * time.Minute)
 
-  claims := &Claims{
+  claims := &claims{
     ID:   profile.Github.ID,
     Name: profile.Github.Name,
     RegisteredClaims: jwt.RegisteredClaims{
       ExpiresAt: jwt.NewNumericDate(expirationTime),
-      //Issuer: "air-conditioner",
     },
   }
   token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -84,7 +83,7 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
 
 func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
   return func(c *gin.Context) {
-    const BEARER_SCHEMA = "Bearer"
+    const BearerSchema = "Bearer"
     authHeader := c.GetHeader("Authorization")
 
     if authHeader == "" {
@@ -96,7 +95,7 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
       return
     }
 
-    tokenString := authHeader[(len(BEARER_SCHEMA) + 1):]
+    tokenString := authHeader[(len(BearerSchema) + 1):]
 
     if tokenString == "" {
       handler.logger.Error("JWTMiddleware - bearer token not found")
@@ -107,7 +106,7 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
       return
     }
 
-    claims := &Claims{}
+    claims := &claims{}
 
     // Parse takes the token string and a function for looking up the key. The latter is especially
     // useful if you use multiple keys for your application.  The standard is to use 'kid' in the
@@ -141,9 +140,7 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
         }
 
         handler.logger.Error("JWTMiddleware - not logged, token is not valid")
-        c.JSON(http.StatusForbidden, gin.H{
-          "message": "not logged, token is not valid",
-        })
+        c.JSON(http.StatusForbidden, gin.H{"message": "not logged, token is not valid"})
         c.Abort()
         return
       }
@@ -152,22 +149,17 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
     if err != nil {
       if err == jwt.ErrSignatureInvalid {
         handler.logger.Error("JWTMiddleware - cannot login", err)
-        c.JSON(http.StatusUnauthorized, gin.H{
-          "message": "cannot login",
-        })
+        c.JSON(http.StatusUnauthorized, gin.H{"message": "cannot login"})
         c.Abort()
         return
       }
       handler.logger.Error("JWTMiddleware - bad request while login", err)
-      c.JSON(http.StatusBadRequest, gin.H{
-        "message": "bad request while login",
-      })
+      c.JSON(http.StatusBadRequest, gin.H{"message": "bad request while login"})
       c.Abort()
       return
     }
 
     //fmt.Println("Valid token: ", claims.ID, claims.Name, claims.ExpiresAt)
-
     c.Next()
   }
 }

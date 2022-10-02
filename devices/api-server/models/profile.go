@@ -5,6 +5,7 @@ import (
   "time"
 )
 
+// Github struct
 // no need to define json, because we set this value manually
 // we need onlt bson, because we want to store it into the db as part of Profile
 type Github struct {

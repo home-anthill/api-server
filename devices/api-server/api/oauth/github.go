@@ -108,7 +108,7 @@ func OauthAuth() gin.HandlerFunc {
 
     // TODO: oauth2.NoContext -> context.Context from stdlib
     // read the "code"
-    tok, err := conf.Exchange(oauth2.NoContext, ctx.Query("code"))
+    tok, err := conf.Exchange(context.TODO(), ctx.Query("code"))
     if err != nil {
       ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to do exchange: %v", err))
       return
