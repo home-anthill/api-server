@@ -1,7 +1,6 @@
 package main
 
 import (
-  amqpPublisher "api-devices/amqp-publisher"
   "api-devices/api"
   pbd "api-devices/api/device"
   pbr "api-devices/api/register"
@@ -92,16 +91,11 @@ func main() {
   registerGrpc = api.NewRegisterGrpc(ctx, logger, collectionACs)
   devicesGrpc = api.NewDevicesGrpc(ctx, logger, collectionACs)
 
-  // 8. Init AMQP and open connection
-  if os.Getenv("RABBITMQ_ENABLE") == "true" {
-    amqpPublisher.InitAmqpPublisher()
-  }
-
-  // 9. Init MQTT and start it
+  // 8. Init MQTT and start it
   mqttClient.InitMqtt()
   fmt.Println("MQTT initialized")
 
-  // 10. Start gRPC listener
+  // 9. Start gRPC listener
   // Create new gRPC server with (blank) options
   var server *grpc.Server
   if os.Getenv("GRPC_TLS") == "true" {
@@ -118,7 +112,7 @@ func main() {
     logger.Info("gRPC TLS security not enabled")
     server = grpc.NewServer()
   }
-  // Register the service with the server
+  // 10. Register the service with the server
   pbr.RegisterRegistrationServer(server, registerGrpc)
   pbd.RegisterDeviceServer(server, devicesGrpc)
   lis, errGrpc := net.Listen("tcp", grpcUrl)

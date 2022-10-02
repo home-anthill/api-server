@@ -1,13 +1,11 @@
 package mqtt_client
 
 import (
-  amqpPublisher "api-devices/amqp-publisher"
   "crypto/tls"
   "crypto/x509"
   "fmt"
   mqtt "github.com/eclipse/paho.mqtt.golang"
   "os"
-  "strings"
   "time"
 )
 
@@ -44,12 +42,12 @@ func SendFanSpeed(uuid string, messageJSON []byte) mqtt.Token {
   return c.Publish("devices/"+uuid+"/fanSpeed", qos, false, messageJSON)
 }
 
-func PublishMessage(msg mqtt.Message) {
-  fmt.Printf("Topic: %s\n", msg.Topic())
-  fmt.Printf("Payload: %s\n", msg.Payload())
-  uuid := strings.Split(msg.Topic(), "/")[1]
-  amqpPublisher.Publish(uuid, msg.Payload())
-}
+//func PublishMessage(msg mqtt.Message) {
+//  fmt.Printf("Topic: %s\n", msg.Topic())
+//  fmt.Printf("Payload: %s\n", msg.Payload())
+//  uuid := strings.Split(msg.Topic(), "/")[1]
+//  // do a call to a function to publish `msg.Payload()`
+//}
 
 func NewTLSConfig() *tls.Config {
   // Import trusted certificates from CAfile.pem.
@@ -80,7 +78,7 @@ func NewTLSConfig() *tls.Config {
     RootCAs: certpool,
     // ClientAuth = whether to request cert from server.
     // Since the server is set up for SSL, this happens
-    // anyways.
+    // anyway.
     ClientAuth: tls.NoClientCert,
     // ClientCAs = certs used to validate client cert.
     ClientCAs: nil,
@@ -110,31 +108,31 @@ func InitMqtt() {
     opts.SetClientID("apiDevices")
   }
 
-  c = mqtt.NewClient(opts)
-  if token := c.Connect(); token.Wait() && token.Error() != nil {
-    panic(token.Error())
-  }
-
-  // Subscribe to devices notification with new values
-  c.Subscribe("devices/+/notify/onoff", qos, func(client mqtt.Client, msg mqtt.Message) {
-    fmt.Println("Received a onOff message via MQTT")
-    PublishMessage(msg)
-  })
-  c.Subscribe("devices/+/notify/temperature", qos, func(client mqtt.Client, msg mqtt.Message) {
-    fmt.Println("Received a temperature message via MQTT")
-    PublishMessage(msg)
-  })
-  c.Subscribe("devices/+/notify/mode", qos, func(client mqtt.Client, msg mqtt.Message) {
-    fmt.Println("Received a mode message via MQTT")
-    PublishMessage(msg)
-  })
-  c.Subscribe("devices/+/notify/fanMode", qos, func(client mqtt.Client, msg mqtt.Message) {
-    fmt.Println("Received a fanMode message via MQTT")
-    PublishMessage(msg)
-  })
-  c.Subscribe("devices/+/notify/fanSpeed", qos, func(client mqtt.Client, msg mqtt.Message) {
-    fmt.Println("Received a fanSpeed message via MQTT")
-    PublishMessage(msg)
-  })
+  //c = mqtt.NewClient(opts)
+  //if token := c.Connect(); token.Wait() && token.Error() != nil {
+  //  panic(token.Error())
+  //}
+  //
+  //// Subscribe to devices notification with new values
+  //c.Subscribe("devices/+/notify/onoff", qos, func(client mqtt.Client, msg mqtt.Message) {
+  //  fmt.Println("Received a onOff message via MQTT")
+  //  //PublishMessage(msg)
+  //})
+  //c.Subscribe("devices/+/notify/temperature", qos, func(client mqtt.Client, msg mqtt.Message) {
+  //  fmt.Println("Received a temperature message via MQTT")
+  //  //PublishMessage(msg)
+  //})
+  //c.Subscribe("devices/+/notify/mode", qos, func(client mqtt.Client, msg mqtt.Message) {
+  //  fmt.Println("Received a mode message via MQTT")
+  //  //PublishMessage(msg)
+  //})
+  //c.Subscribe("devices/+/notify/fanMode", qos, func(client mqtt.Client, msg mqtt.Message) {
+  //  fmt.Println("Received a fanMode message via MQTT")
+  //  //PublishMessage(msg)
+  //})
+  //c.Subscribe("devices/+/notify/fanSpeed", qos, func(client mqtt.Client, msg mqtt.Message) {
+  //  fmt.Println("Received a fanSpeed message via MQTT")
+  //  //PublishMessage(msg)
+  //})
   time.Sleep(6 * time.Second)
 }
