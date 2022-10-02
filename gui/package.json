@@ -23,8 +23,8 @@
     "build": "npm run clean && react-scripts build && npm run clean:dest && npm run copy",
     "build:prod": "npm run clean && react-scripts build",
     "clean": "rm -rf build",
-    "clean:dest": "rm -rf ../api-server/public",
-    "copy": "cpr build/ ../api-server/public/",
+    "clean:dest": "rm -rf ../devices/api-server/public",
+    "copy": "cpr build/ ../devices/api-server/public/",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
