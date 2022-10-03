@@ -21,6 +21,9 @@ spec:
         - name: amqp
           containerPort: 5672
           protocol: TCP
+        - name: mgmt
+          containerPort: 8080
+          protocol: TCP
 ---
 kind: Service
 apiVersion: v1
@@ -35,4 +38,8 @@ spec:
       protocol: TCP
       port: 5672
       targetPort: amqp
+    - name: mgmt
+      protocol: TCP
+      port: 8080
+      targetPort: mgmt
 {{- end }}
