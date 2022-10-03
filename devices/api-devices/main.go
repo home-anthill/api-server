@@ -3,6 +3,7 @@ package main
 import (
   "api-devices/api"
   pbd "api-devices/api/device"
+  pbk "api-devices/api/keepalive"
   pbr "api-devices/api/register"
   mqttClient "api-devices/mqtt-client"
   "context"
@@ -21,6 +22,7 @@ const DbName = "api-devices"
 
 var registerGrpc *api.RegisterGrpc
 var devicesGrpc *api.DevicesGrpc
+var keepAliveGrpc *api.KeepAliveGrpc
 
 func main() {
   // 1. Init logger
@@ -90,6 +92,7 @@ func main() {
   // 7. Create gRPC API instances
   registerGrpc = api.NewRegisterGrpc(ctx, logger, collectionACs)
   devicesGrpc = api.NewDevicesGrpc(ctx, logger, collectionACs)
+  keepAliveGrpc = api.NewKeepAliveGrpc(ctx, logger)
 
   // 8. Init MQTT and start it
   mqttClient.InitMqtt()
@@ -115,6 +118,7 @@ func main() {
   // 10. Register the service with the server
   pbr.RegisterRegistrationServer(server, registerGrpc)
   pbd.RegisterDeviceServer(server, devicesGrpc)
+  pbk.RegisterKeepAliveServer(server, keepAliveGrpc)
   lis, errGrpc := net.Listen("tcp", grpcUrl)
   if errGrpc != nil {
     logger.Fatalf("failed to listen: %v", errGrpc)

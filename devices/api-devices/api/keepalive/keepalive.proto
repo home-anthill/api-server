@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package keepalive;
+
+option go_package = "github.com/Ks89/air-conditioner/api-devices/keepalive";
+
+service KeepAlive {
+  rpc GetKeepAlive (StatusRequest) returns (StatusResponse) {}
+}
+
+message StatusRequest {}
+
+message StatusResponse {}

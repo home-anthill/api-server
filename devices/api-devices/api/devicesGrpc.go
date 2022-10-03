@@ -13,7 +13,7 @@ import (
   "time"
 )
 
-const TIMEOUT = 5 * time.Second
+const devicesTimeout = 5 * time.Second
 
 type DevicesGrpc struct {
   device.UnimplementedDeviceServer
@@ -80,7 +80,7 @@ func (handler *DevicesGrpc) SetOnOff(ctx context.Context, in *device.OnOffValueR
     return nil, err
   }
   t := mqtt_client.SendOnOff(onOffValue.Uuid, messageJSON)
-  timeoutResult := t.WaitTimeout(TIMEOUT)
+  timeoutResult := t.WaitTimeout(devicesTimeout)
   if t.Error() != nil || !timeoutResult {
     handler.logger.Errorf("gRPC - SetOnOff - Cannot send data via mqtt %v\n", t.Error())
     fmt.Println("gRPC - SetOnOff - Cannot send data via mqtt")
@@ -120,7 +120,7 @@ func (handler *DevicesGrpc) SetTemperature(ctx context.Context, in *device.Tempe
     return nil, err
   }
   t := mqtt_client.SendTemperature(temperatureValue.Uuid, messageJSON)
-  timeoutResult := t.WaitTimeout(TIMEOUT)
+  timeoutResult := t.WaitTimeout(devicesTimeout)
   if t.Error() != nil || !timeoutResult {
     handler.logger.Errorf("gRPC - SetTemperature - Cannot send data via mqtt %v\n", t.Error())
     fmt.Println("gRPC - SetTemperature - Cannot send data via mqtt")
@@ -160,7 +160,7 @@ func (handler *DevicesGrpc) SetMode(ctx context.Context, in *device.ModeValueReq
     return nil, err
   }
   t := mqtt_client.SendMode(modeValue.Uuid, messageJSON)
-  timeoutResult := t.WaitTimeout(TIMEOUT)
+  timeoutResult := t.WaitTimeout(devicesTimeout)
   if t.Error() != nil || !timeoutResult {
     handler.logger.Errorf("gRPC - SetMode - Cannot send data via mqtt %v\n", t.Error())
     fmt.Println("gRPC - SetMode - Cannot send data via mqtt")
@@ -200,7 +200,7 @@ func (handler *DevicesGrpc) SetFanMode(ctx context.Context, in *device.FanModeVa
     return nil, err
   }
   t := mqtt_client.SendFanMode(fanModeValue.Uuid, messageJSON)
-  timeoutResult := t.WaitTimeout(TIMEOUT)
+  timeoutResult := t.WaitTimeout(devicesTimeout)
   if t.Error() != nil || !timeoutResult {
     handler.logger.Errorf("gRPC - SetFanMode - Cannot send data via mqtt %v\n", t.Error())
     fmt.Println("gRPC - SetFanMode - Cannot send data via mqtt")
@@ -240,7 +240,7 @@ func (handler *DevicesGrpc) SetFanSpeed(ctx context.Context, in *device.FanSpeed
     return nil, err
   }
   t := mqtt_client.SendFanSpeed(fanSpeedValue.Uuid, messageJSON)
-  timeoutResult := t.WaitTimeout(TIMEOUT)
+  timeoutResult := t.WaitTimeout(devicesTimeout)
   if t.Error() != nil || !timeoutResult {
     handler.logger.Errorf("gRPC - SetFanSpeed - Cannot send data via mqtt %v\n", t.Error())
     fmt.Println("gRPC - SetFanSpeed - Cannot send data via mqtt")
