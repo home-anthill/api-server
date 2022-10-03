@@ -48,8 +48,6 @@ func main() {
   // 4. Print .env vars
   fmt.Println("ENVIRONMENT = " + os.Getenv("ENV"))
   fmt.Println("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
-  fmt.Println("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
-  fmt.Println("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   fmt.Println("MQTT_URL = " + os.Getenv("MQTT_URL"))
   fmt.Println("MQTT_PORT = " + os.Getenv("MQTT_PORT"))
   fmt.Println("MQTT_TLS = " + os.Getenv("MQTT_TLS"))
@@ -62,8 +60,6 @@ func main() {
 
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
   logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
-  logger.Info("RABBITMQ_ENABLE = " + os.Getenv("RABBITMQ_ENABLE"))
-  logger.Info("RABBITMQ_URL = " + os.Getenv("RABBITMQ_URL"))
   logger.Info("MQTT_URL = " + os.Getenv("MQTT_URL"))
   logger.Info("MQTT_PORT = " + os.Getenv("MQTT_PORT"))
   logger.Info("MQTT_TLS = " + os.Getenv("MQTT_TLS"))
