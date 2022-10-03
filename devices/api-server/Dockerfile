@@ -25,6 +25,6 @@ RUN make build
 FROM golang:1.19-alpine
 WORKDIR /
 COPY --from=builder /app/build/api-server /api-server
-COPY --from=builder /app/credentials.json /credentials.json
+COPY --from=builder /app/.env_template /.env
 
 ENTRYPOINT ["/api-server"]
