@@ -2,6 +2,8 @@ package utils
 
 import (
   "api-server/models"
+  "crypto/rand"
+  "encoding/base64"
   "fmt"
   "github.com/gin-gonic/contrib/sessions"
   "go.mongodb.org/mongo-driver/bson"
@@ -40,4 +42,13 @@ func Contains(s []primitive.ObjectID, objToFind primitive.ObjectID) bool {
     }
   }
   return false
+}
+
+func RandToken() (string, error) {
+  b := make([]byte, 32)
+  _, err := rand.Read(b)
+  if err != nil {
+    return "", err
+  }
+  return base64.StdEncoding.EncodeToString(b), nil
 }

@@ -40,12 +40,14 @@ import (
 
 const DbName = "api-server"
 
+var oauthGithub *oauth.Github
 var auth *api.Auth
 var homes *api.Homes
 var devices *api.Devices
 var devicesValues *api.DevicesValues
 var profiles *api.Profiles
 var register *api.Register
+var keepAlive *api.KeepAlive
 
 func main() {
   // 1. Init logger
@@ -156,12 +158,17 @@ func main() {
   validate := validator.New()
 
   // 8. Create API instances
+  oauthCallbackURL := httpOrigin + "/api/callback/"
+  // select your scope - https://developer.github.com/v3/oauth/#scopes
+  oauthScopes := []string{"repo"}
+  oauthGithub = oauth.NewGithub(ctx, logger, collectionProfiles, oauthCallbackURL, oauthScopes)
   auth = api.NewAuth(ctx, logger, collectionProfiles)
   homes = api.NewHomes(ctx, logger, collectionHomes, collectionProfiles, validate)
   devices = api.NewDevices(ctx, logger, collectionDevices, collectionProfiles, collectionHomes)
   devicesValues = api.NewDevicesValues(ctx, logger, collectionDevices, collectionProfiles, collectionHomes, validate)
   profiles = api.NewProfiles(ctx, logger, collectionProfiles)
   register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles, validate)
+  keepAlive = api.NewKeepAlive(ctx, logger)
 
   // ?. Init WebSocket and start it
   //  hubInstance := ws.GetInstance()
@@ -250,15 +257,16 @@ func main() {
     fmt.Println("GIN - Skipping NoRoute config, because it's running in production mode")
   }
 
-  // 13. Configure OAUTH 2 authentication
-  redirectURL := httpOrigin + "/api/callback/"
-  scopes := []string{"repo"} // select your scope - https://developer.github.com/v3/oauth/#scopes
-  oauth.Setup(redirectURL, scopes, logger, collectionProfiles)
-  router.Use(oauth.Session("session")) // session called "session"
-  router.GET("/api/login", oauth.GetLoginURL)
+  // 13. Configure oAuth2 authentication
+  router.Use(oauthGithub.Session("session")) // session called "session"
+  // public API to get Login URL
+  router.GET("/api/login", oauthGithub.GetLoginURL)
+  // public APIs
   router.POST("/api/register", register.PostRegister)
+  router.GET("/api/keepalive", keepAlive.GetKeepAlive)
+  // oAuth2 config to register the oauth callback API
   authorized := router.Group("/api/callback")
-  authorized.Use(oauth.OauthAuth())
+  authorized.Use(oauthGithub.OauthAuth())
   authorized.GET("", auth.LoginCallback)
 
   // 14. Define /api group protected via JWTMiddleware

@@ -2,14 +2,12 @@ package oauth
 
 import (
   "api-server/models"
+  "api-server/utils"
   "context"
-  "crypto/rand"
-  "encoding/base64"
   "encoding/gob"
   "fmt"
   "github.com/gin-gonic/contrib/sessions"
   "github.com/gin-gonic/gin"
-  "github.com/golang/glog"
   "github.com/google/go-github/github"
   "github.com/google/uuid"
   "go.mongodb.org/mongo-driver/bson"
@@ -24,89 +22,100 @@ import (
   "time"
 )
 
-type Credentials struct {
-  ClientID     string `json:"clientid"`
-  ClientSecret string `json:"secret"`
+type Github struct {
+  collectionProfiles *mongo.Collection
+  ctx                context.Context
+  logger             *zap.SugaredLogger
+  oauthConfig        *oauth2.Config
+  cookieStore        sessions.CookieStore
 }
 
-var conf *oauth2.Config
-var state string
-var store sessions.CookieStore
-var collection *mongo.Collection
-var logger *zap.SugaredLogger
-
-func init() {
+func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, redirectURL string, scopes []string) *Github {
   gob.Register(models.Profile{})
-}
 
-func Setup(redirectURL string, scopes []string, log *zap.SugaredLogger, profilesCollection *mongo.Collection) {
-  // init some global vars
-  logger = log
-  collection = profilesCollection
-  store = sessions.NewCookieStore([]byte(os.Getenv("COOKIE_SECRET")))
-
+  cookieStore := sessions.NewCookieStore([]byte(os.Getenv("COOKIE_SECRET")))
   // init global configuration with received params
-  conf = &oauth2.Config{
+  oauthConfig := &oauth2.Config{
     ClientID:     os.Getenv("OAUTH2_CLIENTID"),
     ClientSecret: os.Getenv("OAUTH2_SECRETID"),
     RedirectURL:  redirectURL,
     Scopes:       scopes,
     Endpoint:     oauth2gh.Endpoint,
   }
+  return &Github{
+    collectionProfiles: collectionProfiles,
+    ctx:                ctx,
+    logger:             logger,
+    oauthConfig:        oauthConfig,
+    cookieStore:        cookieStore,
+  }
 }
 
-func Session(name string) gin.HandlerFunc {
-  return sessions.Sessions(name, store)
+func (handler *Github) Session(name string) gin.HandlerFunc {
+  return sessions.Sessions(name, handler.cookieStore)
 }
 
-func GetLoginURL(c *gin.Context) {
-  logger.Info("REST - GET - GetLoginURL called")
+func (handler *Github) GetLoginURL(c *gin.Context) {
+  handler.logger.Info("REST - GET - GetLoginURL called")
 
-  state = randToken()
+  state, err := utils.RandToken()
+  if err != nil {
+    handler.logger.Error("REST - GET - GetLoginURL - cannot create a random session token")
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected session error"})
+    return
+  }
+
   session := sessions.Default(c)
   session.Set("state", state)
-  session.Save()
-  loginURL := conf.AuthCodeURL(state)
+  err = session.Save()
+  if err != nil {
+    handler.logger.Error("REST - GET - GetLoginURL - cannot save session")
+    c.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected error when saving session"})
+    return
+  }
+
+  loginURL := handler.oauthConfig.AuthCodeURL(state)
   noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
-  logger.Info("GetLoginURL result noUnicodeString: ", noUnicodeString)
-  c.JSON(http.StatusOK, gin.H{
-    "loginURL": noUnicodeString,
-  })
+  handler.logger.Info("REST - GET - GetLoginURL - result noUnicodeString: ", noUnicodeString)
+
+  c.JSON(http.StatusOK, gin.H{"loginURL": noUnicodeString})
 }
 
-func OauthAuth() gin.HandlerFunc {
-  return func(ctx *gin.Context) {
+func (handler *Github) OauthAuth() gin.HandlerFunc {
+  return func(c *gin.Context) {
     // read current profile from session.
     // if available save it in the context
-    session := sessions.Default(ctx)
+    session := sessions.Default(c)
     if dbProfile, ok := session.Get("profile").(models.Profile); ok {
-      logger.Info("***** Already in session **** - dbProfile: ", dbProfile)
-      ctx.Set("profile", dbProfile)
-      ctx.Next()
+      // profile is already on session, so you can simply proceed
+      handler.logger.Debug("OauthAuth - dbProfile already in session: ", dbProfile)
+      c.Set("profile", dbProfile)
+      c.Next()
       return
     }
 
     // read state query param from context (URL)
     retrievedState := session.Get("state")
-    if retrievedState != ctx.Query("state") {
-      ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("invalid session state: %s", retrievedState))
+    if retrievedState != c.Query("state") {
+      handler.logger.Error("OauthAuth - invalid session state: %s ", retrievedState)
+      c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("invalid session state: %s", retrievedState))
       return
     }
 
-    // TODO: oauth2.NoContext -> context.Context from stdlib
     // read the "code"
-    tok, err := conf.Exchange(context.TODO(), ctx.Query("code"))
+    tok, err := handler.oauthConfig.Exchange(context.TODO(), c.Query("code"))
     if err != nil {
-      ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to do exchange: %v", err))
+      handler.logger.Errorf("OauthAuth - failed to do exchange: %v", err)
+      c.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to do exchange: %v", err))
       return
     }
 
     // create a new GitHub API client to perform authentication
-    client := github.NewClient(conf.Client(context.TODO(), tok))
-    var githubClientUser *github.User
-    githubClientUser, _, err = client.Users.Get(context.TODO(), "")
+    client := github.NewClient(handler.oauthConfig.Client(context.TODO(), tok))
+    githubClientUser, _, err := client.Users.Get(context.TODO(), "")
     if err != nil {
-      ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
+      handler.logger.Errorf("OauthAuth - failed to get user: %v", err)
+      c.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
       return
     }
 
@@ -122,31 +131,32 @@ func OauthAuth() gin.HandlerFunc {
     // if SINGLE_USER_LOGIN_EMAIL is defined, only an account with Email equals
     // to the one defined in SINGLE_USER_LOGIN_EMAIL env variable can log in to this server.
     singleUserLoginEmail := os.Getenv("SINGLE_USER_LOGIN_EMAIL")
-    fmt.Println("singleUserLoginEmail: " + singleUserLoginEmail)
     if singleUserLoginEmail != "" && dbGithubUser.Email != singleUserLoginEmail {
-      logger.Error("SINGLE_USER_LOGIN_EMAIL is defined, so user with email = " + dbGithubUser.Email + " cannot log in")
-      ctx.AbortWithError(http.StatusForbidden, fmt.Errorf("user with email %s not admitted to this server", dbGithubUser.Email))
+      handler.logger.Error("OauthAuth - SINGLE_USER_LOGIN_EMAIL is defined, so user with email = " + dbGithubUser.Email + " cannot log in")
+      c.AbortWithError(http.StatusForbidden, fmt.Errorf("user with email %s not admitted to this server", dbGithubUser.Email))
       return
     }
 
     // find profile searching by github.id == githubClientUser.ID
     var profileFound models.Profile
-    err = collection.FindOne(ctx, bson.M{
+    err = handler.collectionProfiles.FindOne(c, bson.M{
       "github.id": githubClientUser.ID,
     }).Decode(&profileFound)
 
     if err == nil {
       // profile found
-      ctx.Set("profile", profileFound)
+      c.Set("profile", profileFound)
       // populate cookie
       session.Set("profile", profileFound)
       if errSet := session.Save(); errSet != nil {
-        glog.Errorf("Failed to save profile in session: %v", errSet)
+        handler.logger.Errorf("OauthAuth - failed to save profile in session: %v", errSet)
+        c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("failed to save profile in session %v", errSet))
       }
     } else {
       // there is an error
       if err == mongo.ErrNoDocuments {
-        logger.Info("Profile not found, creating a new one...")
+        handler.logger.Debug("OauthAuth - profile not found, creating a new one")
+        currentDate := time.Now()
         // profile not found, so create a new profile
         var newProfile models.Profile
         newProfile.ID = primitive.NewObjectID()
@@ -154,37 +164,33 @@ func OauthAuth() gin.HandlerFunc {
         newProfile.ApiToken = uuid.NewString()
         newProfile.Homes = []primitive.ObjectID{}   // empty slice of ObjectIDs
         newProfile.Devices = []primitive.ObjectID{} // empty slice of ObjectIDs
-        newProfile.CreatedAt = time.Now()
-        newProfile.ModifiedAt = time.Now()
+        newProfile.CreatedAt = currentDate
+        newProfile.ModifiedAt = currentDate
 
-        ctx.Set("profile", newProfile)
+        c.Set("profile", newProfile)
 
         // populate cookie
         session.Set("profile", newProfile)
         if errSave := session.Save(); errSave != nil {
-          glog.Errorf("Failed to save profile in session: %v", errSave)
+          handler.logger.Errorf("OauthAuth - failed to save profile in session: %v", errSave)
+          c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("failed to save profile in session %v", errSave))
+          return
         }
 
         // ad profile to db
-        _, err2 := collection.InsertOne(ctx, newProfile)
-        if err2 != nil {
-          ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("cannot save new profile on db: %v", err2))
+        _, errInsProfile := handler.collectionProfiles.InsertOne(c, newProfile)
+        if errInsProfile != nil {
+          handler.logger.Errorf("OauthAuth - cannot save new profile on db: %v", errInsProfile)
+          c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("cannot save new profile on db: %v", errInsProfile))
           return
         }
-        logger.Info("New profile added to db!")
+
+        handler.logger.Debug("OauthAuth - New profile added to db!")
       } else {
         // other error
-        logger.Error("Cannot find profile on db. Unknown reason: ", err)
-        ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("cannot find profile in db: %v", err))
+        handler.logger.Errorf("OauthAuth - cannot find profile on db. Unknown reason: %v", err)
+        c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("cannot find profile in db: %v", err))
       }
     }
   }
-}
-
-func randToken() string {
-  b := make([]byte, 32)
-  if _, err := rand.Read(b); err != nil {
-    glog.Fatalf("[Gin-OAuth] Failed to read rand: %v\n", err)
-  }
-  return base64.StdEncoding.EncodeToString(b)
 }
