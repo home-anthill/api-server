@@ -43,11 +43,9 @@ data:
     SINGLE_USER_LOGIN_EMAIL=
     {{ end }}
     JWT_PASSWORD={{ .Values.apiServer.jwtPassword }}
-  credentials.json: |-
-    {
-      "clientid": "{{ .Values.apiServer.oauthClientId }}",
-      "secret": "{{ .Values.apiServer.oauthSecret }}"
-    }
+    COOKIE_SECRET={{ .Values.apiServer.cookieSecret }}
+    OAUTH2_CLIENTID={{ .Values.apiServer.oauth2ClientID }}
+    OAUTH2_SECRETID={{ .Values.apiServer.oauth2SecretID }}
 ---
 apiVersion: apps/v1
 kind: Deployment

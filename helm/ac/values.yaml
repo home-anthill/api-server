@@ -24,10 +24,11 @@ apiDevices:
 
 apiServer:
   image: "ks89/ac-api-server"
-  oauthClientId: "dsda78d6as87d687asd6"
-  oauthSecret: "76d57asdas7ad68a7sa9SA9S6a8sa6S8A6sa7s98d76sa89s"
   singleUserLoginEmail: "your.email@emailexample.com"
-  jwtPassword: "secretkey"
+  jwtPassword: "(G+KaPdSgVkYp3s6v9y$B&E)H@McQeTh"
+  cookieSecret: "z$C&F)J@"
+  oauth2ClientID: "6caa41f023f6205b1c05"
+  oauth2SecretID: "5ac42264964d85e4c2e938b4534d02f4d2b8b336"
   sensors:
     enable: true
 
