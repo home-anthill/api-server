@@ -6,7 +6,6 @@ import (
   "crypto/rand"
   "encoding/base64"
   "encoding/gob"
-  "encoding/json"
   "fmt"
   "github.com/gin-gonic/contrib/sessions"
   "github.com/gin-gonic/gin"
@@ -40,28 +39,16 @@ func init() {
   gob.Register(models.Profile{})
 }
 
-func Setup(redirectURL string, credFile string, scopes []string, secret []byte, log *zap.SugaredLogger, profilesCollection *mongo.Collection) {
+func Setup(redirectURL string, scopes []string, log *zap.SugaredLogger, profilesCollection *mongo.Collection) {
   // init some global vars
   logger = log
   collection = profilesCollection
-  store = sessions.NewCookieStore(secret)
-
-  // read credential from external json file
-  // with clientid and secret
-  var credentials Credentials
-  file, err := os.ReadFile(credFile)
-  if err != nil {
-    glog.Fatalf("[Gin-OAuth] File error: %v\n", err)
-  }
-  err = json.Unmarshal(file, &credentials)
-  if err != nil {
-    glog.Fatalf("[Gin-OAuth] Failed to unmarshal client credentials: %v\n", err)
-  }
+  store = sessions.NewCookieStore([]byte(os.Getenv("COOKIE_SECRET")))
 
   // init global configuration with received params
   conf = &oauth2.Config{
-    ClientID:     credentials.ClientID,
-    ClientSecret: credentials.ClientSecret,
+    ClientID:     os.Getenv("OAUTH2_CLIENTID"),
+    ClientSecret: os.Getenv("OAUTH2_SECRETID"),
     RedirectURL:  redirectURL,
     Scopes:       scopes,
     Endpoint:     oauth2gh.Endpoint,

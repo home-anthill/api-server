@@ -89,6 +89,9 @@ func main() {
   fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
   fmt.Println("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
   fmt.Println("JWT_PASSWORD = " + os.Getenv("JWT_PASSWORD"))
+  fmt.Println("COOKIE_SECRET = " + os.Getenv("COOKIE_SECRET"))
+  fmt.Println("OAUTH2_CLIENTID = " + os.Getenv("OAUTH2_CLIENTID"))
+  fmt.Println("OAUTH2_SECRETID = " + os.Getenv("OAUTH2_SECRETID"))
 
   // 4. Print .env vars
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
@@ -108,6 +111,9 @@ func main() {
   logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
   logger.Info("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
   logger.Info("JWT_PASSWORD = " + os.Getenv("JWT_PASSWORD"))
+  logger.Info("COOKIE_SECRET = " + os.Getenv("COOKIE_SECRET"))
+  logger.Info("OAUTH2_CLIENTID = " + os.Getenv("OAUTH2_CLIENTID"))
+  logger.Info("OAUTH2_SECRETID = " + os.Getenv("OAUTH2_SECRETID"))
 
   if os.Getenv("JWT_PASSWORD") == "" {
     panic(fmt.Errorf("'JWT_PASSWORD' environment variable is mandatory"))
@@ -246,10 +252,8 @@ func main() {
 
   // 13. Configure OAUTH 2 authentication
   redirectURL := httpOrigin + "/api/callback/"
-  credFile := "./credentials.json"
   scopes := []string{"repo"} // select your scope - https://developer.github.com/v3/oauth/#scopes
-  secret := []byte("secret")
-  oauth.Setup(redirectURL, credFile, scopes, secret, logger, collectionProfiles)
+  oauth.Setup(redirectURL, scopes, logger, collectionProfiles)
   router.Use(oauth.Session("session")) // session called "session"
   router.GET("/api/login", oauth.GetLoginURL)
   router.POST("/api/register", register.PostRegister)
