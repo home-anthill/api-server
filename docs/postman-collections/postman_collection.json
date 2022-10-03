@@ -1,0 +1,657 @@
+{
+	"info": {
+		"_postman_id": "5acdea6e-6381-43c4-9ff9-c3624138a18b",
+		"name": "air-conditioner",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "1096693"
+	},
+	"item": [
+		{
+			"name": "api-server",
+			"item": [
+				{
+					"name": "getLoginURL",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/login",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getProfile",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:8082/api/profile",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "regenApiToken",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "localhost:8082/api/profiles/61c11c44ce6401401179513f/tokens",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"profiles",
+								"61c11c44ce6401401179513f",
+								"tokens"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "registerDevice",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mac\": \"99:02:01:99:99:11\",\n\t\"manufacturer\": \"beko2\",\n\t\"model\": \"beko2\",\n\t\"apiToken\": \"d8812432-7b52-4e1f-88a3-ce1f70a204c6\",\n    \"features\": [\n        {\n            \"type\": \"controller\",\n            \"name\": \"ac\",\n            \"enable\": true,\n            \"priority\": 1\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/register",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "registerSensor",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mac\": \"99:02:01:99:99:77\",\n\t\"manufacturer\": \"sensor1\",\n\t\"model\": \"sensor1\",\n\t\"apiToken\": \"d8812432-7b52-4e1f-88a3-ce1f70a204c6\",\n    \"features\": [\n        {\n            \"type\": \"sensor\",\n            \"name\": \"humidity\",\n            \"enable\": true,\n            \"priority\": 1\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"temperature\",\n            \"enable\": true,\n            \"priority\": 1\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"light\",\n            \"enable\": true,\n            \"priority\": 1\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/register",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getHomes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/homes",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "newHome",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"dsdasd\",\n    \"location\": \"fshfsdhjf\",\n    \"rooms\": [{\n        \"name\": \"aasasa\",\n        \"floor\": 1\n    }]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/homes",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateHome",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Casa\",\n    \"location\": \"Milano\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/homes/620d71c5b98386d5903d6a4d",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes",
+								"620d71c5b98386d5903d6a4d"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteHome",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/homes/620d71c5b98386d5903d6a4d",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes",
+								"620d71c5b98386d5903d6a4d"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getRooms",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/homes/633a08f1a34617c91f43dd56/rooms",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes",
+								"633a08f1a34617c91f43dd56",
+								"rooms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "newRoom",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"asasa\",\n    \"floor\": 4\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/homes/633a08f1a34617c91f43dd56/rooms",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes",
+								"633a08f1a34617c91f43dd56",
+								"rooms"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateRoom",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"yyyyyyy\",\n    \"floor\": 98,\n    \"devices\": [\"63395e2a296289168eb70aed\"]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/homes/633a08eaa34617c91f43dd54/rooms/633a08eaa34617c91f43dd55",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes",
+								"633a08eaa34617c91f43dd54",
+								"rooms",
+								"633a08eaa34617c91f43dd55"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteRoom",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/homes/633a08f1a34617c91f43dd56/rooms/633a08f1a34617c91f43dd57",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"homes",
+								"633a08f1a34617c91f43dd56",
+								"rooms",
+								"633a08f1a34617c91f43dd57"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getDevices",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/devices",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteDevice",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": ""
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed?homeId=611f9c43312e41c09b164a56&roomId=000000000000000000000000",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices",
+								"63395e2a296289168eb70aed"
+							],
+							"query": [
+								{
+									"key": "homeId",
+									"value": "611f9c43312e41c09b164a56"
+								},
+								{
+									"key": "roomId",
+									"value": "000000000000000000000000"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getDeviceValues",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed/values",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices",
+								"63395e2a296289168eb70aed",
+								"values"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "setDeviceOnOff",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"on\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed/values/onoff",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices",
+								"63395e2a296289168eb70aed",
+								"values",
+								"onoff"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "setDeviceTemperature",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"temperature\": 25\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed/values/temperature",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices",
+								"63395e2a296289168eb70aed",
+								"values",
+								"temperature"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "setDeviceMode",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"mode\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed/values/mode",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices",
+								"63395e2a296289168eb70aed",
+								"values",
+								"mode"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "setDeviceFanMode",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fanMode\": 1\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed/values/fanmode",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices",
+								"63395e2a296289168eb70aed",
+								"values",
+								"fanmode"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "setDeviceFanSwing",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"fanSpeed\": 2\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed/values/fanspeed",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"devices",
+								"63395e2a296289168eb70aed",
+								"values",
+								"fanspeed"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"auth": {
+				"type": "bearer",
+				"bearer": [
+					{
+						"key": "token",
+						"value": "{{authToken}}",
+						"type": "string"
+					}
+				]
+			},
+			"event": [
+				{
+					"listen": "prerequest",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				},
+				{
+					"listen": "test",
+					"script": {
+						"type": "text/javascript",
+						"exec": [
+							""
+						]
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "authToken",
+			"value": "initialval"
+		}
+	]
+}
