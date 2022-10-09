@@ -122,7 +122,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
     "mac": registerBody.Mac,
   }).Decode(&device)
   if err == nil {
-    handler.logger.Error("REST - PostRegister - Device already registered")
+    handler.logger.Info("REST - PostRegister - Device already registered")
     // if err == nil => device found in db (already exists)
     // skip register process returning "already registered"
     c.JSON(http.StatusConflict, gin.H{"message": "Already registered"})
