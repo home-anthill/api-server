@@ -4,26 +4,30 @@ import (
   "github.com/natefinch/lumberjack"
   "go.uber.org/zap"
   "go.uber.org/zap/zapcore"
+  "os"
 )
 
 func InitLogger() *zap.SugaredLogger {
-  writerSyncer := getLogWriter()
-  encoder := getEncoder()
+  // taken from https://codewithmukesh.com/blog/structured-logging-in-golang-with-zap/
+  config := zap.NewProductionEncoderConfig()
+  config.EncodeTime = zapcore.ISO8601TimeEncoder
 
-  core := zapcore.NewCore(encoder, writerSyncer, zapcore.DebugLevel)
+  fileEncoder := zapcore.NewJSONEncoder(config)
+  consoleEncoder := zapcore.NewConsoleEncoder(config)
 
-  logger := zap.New(core, zap.AddCaller())
+  core := zapcore.NewTee(
+    zapcore.NewCore(fileEncoder, getLogFileWriter(), zapcore.DebugLevel),
+    zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), zapcore.DebugLevel),
+  )
+  logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+
   sugarLogger := logger.Sugar()
   return sugarLogger
 }
 
-func getEncoder() zapcore.Encoder {
-  return zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
-}
-
-func getLogWriter() zapcore.WriteSyncer {
+func getLogFileWriter() zapcore.WriteSyncer {
   lumberJackLogger := &lumberjack.Logger{
-    Filename:   "./logs/api-devices.log",
+    Filename:   "./logs/api-server.log",
     MaxSize:    10, // in MB
     MaxBackups: 5,
     MaxAge:     30,
