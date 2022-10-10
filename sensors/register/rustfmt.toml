@@ -1,0 +1,4 @@
+hard_tabs = false
+tab_spaces = 4
+# `merge_imports` is still unstable and only available in nightly channel.
+# merge_imports = true

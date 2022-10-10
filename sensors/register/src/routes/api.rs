@@ -1,12 +1,23 @@
-use rocket::serde::json::{Json, json};
+use log::{debug, error, info};
+use rocket::http::Status;
+use rocket::serde::json::{json, Json};
 use rocket::State;
-use rocket::http::{Status};
 
 use mongodb::Database;
 
-use crate::errors::api_error::{ApiResponse, ApiError};
-use crate::models::inputs::RegisterInput;
 use crate::db::sensor;
+use crate::errors::api_error::{ApiError, ApiResponse};
+use crate::models::inputs::RegisterInput;
+
+/// keepalive
+#[get("/keepalive")]
+pub async fn keep_alive() -> ApiResponse {
+    info!(target: "app", "REST - GET - keep_alive");
+    ApiResponse {
+        json: json!({ "alive": true }),
+        code: Status::Ok.code,
+    }
+}
 
 /// register a new temperature sensor
 #[post("/register/temperature", data = "<input>")]
@@ -14,51 +25,50 @@ pub async fn post_register_temperature(
     db: &State<Database>,
     input: Json<RegisterInput>,
 ) -> ApiResponse {
+    info!(target: "app", "REST - POST - post_register_temperature");
     insert_register(db, input, "temperature").await
 }
 
-/// register a new humidty sensor
+/// register a new humidity sensor
 #[post("/register/humidity", data = "<input>")]
 pub async fn post_register_humidity(
     db: &State<Database>,
     input: Json<RegisterInput>,
 ) -> ApiResponse {
+    info!(target: "app", "REST - POST - post_register_humidity");
     insert_register(db, input, "humidity").await
 }
 
 /// register a new light sensor
 #[post("/register/light", data = "<input>")]
-pub async fn post_register_light(
-    db: &State<Database>,
-    input: Json<RegisterInput>,
-) -> ApiResponse {
+pub async fn post_register_light(db: &State<Database>, input: Json<RegisterInput>) -> ApiResponse {
+    info!(target: "app", "REST - POST - post_register_light");
     insert_register(db, input, "light").await
-}
-
-/// keepalive
-#[get("/keepalive")]
-pub async fn keep_alive() -> &'static str {
-    "ok"
 }
 
 async fn insert_register(
     db: &State<Database>,
     input: Json<RegisterInput>,
-    sensor_type: &str
+    sensor_type: &str,
 ) -> ApiResponse {
-    // can set with a single error like this.
+    debug!(target: "app", "insert_register - called with sensor_type = {}", sensor_type);
     match sensor::insert_register(db, input, sensor_type).await {
-        Ok(_register_doc_id) => {
+        Ok(register_doc_id) => {
+            debug!(target: "app", "insert_register - document inserted with id = {}", register_doc_id);
             ApiResponse {
-                json: json!({ "id": _register_doc_id }),
-                status: Status::Ok,
+                json: json!({ "id": register_doc_id }),
+                code: Status::Ok.code,
             }
         }
-        Err(_error) => {
-            println!("{:?}", _error);
+        Err(error) => {
+            error!(target: "app", "insert_register - error = {:?}", error);
             ApiResponse {
-                json: serde_json::to_value(ApiError { code: 0, message: "Invalid input".to_string() }).unwrap(),
-                status: Status::BadRequest,
+                json: serde_json::to_value(ApiError {
+                    message: "Invalid input".to_string(),
+                    code: Status::BadRequest.code,
+                })
+                .unwrap(),
+                code: Status::BadRequest.code,
             }
         }
     }

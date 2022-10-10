@@ -1,2 +1,2 @@
-pub mod sensor;
 pub mod inputs;
+pub mod sensor;
