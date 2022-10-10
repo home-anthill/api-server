@@ -917,6 +917,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ks89-register"
+version = "1.0.0"
+dependencies = [
+ "dotenvy",
+ "futures",
+ "log",
+ "log4rs",
+ "mongodb",
+ "rocket",
+ "serde",
+ "serde_json",
+ "uuid 1.2.0",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1561,21 +1576,6 @@ dependencies = [
  "time 0.3.15",
  "tokio",
  "uncased",
- "uuid 1.2.0",
-]
-
-[[package]]
-name = "rust-register"
-version = "1.0.0"
-dependencies = [
- "dotenvy",
- "futures",
- "log",
- "log4rs",
- "mongodb",
- "rocket",
- "serde",
- "serde_json",
  "uuid 1.2.0",
 ]
 
