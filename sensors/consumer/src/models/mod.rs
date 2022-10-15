@@ -1,63 +1,39 @@
 pub mod message;
-pub mod topic;
 pub mod payload_trait;
-
 pub mod sensor;
+pub mod topic;
 
 use crate::models::message::{GenericMessage, Message};
-use crate::models::payload_trait::{Humidity, Light, Temperature};
+use crate::models::payload_trait::{Humidity, Light, Motion, Temperature};
 
-// this fn is very bad -> find a generic way to process all T in a single fn
 pub fn new_temperature_message(val: GenericMessage) -> Message<Temperature> {
-    let temperature: Option<f64> = val.payload
-        .get("value")
-        .and_then(|value| value.as_f64());
-
+    let value: Option<f64> = val.payload.get("value").and_then(|value| value.as_f64());
     let payload = Temperature {
-        value: temperature.unwrap()
+        value: value.unwrap() as f32,
     };
-    let message: Message<Temperature> = Message::new(
-        val.uuid,
-        val.api_token,
-        val.topic,
-        payload,
-    );
-    message
+    Message::new(val.uuid, val.api_token, val.topic, payload)
 }
 
-// this fn is very bad -> find a generic way to process all T in a single fn
 pub fn new_humidity_message(val: GenericMessage) -> Message<Humidity> {
-    let humidity: Option<f64> = val.payload
-        .get("value")
-        .and_then(|value| value.as_f64());
-
+    let value: Option<f64> = val.payload.get("value").and_then(|value| value.as_f64());
     let payload = Humidity {
-        value: humidity.unwrap()
+        value: value.unwrap() as f32,
     };
-    let message: Message<Humidity> = Message::new(
-        val.uuid,
-        val.api_token,
-        val.topic,
-        payload,
-    );
-    message
+    Message::new(val.uuid, val.api_token, val.topic, payload)
 }
 
-
-// this fn is very bad -> find a generic way to process all T in a single fn
 pub fn new_light_message(val: GenericMessage) -> Message<Light> {
-    let light: Option<f64> = val.payload
-        .get("value")
-        .and_then(|value| value.as_f64());
-
+    let value: Option<f64> = val.payload.get("value").and_then(|value| value.as_f64());
     let payload = Light {
-        value: light.unwrap()
+        value: value.unwrap() as f32,
     };
-    let message: Message<Light> = Message::new(
-        val.uuid,
-        val.api_token,
-        val.topic,
-        payload,
-    );
-    message
+    Message::new(val.uuid, val.api_token, val.topic, payload)
+}
+
+pub fn new_motion_message(val: GenericMessage) -> Message<Motion> {
+    let value: Option<bool> = val.payload.get("value").and_then(|value| value.as_bool());
+    let payload = Motion {
+        value: value.unwrap(),
+    };
+    Message::new(val.uuid, val.api_token, val.topic, payload)
 }

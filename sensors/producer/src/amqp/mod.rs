@@ -1,17 +1,13 @@
 use log::{debug, error, info};
 
+use lapin::publisher_confirm::PublisherConfirm;
 use lapin::{
-    message::Delivery,
-    options::{BasicAckOptions, BasicConsumeOptions, QueueDeclareOptions},
+    options::{BasicPublishOptions, QueueDeclareOptions},
     types::FieldTable,
-    Channel, Connection, ConnectionProperties, Consumer, Queue, Result,
+    BasicProperties, Channel, Connection, ConnectionProperties, Queue, Result,
 };
 
-pub async fn amqp_connect(
-    amqp_uri: &str,
-    amqp_queue_name: &str,
-    consumer_tag: &str,
-) -> Result<Consumer> {
+pub async fn amqp_connect(amqp_uri: &str, amqp_queue_name: &str) -> Result<Channel> {
     // Create connection
     info!(target: "app", "amqp_connect - trying to connect via AMQP...");
     let connection_result = create_connection(amqp_uri).await;
@@ -38,36 +34,24 @@ pub async fn amqp_connect(
         }
     };
     debug!(target: "app", "amqp_connect - declared queue = {:?}", queue);
-    // Create consumer
-    let consumer_result = create_consumer(&channel, amqp_queue_name, consumer_tag).await;
-    let consumer: Consumer = match consumer_result {
-        Ok(consumer) => consumer,
-        Err(err) => {
-            error!(target: "app", "amqp_connect - cannot create AMQP consumer");
-            return Err(err);
-        }
-    };
-    info!(target: "app", "amqp_connect - consumer created, returning it");
-    Ok(consumer)
+    info!(target: "app", "amqp_connect - AMQP connection success, returning channel");
+    Ok(channel)
 }
 
-pub async fn read_message(delivery: &Delivery) -> &str {
-    delivery
-        .ack(BasicAckOptions::default())
-        .await
-        .expect("basic_ack");
-
-    let payload_str = match std::str::from_utf8(&delivery.data) {
-        Ok(res) => {
-            debug!(target: "app", "read_message - payload_str: {}", res);
-            res
-        }
-        Err(err) => {
-            error!(target: "app", "read_message - cannot read payload as utf8. Error = {}", err);
-            ""
-        }
-    };
-    payload_str
+pub async fn publish_message(channel: &Channel, amqp_queue_name: &str, msg_byte: Vec<u8>) {
+    debug!(target: "app", "publish_message - publishing byte message to queue {}", amqp_queue_name);
+    let publisher_result: Result<PublisherConfirm> = channel
+        .basic_publish(
+            "",
+            amqp_queue_name,
+            BasicPublishOptions::default(),
+            msg_byte.as_slice(),
+            BasicProperties::default(),
+        )
+        .await;
+    if publisher_result.is_err() {
+        error!(target: "app", "publish_message - cannot publish AMQP message to queue {}. Err = {:?}", amqp_queue_name, publisher_result.err());
+    }
 }
 
 async fn create_connection(amqp_uri: &str) -> Result<Connection> {
@@ -88,21 +72,6 @@ async fn create_queue(channel: &Channel, amqp_queue_name: &str) -> Result<Queue>
         .queue_declare(
             amqp_queue_name,
             QueueDeclareOptions::default(),
-            FieldTable::default(),
-        )
-        .await
-}
-
-async fn create_consumer(
-    channel: &Channel,
-    amqp_queue_name: &str,
-    consumer_tag: &str,
-) -> Result<Consumer> {
-    channel
-        .basic_consume(
-            amqp_queue_name,
-            consumer_tag,
-            BasicConsumeOptions::default(),
             FieldTable::default(),
         )
         .await

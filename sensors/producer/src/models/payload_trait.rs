@@ -20,35 +20,12 @@ pub struct Motion {
     pub value: bool,
 }
 
-pub trait PayloadTrait {
-    fn get_value(&self) -> f32;
-}
+pub trait PayloadTrait {}
 
-impl PayloadTrait for Temperature {
-    fn get_value(&self) -> f32 {
-        self.value
-    }
-}
+impl PayloadTrait for Temperature {}
 
-impl PayloadTrait for Humidity {
-    fn get_value(&self) -> f32 {
-        self.value
-    }
-}
+impl PayloadTrait for Humidity {}
 
-impl PayloadTrait for Light {
-    fn get_value(&self) -> f32 {
-        self.value
-    }
-}
+impl PayloadTrait for Light {}
 
-impl PayloadTrait for Motion {
-    fn get_value(&self) -> f32 {
-        if self.value {
-            1.0
-        } else {
-            0.0
-        }
-    }
-}
-
+impl PayloadTrait for Motion {}

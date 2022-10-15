@@ -4,7 +4,9 @@ FROM rust:alpine3.16 AS chef
 # some cargo dependencies require additional packages
 # to build the project.
 RUN apk update && apk add --no-cache \
-    g++
+    g++ \
+    openssl openssl-dev \
+    make cmake
 
 RUN cargo install cargo-chef
 WORKDIR /app
@@ -35,8 +37,7 @@ WORKDIR /app
 # - environment file
 # - rocket config file
 COPY --from=builder /app/.env .env
-COPY --from=builder /app/Rocket.toml Rocket.toml
 COPY --from=builder /app/log4rs.yaml log4rs.yaml
-COPY --from=builder /app/target/release/register register
+COPY --from=builder /app/target/release/consumer consumer
 
-ENTRYPOINT ["./register"]
+ENTRYPOINT ["./consumer"]

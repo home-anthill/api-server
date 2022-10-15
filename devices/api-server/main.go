@@ -53,7 +53,7 @@ func main() {
   // 1. Init logger
   logger := InitLogger()
   defer logger.Sync()
-  logger.Info("Starting application...)")
+  logger.Info("Starting application...")
 
   // 2. Load the .env file
   var envFile string

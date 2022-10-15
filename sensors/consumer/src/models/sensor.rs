@@ -14,7 +14,7 @@ pub struct SensorDocument {
     pub apiToken: String,
     pub createdAt: DateTime,
     pub modifiedAt: DateTime,
-    pub value: f64,
+    pub value: f32,
 }
 
 #[allow(non_snake_case)]
@@ -29,5 +29,5 @@ pub struct Sensor {
     pub apiToken: String,
     pub createdAt: String,
     pub modifiedAt: String,
-    pub value: f64,
+    pub value: f32,
 }

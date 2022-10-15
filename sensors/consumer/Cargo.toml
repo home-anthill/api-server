@@ -1,5 +1,5 @@
 [package]
-name = "rust-consumer"
+name = "ks89-consumer"
 version = "1.0.0"
 edition = "2021"
 
@@ -23,7 +23,9 @@ tokio = { version = "1.17.0", features = ["full"] }
 tokio-executor-trait = "2.1.0"
 tokio-reactor-trait = "1.1.0"
 mongodb = "2.1.0"
-dotenv = "0.15.0"
+log = "0.4.17"
+log4rs = { version = "1.1.1", features = ["console_appender", "rolling_file_appender"] }
+dotenvy = "0.15.5"
 futures = "0.3"
 futures-lite = "^1.7"
 
