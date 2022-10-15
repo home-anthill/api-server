@@ -4,7 +4,9 @@ FROM rust:alpine3.16 AS chef
 # some cargo dependencies require additional packages
 # to build the project.
 RUN apk update && apk add --no-cache \
-    g++
+    g++ \
+    openssl openssl-dev \
+    make cmake
 
 RUN cargo install cargo-chef
 WORKDIR /app
