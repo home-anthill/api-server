@@ -170,10 +170,6 @@ func main() {
   register = api.NewRegister(ctx, logger, collectionDevices, collectionProfiles, validate)
   keepAlive = api.NewKeepAlive(ctx, logger)
 
-  // ?. Init WebSocket and start it
-  //  hubInstance := ws.GetInstance()
-  //  go hubInstance.Run()
-
   // 9. Instantiate GIN and apply some middlewares
   fmt.Println("GIN - Initializing...")
   router := gin.Default()
@@ -201,14 +197,7 @@ func main() {
   fmt.Println("GIN - set mac POST payload size")
   router.Use(limits.RequestSizeLimiter(1024 * 1024))
 
-  // 10. Upgrade an http GET to start websocket
-  // implement websocket to receive realtime events
-  // TODO this service should be protected by auth
-  //router.GET("/ws", func(c *gin.Context) {
-  //  ws.ServeWs(c.Writer, c.Request)
-  //})
-
-  // 11. Configure CORS
+  // 10. Configure CORS
   // - No origin allowed by default
   // - GET,POST, PUT, HEAD methods
   // - Credentials share disabled
@@ -234,7 +223,7 @@ func main() {
     fmt.Println("GIN - CORS disabled")
   }
 
-  // 12. Configure Gin to serve a Single Page Application
+  // 11. Configure Gin to serve a Single Page Application
   // GIN is terrible with SPA, because you can configure static.serve
   // but if you refresh the SPA it will return an error, and you cannot add something like /*
   // The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
@@ -257,7 +246,7 @@ func main() {
     fmt.Println("GIN - Skipping NoRoute config, because it's running in production mode")
   }
 
-  // 13. Configure oAuth2 authentication
+  // 12. Configure oAuth2 authentication
   router.Use(oauthGithub.Session("session")) // session called "session"
   // public API to get Login URL
   router.GET("/api/login", oauthGithub.GetLoginURL)
@@ -269,7 +258,7 @@ func main() {
   authorized.Use(oauthGithub.OauthAuth())
   authorized.GET("", auth.LoginCallback)
 
-  // 14. Define /api group protected via JWTMiddleware
+  // 13. Define /api group protected via JWTMiddleware
   private := router.Group("/api")
   private.Use(auth.JWTMiddleware())
   {
