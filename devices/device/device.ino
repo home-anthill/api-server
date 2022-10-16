@@ -27,6 +27,9 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length);
 // This ca_cert is applied to WifiClientSecure,
 // so it will be used with both HTTPS and MQTTS connections
 //
+// YOU CAN GET THIS FILE FROM YOUR OS!
+// On Linux, it's in /etc/ssl/certs called either 'ISRG_Root_X1.pem' or 'ca-cert-ISRG_Root_X1.pem'.
+//
 // https://techtutorialsx.com/2017/11/18/esp32-arduino-https-get-request/
 const char* ca_cert = \
 "-----BEGIN CERTIFICATE-----\n" \
