@@ -26,14 +26,15 @@ if [ ${CERTBOT_EMAIL+x} ] && [ ${CERTBOT_DOMAIN+x} ] && [ ${CERTBOT_SERVER+x} ];
   mkdir -p ${CERT_DIR}
 
   cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/cert.pem" ${CERT_DIR}/cert.pem
-  cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/privkey.pem" ${CERT_DIR}/privkey.pem
   cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/chain.pem" ${CERT_DIR}/chain.pem
+  cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/fullchain.pem" ${CERT_DIR}/fullchain.pem
+  cp "/etc/letsencrypt/live/${CERTBOT_DOMAIN}/privkey.pem" ${CERT_DIR}/privkey.pem
 
   # Set ownership to Mosquitto
-  chown mosquitto: ${CERT_DIR}/cert.pem ${CERT_DIR}/privkey.pem ${CERT_DIR}/chain.pem
+  chown mosquitto: ${CERT_DIR}/cert.pem ${CERT_DIR}/chain.pem ${CERT_DIR}/fullchain.pem ${CERT_DIR}/privkey.pem
 
   # Ensure permissions are restrictive
-  chmod 0600 ${CERT_DIR}/cert.pem ${CERT_DIR}/privkey.pem ${CERT_DIR}/chain.pem
+  chmod 0600 ${CERT_DIR}/cert.pem ${CERT_DIR}/chain.pem ${CERT_DIR}/fullchain.pem ${CERT_DIR}/privkey.pem
 
   ls -la ${CERT_DIR}
   ps -a
