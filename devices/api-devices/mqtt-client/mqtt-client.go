@@ -84,7 +84,10 @@ func NewTLSConfig() *tls.Config {
     ClientCAs: nil,
     // InsecureSkipVerify = verify that cert contents
     // match server. IP matches what is in cert etc.
-    InsecureSkipVerify: false,
+    // ATTENTION!!!
+    // I have to force this to true, because it throws this error:
+    // "x509: certificate is valid for mqtt-ac-ks89.eu, www.mqtt-ac-ks89.eu, not mosquitto-svc.ac.svc.cluster.local"
+    InsecureSkipVerify: true,
     // Certificates = list of certs client sends to server.
     Certificates: []tls.Certificate{cert},
   }
