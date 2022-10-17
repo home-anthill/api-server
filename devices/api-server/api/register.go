@@ -218,6 +218,8 @@ func (handler *Register) registerControllerViaGRPC(device *models.Device, profil
   }
   if isSecure {
     handler.logger.Debug("registerControllerViaGRPC - GRPC secure enabled!")
+  } else {
+    handler.logger.Info("registerControllerViaGRPC - GRPC secure NOT enabled!")
   }
 
   contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)

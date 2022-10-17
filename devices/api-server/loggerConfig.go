@@ -43,7 +43,7 @@ func InitLogger() *zap.SugaredLogger {
 
 func getLogFileWriter() zapcore.WriteSyncer {
   lumberJackLogger := &lumberjack.Logger{
-    Filename:   "./logs/api-server.log",
+    Filename:   "./logs/app.log",
     MaxSize:    10, // in MB
     MaxBackups: 5,
     MaxAge:     30,

@@ -163,7 +163,6 @@ func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
     c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
     return
   }
-  fmt.Println("prepare to send via gRPC")
   // send via gRPC
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
@@ -340,7 +339,6 @@ func (handler *DevicesValues) PostFanModeDevice(c *gin.Context) {
   // send via gRPC
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
-    fmt.Println("Cannot set value via GRPC", err)
     handler.logger.Errorf("REST - POST - PostFanModeDevice - cannot set value via gRPC, err %#v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
     return
@@ -407,18 +405,18 @@ func (handler *DevicesValues) PostFanSpeedDevice(c *gin.Context) {
 }
 
 func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
-  handler.logger.Info("gRPC - sendViaGrpc - Sending device via gRPC...")
-
-  fmt.Printf("value %#v\n", value)
-  fmt.Printf("apiToken %s\n", apiToken)
+  handler.logger.Infof("gRPC - sendViaGrpc - Called with value = %#v and apiToken = %s", value, apiToken)
 
   // Set up a connection to the gRPC server.
   securityDialOption, isSecure, err := utils.BuildSecurityDialOption()
   if err != nil {
+    handler.logger.Errorf("gRPC - sendViaGrpc - Cannot build security dial option object!, err %#v", err)
     return custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot create securityDialOption to prepare the gRPC connection")
   }
   if isSecure {
-    handler.logger.Debug("registerControllerViaGRPC - GRPC secure enabled!")
+    handler.logger.Info("gRPC - sendViaGrpc - GRPC secure enabled!")
+  } else {
+    handler.logger.Info("gRPC - sendViaGrpc - GRPC secure NOT enabled!")
   }
 
   contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
@@ -437,12 +435,12 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
   // -------------------------------------------------------
   // I reach this point only if I can connect to gRPC SERVER
   // -------------------------------------------------------
-  fmt.Println("connected")
+  handler.logger.Info("gRPC - sendViaGrpc - gRPC server connected")
 
   clientDeadline := time.Now().Add(time.Duration(200) * time.Millisecond)
   ctx, cancel := context.WithDeadline(contextBg, clientDeadline)
   defer cancel()
-  fmt.Printf("getType(value) %s\n", getType(value))
+  handler.logger.Infof("gRPC - sendViaGrpc - getType(value) %s", getType(value))
 
   switch getType(value) {
   case "*OnOffValue":
@@ -453,8 +451,8 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       On:       value.(*models.OnOffValue).On,
       ApiToken: apiToken,
     })
-    fmt.Println("Device set value status: ", response.GetStatus())
-    fmt.Println("Device set value message: ", response.GetMessage())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value status %s", response.GetStatus())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value message %s", response.GetMessage())
     return errSend
   case "*TemperatureValue":
     response, errSend := client.SetTemperature(ctx, &device3.TemperatureValueRequest{
@@ -464,8 +462,8 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       Temperature: int32(value.(*models.TemperatureValue).Temperature),
       ApiToken:    apiToken,
     })
-    fmt.Println("Device set value status: ", response.GetStatus())
-    fmt.Println("Device set value message: ", response.GetMessage())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value status %s", response.GetStatus())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value message %s", response.GetMessage())
     return errSend
   case "*ModeValue":
     response, errSend := client.SetMode(ctx, &device3.ModeValueRequest{
@@ -475,8 +473,8 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       Mode:     int32(value.(*models.ModeValue).Mode),
       ApiToken: apiToken,
     })
-    fmt.Println("Device set value status: ", response.GetStatus())
-    fmt.Println("Device set value message: ", response.GetMessage())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value status %s", response.GetStatus())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value message %s", response.GetMessage())
     return errSend
   case "*FanModeValue":
     response, errSend := client.SetFanMode(ctx, &device3.FanModeValueRequest{
@@ -486,8 +484,8 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       FanMode:  int32(value.(*models.FanModeValue).FanMode),
       ApiToken: apiToken,
     })
-    fmt.Println("Device set value status: ", response.GetStatus())
-    fmt.Println("Device set value message: ", response.GetMessage())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value status %s", response.GetStatus())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value message %s", response.GetMessage())
     return errSend
   case "*FanSpeedValue":
     response, errSend := client.SetFanSpeed(ctx, &device3.FanSpeedValueRequest{
@@ -497,8 +495,8 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       FanSpeed: int32(value.(*models.FanSpeedValue).FanSpeed),
       ApiToken: apiToken,
     })
-    fmt.Println("Device set value status: ", response.GetStatus())
-    fmt.Println("Device set value message: ", response.GetMessage())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value status %s", response.GetStatus())
+    handler.logger.Debugf("gRPC - sendViaGrpc - Device set value message %s", response.GetMessage())
     return errSend
   default:
     handler.logger.Error("gRPC - sendViaGrpc - unknown type")
