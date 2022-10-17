@@ -5,7 +5,7 @@ secret_key="3O46i/aNZk9/h2YMgoVwEobGUlKDVt1u/tA0rBJN3KM="
 
 [release]
 address = "0.0.0.0"
-port = 8000
+port = 80
 # required by rocket with '--release' to encrypt private cookies
 # check https://rocket.rs/v0.5-rc/guide/configuration/#secret-key
 secret_key="fwVuHbHBMm4HKdoP3lSodsXsUYUYawqfD9emyTNnWJo="

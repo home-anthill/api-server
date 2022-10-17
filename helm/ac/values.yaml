@@ -56,7 +56,10 @@ certbot:
 mongodbUrl: "mongodb+srv://user:password@cluster0.1234.mongodb.net"
 
 rabbitmq:
-  enable: false
+  enable: true
   image: "rabbitmq:3-management"
   user: "guest"
   password: "guest"
+
+register:
+  image: "ks89/ac-register"
