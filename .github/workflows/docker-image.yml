@@ -59,6 +59,13 @@ jobs:
           file: ./gui/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-gui:latest
+      - name: register - build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: ./sensors/register
+          file: ./sensors/register/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-register:latest
       - name: certbot - build and push
         uses: docker/build-push-action@v3
         with:
