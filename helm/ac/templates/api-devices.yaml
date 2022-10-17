@@ -10,7 +10,7 @@ data:
     RABBITMQ_ENABLE={{ .Values.rabbitmq.enable }}
     RABBITMQ_URL=amqp://{{ .Values.rabbitmq.user }}:{{ .Values.rabbitmq.password }}@rabbitmq-svc.{{ .Values.namespace }}.svc.cluster.local:5672
     {{- if .Values.mosquitto.ssl.enable }}
-    MQTT_URL=mqtts://mosquitto-svc.{{ .Values.namespace }}.svc.cluster.local
+    MQTT_URL=mqtts://{{ .Values.domains.mqtt }}
     MQTT_PORT=8883
     MQTT_TLS=true
     MQTT_CA_FILE=/etc/letsencrypt/live/{{ .Values.domains.mqtt }}/chain.pem
