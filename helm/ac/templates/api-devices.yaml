@@ -54,7 +54,7 @@ spec:
           value: "info"
         - name: GRPC_GO_LOG_VERBOSITY_LEVEL
           value: "2"
-        {{- else }}
+        {{- end }}
         ports:
         - name: grpc
           containerPort: 50051
