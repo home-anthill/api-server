@@ -167,11 +167,11 @@ func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
   // send via gRPC
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
+    fmt.Println(err)
     handler.logger.Errorf("REST - POST - PostOnOffDevice - cannot set value via gRPC, err %#v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
     return
   }
-  fmt.Println("gRPC sent")
 
   c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
