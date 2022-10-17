@@ -26,6 +26,4 @@ FROM golang:1.19-alpine
 WORKDIR /
 COPY --from=builder /app/build/api-devices /api-devices
 
-ENV ENV="prod"
-
 ENTRYPOINT ["/api-devices"]
