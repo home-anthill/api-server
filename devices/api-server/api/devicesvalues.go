@@ -116,14 +116,14 @@ func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
 
   objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
   if errId != nil {
-    handler.logger.Error("REST - POST - PostOnOffDevice - wrong format of the path param 'id'")
+    handler.logger.Errorf("REST - POST - PostOnOffDevice - wrong format of the path param 'id', err %#v", errId)
     c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
     return
   }
 
   var value models.OnOffValue
   if err := c.ShouldBindJSON(&value); err != nil {
-    handler.logger.Error("REST - POST - PostOnOffDevice - invalid request payload")
+    handler.logger.Errorf("REST - POST - PostOnOffDevice - invalid request payload, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
     return
   }
@@ -140,13 +140,13 @@ func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
   session := sessions.Default(c)
   profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
   if err != nil {
-    handler.logger.Error("REST - GET - PostOnOffDevice - cannot find profile in session")
+    handler.logger.Errorf("REST - GET - PostOnOffDevice - cannot find profile in session, err %#v", err)
     c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
     return
   }
 
   if err != nil {
-    handler.logger.Error("REST - POST - PostOnOffDevice - cannot find profile")
+    handler.logger.Errorf("REST - POST - PostOnOffDevice - cannot find profile, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
     return
   }
@@ -159,7 +159,7 @@ func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
   // get device from db
   device, err := handler.getDevice(objectId)
   if err != nil {
-    handler.logger.Error("REST - POST - PostOnOffDevice - cannot find device")
+    handler.logger.Errorf("REST - POST - PostOnOffDevice - cannot find device, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
     return
   }
@@ -167,8 +167,7 @@ func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
   // send via gRPC
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
-    fmt.Println("gRPC cannot send")
-    handler.logger.Error("REST - POST - PostOnOffDevice - cannot set value via gRPC")
+    handler.logger.Errorf("REST - POST - PostOnOffDevice - cannot set value via gRPC, err %#v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
     return
   }
@@ -182,21 +181,21 @@ func (handler *DevicesValues) PostTemperatureDevice(c *gin.Context) {
 
   objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
   if errId != nil {
-    handler.logger.Error("REST - GET - GetDevices - wrong format of the path param 'id'")
+    handler.logger.Errorf("REST - GET - PostTemperatureDevice - wrong format of the path param 'id', err %#v", errId)
     c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
     return
   }
 
   var value models.TemperatureValue
   if err := c.ShouldBindJSON(&value); err != nil {
-    handler.logger.Error("REST - POST - PostTemperatureDevice - invalid request payload")
+    handler.logger.Errorf("REST - POST - PostTemperatureDevice - invalid request payload, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
     return
   }
 
   err := handler.validate.Struct(value)
   if err != nil {
-    handler.logger.Errorf("REST - POST - PostOnOffDevice - request body is not valid, err %#v", err)
+    handler.logger.Errorf("REST - POST - PostTemperatureDevice - request body is not valid, err %#v", err)
     var errFields = utils.GetErrorMessage(err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
     return
@@ -206,7 +205,7 @@ func (handler *DevicesValues) PostTemperatureDevice(c *gin.Context) {
   session := sessions.Default(c)
   profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
   if err != nil {
-    handler.logger.Error("REST - GET - PostTemperatureDevice - cannot find profile in session")
+    handler.logger.Errorf("REST - GET - PostTemperatureDevice - cannot find profile in session, err %#v", err)
     c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
     return
   }
@@ -220,14 +219,14 @@ func (handler *DevicesValues) PostTemperatureDevice(c *gin.Context) {
   // get device from db
   device, err := handler.getDevice(objectId)
   if err != nil {
-    handler.logger.Error("REST - POST - PostTemperatureDevice - cannot find device")
+    handler.logger.Errorf("REST - POST - PostTemperatureDevice - cannot find device, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
     return
   }
   // send via gRPC
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
-    handler.logger.Error("REST - POST - PostTemperatureDevice - cannot set value via gRPC")
+    handler.logger.Errorf("REST - POST - PostTemperatureDevice - cannot set value via gRPC, err %#v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
     return
   }
@@ -239,21 +238,21 @@ func (handler *DevicesValues) PostModeDevice(c *gin.Context) {
 
   objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
   if errId != nil {
-    handler.logger.Error("REST - GET - GetDevices - wrong format of the path param 'id'")
+    handler.logger.Errorf("REST - GET - PostModeDevice - wrong format of the path param 'id', err %#v", errId)
     c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
     return
   }
 
   var value models.ModeValue
   if err := c.ShouldBindJSON(&value); err != nil {
-    handler.logger.Error("REST - POST - PostModeDevice - invalid request payload")
+    handler.logger.Errorf("REST - POST - PostModeDevice - invalid request payload, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
     return
   }
 
   err := handler.validate.Struct(value)
   if err != nil {
-    handler.logger.Errorf("REST - POST - PostOnOffDevice - request body is not valid, err %#v", err)
+    handler.logger.Errorf("REST - POST - PostModeDevice - request body is not valid, err %#v", err)
     var errFields = utils.GetErrorMessage(err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
     return
@@ -263,7 +262,7 @@ func (handler *DevicesValues) PostModeDevice(c *gin.Context) {
   session := sessions.Default(c)
   profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
   if err != nil {
-    handler.logger.Error("REST - GET - PostModeDevice - cannot find profile in session")
+    handler.logger.Errorf("REST - GET - PostModeDevice - cannot find profile in session, err %#v", err)
     c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
     return
   }
@@ -277,14 +276,14 @@ func (handler *DevicesValues) PostModeDevice(c *gin.Context) {
   // get device from db
   device, err := handler.getDevice(objectId)
   if err != nil {
-    handler.logger.Error("REST - POST - PostModeDevice - cannot find device")
+    handler.logger.Errorf("REST - POST - PostModeDevice - cannot find device, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
     return
   }
   // send via gRPC
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
-    handler.logger.Error("REST - POST - PostModeDevice - cannot set value via gRPC")
+    handler.logger.Errorf("REST - POST - PostModeDevice - cannot set value via gRPC, err %#v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
     return
   }
@@ -296,21 +295,21 @@ func (handler *DevicesValues) PostFanModeDevice(c *gin.Context) {
 
   objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
   if errId != nil {
-    handler.logger.Error("REST - GET - GetDevices - wrong format of the path param 'id'")
+    handler.logger.Errorf("REST - GET - PostFanModeDevice - wrong format of the path param 'id', err %#v", errId)
     c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
     return
   }
 
   var value models.FanModeValue
   if err := c.ShouldBindJSON(&value); err != nil {
-    handler.logger.Error("REST - POST - PostFanModeDevice - invalid request payload")
+    handler.logger.Errorf("REST - POST - PostFanModeDevice - invalid request payload, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
     return
   }
 
   err := handler.validate.Struct(value)
   if err != nil {
-    handler.logger.Errorf("REST - POST - PostOnOffDevice - request body is not valid, err %#v", err)
+    handler.logger.Errorf("REST - POST - PostFanModeDevice - request body is not valid, err %#v", err)
     var errFields = utils.GetErrorMessage(err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
     return
@@ -320,7 +319,7 @@ func (handler *DevicesValues) PostFanModeDevice(c *gin.Context) {
   session := sessions.Default(c)
   profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
   if err != nil {
-    handler.logger.Error("REST - GET - PostFanModeDevice - cannot find profile in session")
+    handler.logger.Errorf("REST - GET - PostFanModeDevice - cannot find profile in session, err %#v", err)
     c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
     return
   }
@@ -334,7 +333,7 @@ func (handler *DevicesValues) PostFanModeDevice(c *gin.Context) {
   // get device from db
   device, err := handler.getDevice(objectId)
   if err != nil {
-    handler.logger.Error("REST - POST - PostFanModeDevice - cannot find device")
+    handler.logger.Errorf("REST - POST - PostFanModeDevice - cannot find device, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
     return
   }
@@ -342,7 +341,7 @@ func (handler *DevicesValues) PostFanModeDevice(c *gin.Context) {
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
     fmt.Println("Cannot set value via GRPC", err)
-    handler.logger.Error("REST - POST - PostFanModeDevice - cannot set value via gRPC")
+    handler.logger.Errorf("REST - POST - PostFanModeDevice - cannot set value via gRPC, err %#v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
     return
   }
@@ -354,21 +353,21 @@ func (handler *DevicesValues) PostFanSpeedDevice(c *gin.Context) {
 
   objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
   if errId != nil {
-    handler.logger.Error("REST - GET - GetDevices - wrong format of the path param 'id'")
+    handler.logger.Errorf("REST - GET - PostFanSpeedDevice - wrong format of the path param 'id', err %#v", errId)
     c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
     return
   }
 
   var value models.FanSpeedValue
   if err := c.ShouldBindJSON(&value); err != nil {
-    handler.logger.Error("REST - POST - PostFanSpeedDevice - invalid request payload")
+    handler.logger.Errorf("REST - POST - PostFanSpeedDevice - invalid request payload, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
     return
   }
 
   err := handler.validate.Struct(value)
   if err != nil {
-    handler.logger.Errorf("REST - POST - PostOnOffDevice - request body is not valid, err %#v", err)
+    handler.logger.Errorf("REST - POST - PostFanSpeedDevice - request body is not valid, err %#v", err)
     var errFields = utils.GetErrorMessage(err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
     return
@@ -378,7 +377,7 @@ func (handler *DevicesValues) PostFanSpeedDevice(c *gin.Context) {
   session := sessions.Default(c)
   profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
   if err != nil {
-    handler.logger.Error("REST - GET - PostFanSpeedDevice - cannot find profile in session")
+    handler.logger.Errorf("REST - GET - PostFanSpeedDevice - cannot find profile in session, err %#v", err)
     c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
     return
   }
@@ -392,14 +391,14 @@ func (handler *DevicesValues) PostFanSpeedDevice(c *gin.Context) {
   // get device from db
   device, err := handler.getDevice(objectId)
   if err != nil {
-    handler.logger.Error("REST - POST - PostFanSpeedDevice - cannot find device")
+    handler.logger.Errorf("REST - POST - PostFanSpeedDevice - cannot find device, err %#v", err)
     c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
     return
   }
   // send via gRPC
   err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
   if err != nil {
-    handler.logger.Error("REST - POST - PostFanSpeedDevice - cannot set value via gRPC")
+    handler.logger.Errorf("REST - POST - PostFanSpeedDevice - cannot set value via gRPC, err %#v", err)
     c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
     return
   }
@@ -426,7 +425,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
   defer cancelBg()
   conn, err := grpc.DialContext(contextBg, handler.grpcTarget, securityDialOption, grpc.WithBlock())
   if err != nil {
-    handler.logger.Error("gRPC - sendViaGrpc - cannot connect via gRPC", err)
+    handler.logger.Errorf("gRPC - sendViaGrpc - cannot connect via gRPC, err %#v", err)
     return custom_errors.GrpcSendError{
       Status:  custom_errors.ConnectionError,
       Message: "Cannot connect to api-devices",
