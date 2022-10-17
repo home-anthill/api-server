@@ -410,7 +410,7 @@ func (handler *DevicesValues) PostFanSpeedDevice(c *gin.Context) {
 func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface{}, apiToken string) error {
   handler.logger.Info("gRPC - sendViaGrpc - Sending device via gRPC...")
 
-  fmt.Printf("value %s\n", value)
+  fmt.Printf("value %#v\n", value)
   fmt.Printf("apiToken %s\n", apiToken)
 
   // Set up a connection to the gRPC server.
@@ -452,7 +452,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       Uuid:     device.UUID,
       Mac:      device.Mac,
       On:       value.(*models.OnOffValue).On,
-      ApiToken: apiToken, // RENAME TO ApiToken in proto3
+      ApiToken: apiToken,
     })
     fmt.Println("Device set value status: ", response.GetStatus())
     fmt.Println("Device set value message: ", response.GetMessage())
@@ -463,7 +463,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       Uuid:        device.UUID,
       Mac:         device.Mac,
       Temperature: int32(value.(*models.TemperatureValue).Temperature),
-      ApiToken:    apiToken, // RENAME TO ApiToken in proto3
+      ApiToken:    apiToken,
     })
     fmt.Println("Device set value status: ", response.GetStatus())
     fmt.Println("Device set value message: ", response.GetMessage())
@@ -474,7 +474,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       Uuid:     device.UUID,
       Mac:      device.Mac,
       Mode:     int32(value.(*models.ModeValue).Mode),
-      ApiToken: apiToken, // RENAME TO ApiToken in proto3
+      ApiToken: apiToken,
     })
     fmt.Println("Device set value status: ", response.GetStatus())
     fmt.Println("Device set value message: ", response.GetMessage())
@@ -485,7 +485,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       Uuid:     device.UUID,
       Mac:      device.Mac,
       FanMode:  int32(value.(*models.FanModeValue).FanMode),
-      ApiToken: apiToken, // RENAME TO ApiToken in proto3
+      ApiToken: apiToken,
     })
     fmt.Println("Device set value status: ", response.GetStatus())
     fmt.Println("Device set value message: ", response.GetMessage())
@@ -496,7 +496,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value interface
       Uuid:     device.UUID,
       Mac:      device.Mac,
       FanSpeed: int32(value.(*models.FanSpeedValue).FanSpeed),
-      ApiToken: apiToken, // RENAME TO ApiToken in proto3
+      ApiToken: apiToken,
     })
     fmt.Println("Device set value status: ", response.GetStatus())
     fmt.Println("Device set value message: ", response.GetMessage())
