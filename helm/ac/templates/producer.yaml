@@ -77,7 +77,7 @@ spec:
       - name: lets-encrypt-ssl-mqtt-storage
         persistentVolumeClaim:
           claimName: lets-encrypt-ssl-mqtt-claim
-      {{ end }
+      {{ end }}
 ---
 kind: Service
 apiVersion: v1
