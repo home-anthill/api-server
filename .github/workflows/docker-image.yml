@@ -66,6 +66,13 @@ jobs:
           file: ./sensors/register/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-register:latest
+      - name: consumer - build and push
+        uses: docker/build-push-action@v3
+        with:
+          context: ./sensors/consumer
+          file: ./sensors/consumer/Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-consumer:latest
       - name: producer - build and push
         uses: docker/build-push-action@v3
         with:
