@@ -65,3 +65,15 @@ register:
 
 producer:
   image: "ks89/ac-producer"
+
+consumer:
+  image: "ks89/ac-consumer"
+
+# debug configuration, not for production environment
+debug:
+  pods:
+    alwaysPullContainers: false
+    # if your pods are crashing, you can enable this to prevent restarts
+    # and to access them using your terminal.
+    # Don't enable this on a production environment!!!
+    sleepInfinity: true
