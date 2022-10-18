@@ -76,4 +76,4 @@ debug:
     # if your pods are crashing, you can enable this to prevent restarts
     # and to access them using your terminal.
     # Don't enable this on a production environment!!!
-    sleepInfinity: true
+    sleepInfinity: false
