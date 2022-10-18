@@ -207,18 +207,26 @@ fn merge_ca_files(root_ca: &String, mqtt_cert_file: &String) {
         fs::remove_file(COMBINED_CA_FILES_PATH)
             .expect("Cannot remove existing COMBINED_CA_FILES_PATH");
     }
-    let mut new_file =
-        File::create(COMBINED_CA_FILES_PATH).expect("Cannot create COMBINED_CA_FILES_PATH");
+    let combined_root_ca_res = File::create(COMBINED_CA_FILES_PATH);
+    match &combined_root_ca_res {
+        Ok(_res) => {
+            info!(target: "app", "merge_ca_files - {} file created", COMBINED_CA_FILES_PATH);
+        },
+        Err(err) => {
+            error!(target: "app", "merge_ca_files - cannot create {} file, err = {:?}", COMBINED_CA_FILES_PATH, err);
+        }
+    }
+    let mut combined_root_ca = combined_root_ca_res.unwrap();
     let root_ca_vec = fs::read(&root_ca).expect("Cannot read root_ca_vec as byte array");
     let mqtt_cert_file_vec =
         fs::read(&mqtt_cert_file).expect("Cannot read mqtt_cert_file as byte array");
-    new_file
+    combined_root_ca
         .write_all(&root_ca_vec)
         .expect("Cannot write root_ca_vec to COMBINED_CA_FILES_PATH");
-    new_file
+    combined_root_ca
         .write_all(b"\n")
         .expect("Cannot write new line to COMBINED_CA_FILES_PATH");
-    new_file
+    combined_root_ca
         .write_all(&mqtt_cert_file_vec)
         .expect("Cannot write mqtt_cert_file_vec to COMBINED_CA_FILES_PATH");
 }
