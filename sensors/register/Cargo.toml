@@ -11,11 +11,11 @@ path = "src/main.rs"
 name = "register"
 path = "src/lib.rs"
 
-#[profile.release]
-#codegen-units = 1
-#lto = "fat"
-#opt-level = 3
-#panic = "abort"
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = 3
+panic = "abort"
 
 [dependencies]
 rocket = { version = "0.5.0-rc.2", features = ["uuid", "secrets", "json"] }
