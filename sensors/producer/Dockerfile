@@ -1,12 +1,13 @@
 # syntax=docker/dockerfile:1
-FROM rust:alpine3.16 AS chef
+FROM rust:latest AS chef
 
 # some cargo dependencies require additional packages
 # to build the project.
-RUN apk update && apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     g++ \
-    openssl openssl-dev \
+    openssl \
     make cmake
+# openssl-dev (required in case of rust alpine)
 
 WORKDIR /app
 
@@ -35,11 +36,11 @@ COPY . .
 RUN cargo build --release
 
 
-FROM alpine:latest as runtime
+FROM debian:bullseye-slim as runtime
 
 # to be able to use ROOT CAs file from /etc/ssl/certs/
 # folder, you must install the 'ca-certificates' package
-RUN apk update && apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     ca-certificates
 
 WORKDIR /app
