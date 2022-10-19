@@ -372,6 +372,8 @@ void setup() {
     Serial.println("**********************************");
     return;
   }
+
+  delay(1500);
 }
 
 void loop() {
