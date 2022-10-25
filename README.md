@@ -19,21 +19,42 @@ To install and configure please follow this official tutorial `docs/hetzner-inst
 
 At the moment, the only supported device is ESP32 S2 (DevKit-C)
 
-1. Rename `secrets.h.template` to `secrets.h`
-2. Modify `secrets.h` with your configuration. The most important values are wi-fi credentials, api-token, server-url and mqtt-url.
+1. Write your custom `air-conditioner-server-config/secrets.yaml` config file:
 
+    ```yaml
+    wifi_ssid: 'your-wifi-ssid'
+    wifi_password: 'your-wifi-password'
+
+    manufacturer: 'ks89'
+    api_token: 'API_TOKEN_FROM_PROFILE_PAGE'
+
+    # enable both HTTPS and MQTTS
+    # you should change PORTS accordingly
+    # https port: 443
+    # mqtts port: 8883
+    ssl: true
+
+    server_domain: 'your-https-domain.com'
+    server_port: '443'
+    server_path: '/api/register'
+
+    mqtt_domain: 'your-mqtt-domain.com'
+    mqtt_port: 8883
     ```
-    #define SECRET_SSID "WIFI_SSID"
-    #define SECRET_PASS "WIFI_PASSWORD"
-    ...
-    #define API_TOKEN "API_TOKEN_FROM_PROFILE_PAGE"
-    #define SERVER_URL "https://SERVER.COM/api/register"
-    #define MQTT_URL "MQTT-SERVER.COM"
+
+    To generate the API_TOKEN_FROM_PROFILE_PAGE you have to login to the gui via `https://<SERVER.COM>` with GitHub, then click on the profile icon (upper right corner of the page) to open the profile page.
+    In that page, you can re-generate the api-token for your devices.
+2. Generate `secrets.h` files for all your devices:
+
+    ```bash
+    cd esp32-configurator
+    
+    python3 -m configurator --model=sensor1 --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor
+
+    python3 -m configurator --model=ac1 --source=../../air-conditioner-server-config/secrets.yaml --destination=../devices/device
     ```
-   
-   To generate the API_TOKEN you have to login to the gui via `https://<SERVER.COM>` with GitHub, then click on the profile icon (upper right corner of the page) to open the profile page.
-   In that page, you can re-generate the api-token and copy it in `secrets.h`.
-5. Build and flash the firmware via Arduino IDE
+
+3. Build and flash firmwares via Arduino IDE
 
 
 ## :fire: Releases :fire:

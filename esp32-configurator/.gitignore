@@ -1,0 +1,7 @@
+.idea
+__pycache__
+dist
+.DS_Store
+venv
+.pytest_cache
+esp32_configurator.egg-info
