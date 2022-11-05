@@ -12,6 +12,7 @@ RUN apk update && apk add --no-cache \
 WORKDIR /ac
 
 COPY run.sh run.sh
+COPY init-crond.sh init-crond.sh
 
 # Scripts to renew let's encrypt certs and to upgrade certbot automatically.
 # Filenames in `/etc/periodic` must follow specific rules: https://askubuntu.com/a/611430
