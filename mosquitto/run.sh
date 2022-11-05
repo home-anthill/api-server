@@ -6,6 +6,11 @@ if [ ${CERTBOT_EMAIL+x} ] && [ ${CERTBOT_DOMAIN+x} ] && [ ${CERTBOT_SERVER+x} ];
   #Certificate is saved at: /etc/letsencrypt/live/<DOMAIN>/fullchain.pem
   #Key is saved at:         /etc/letsencrypt/live/<DOMAIN>/privkey.pem
 
+  echo "Printing 'crontab'"
+  crontab -l
+  echo "Run crond as background process"
+  crond -b -l 0 -L /ac/crond.log
+  
   # read env variables
   echo "Env variables:"
   echo "CERTBOT_EMAIL = ${CERTBOT_EMAIL}"
