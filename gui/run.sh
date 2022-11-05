@@ -13,6 +13,11 @@ if [ ${CERTBOT_EMAIL+x} ] && [ ${CERTBOT_DOMAIN+x} ] && [ ${CERTBOT_SERVER+x} ];
    # if not defined, apply default production server
   CERTBOT_SERVER=${CERTBOT_SERVER:?"https://acme-v02.api.letsencrypt.org/directory"}
 
+  echo "Printing 'crontab'"
+  crontab -l
+  echo "Run crond as background process"
+  crond -b -l 0 -L /ac/crond.log
+
   echo "CERTBOT_EMAIL = ${CERTBOT_EMAIL}"
   echo "CERTBOT_DOMAIN = ${CERTBOT_DOMAIN}"
   echo "CERTBOT_SERVER = ${CERTBOT_SERVER}"
