@@ -30,10 +30,10 @@ COPY --from=builder /ac/build/ /etc/nginx/html/html
 # Scripts to renew let's encrypt certs and to upgrade certbot automatically.
 # Filenames in `/etc/periodic` must follow specific rules: https://askubuntu.com/a/611430
 # For example you cannot use "dot" and "dash" in filenames, so you must remove file extensions
-COPY --from=builder /ac/certbotrenew.sh /etc/periodic/15min/certbotrenew
+COPY --from=builder /ac/certbotrenew.sh /etc/periodic/daily/certbotrenew
 # you have to make all files in /etc/periodic executables,
 # otherwise crond will skip non-exetubale files without throwing errors
-RUN chmod +x /etc/periodic/15min/certbotrenew
+RUN chmod +x /etc/periodic/daily/certbotrenew
 
 # remove nginx default configuration
 RUN rm /etc/nginx/conf.d/default.conf
