@@ -28,7 +28,7 @@ if [ ${CERTBOT_DOMAIN+x} ] && [ -d "/etc/letsencrypt/live/${CERTBOT_DOMAIN}" ]; 
   # https://techjogging.com/create-letsencrypt-certificate-alpine-nginx.html
   echo "$(date) - Calling 'certbot renew'..." >> ${LOG_FILE}
   # renew certificates (if required) and send the result to the logfile
-  # certbot renew >> ${LOG_FILE}
+  certbot renew >> ${LOG_FILE}
   echo "$(date) - Certbot renew executed!" >> ${LOG_FILE}
 else
   echo "$(date) - Certificates not available. Nothing to renew."
