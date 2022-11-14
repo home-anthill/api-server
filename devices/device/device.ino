@@ -305,7 +305,7 @@ void registerServer() {
 
   String macAddress = WiFi.macAddress();
   String features = "[";
-  features += "{\"type\": \"controller\",\"name\": \"ac\",\"enable\": true,\"priority\": 1}";
+  features += "{\"type\": \"controller\",\"name\": \"ac\",\"enable\": true,\"priority\": 1,\"unit\": \"-\"}";
   features += "]";
 
   String registerPayload = "{\"mac\": \"" + WiFi.macAddress() + 
