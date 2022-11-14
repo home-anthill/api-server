@@ -178,9 +178,9 @@ void registerServer() {
 
   String macAddress = WiFi.macAddress();
   String features = "[";
-  features += "{\"type\": \"sensor\",\"name\": \"humidity\",\"enable\": true,\"priority\": 1},";
-  features += "{\"type\": \"sensor\",\"name\": \"temperature\",\"enable\": true,\"priority\": 1},";
-  features += "{\"type\": \"sensor\",\"name\": \"light\",\"enable\": true,\"priority\": 1}";
+  features += "{\"type\": \"sensor\",\"name\": \"humidity\",\"enable\": true,\"priority\": 1,\"unit\": \"%\"},";
+  features += "{\"type\": \"sensor\",\"name\": \"temperature\",\"enable\": true,\"priority\": 1,\"unit\": \"°C\"},";
+  features += "{\"type\": \"sensor\",\"name\": \"light\",\"enable\": true,\"priority\": 1,\"unit\": \"lux\"}";
   features += "]";
 
  String registerPayload = "{\"mac\": \"" + WiFi.macAddress() + 
