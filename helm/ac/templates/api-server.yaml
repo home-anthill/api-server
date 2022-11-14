@@ -23,7 +23,8 @@ data:
     HTTP_CORS=false
     HTTP_SENSOR_SERVER=http://register-svc.{{ .Values.namespace }}.svc.cluster.local
     HTTP_SENSOR_PORT=80
-    HTTP_SENSOR_REGISTER_API=/register/
+    HTTP_SENSOR_GETVALUE_API=/sensors/
+    HTTP_SENSOR_REGISTER_API=/sensors/register/
     HTTP_SENSOR_KEEPALIVE_API=/keepalive/
     GRPC_URL=api-devices-svc.{{ .Values.namespace }}.svc.cluster.local:50051
     GRPC_TLS=false
