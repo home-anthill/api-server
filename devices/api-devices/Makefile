@@ -28,9 +28,9 @@ build: vet proto
 	go build -o ./build/api-devices .
 .PHONY: build
 
-air: vet proto
+run: vet proto
 	air
-.PHONY: air
+.PHONY: run
 
 test:
 	ENV=testing go test ./...
