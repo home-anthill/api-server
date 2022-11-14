@@ -6,6 +6,7 @@ import { Avatar, Button, Typography } from '@mui/material';
 import './Profile.css';
 
 import { postApi } from '../apis/api';
+import Navbar from '../shared/Navbar';
 
 export default function Profile() {
   const {state} = useLocation();
@@ -27,30 +28,33 @@ export default function Profile() {
   }
 
   return (
-    <div className="Profile">
-      <Typography variant="h2" component="h1">
-        Profile
-      </Typography>
-      <div className="ProfileContainer">
-        <Typography variant="h5" component="div" gutterBottom>
-          {profile?.github?.login}
+    <>
+      <Navbar/>
+      <div className="Profile">
+        <Typography variant="h2" component="h1" textAlign={'center'}>
+          Profile
         </Typography>
-        <Typography variant="h5" component="div" gutterBottom>
-          {profile?.github?.name}
-        </Typography>
-        <Typography sx={{ fontSize: 12 }} variant="h5" component="div" gutterBottom>
-          {profile?.github?.email}
-        </Typography>
-        <br />
-        <Avatar
-          alt="profile"
-          src={profile?.github?.avatarURL}
-          sx={{ width: 256, height: 256 }}
-        />
-        <br />
-        <p>{apiToken}</p>
-        <Button onClick={regenerateApiToken}>Regenerate APIToken</Button>
+        <div className="ProfileContainer">
+          <Typography variant="h5" component="div" gutterBottom>
+            {profile?.github?.login}
+          </Typography>
+          <Typography variant="h5" component="div" gutterBottom>
+            {profile?.github?.name}
+          </Typography>
+          <Typography sx={{ fontSize: 12 }} variant="h5" component="div" gutterBottom>
+            {profile?.github?.email}
+          </Typography>
+          <br />
+          <Avatar
+            alt="profile"
+            src={profile?.github?.avatarURL}
+            sx={{ width: 256, height: 256 }}
+          />
+          <br />
+          <p>{apiToken}</p>
+          <Button onClick={regenerateApiToken}>Regenerate APIToken</Button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

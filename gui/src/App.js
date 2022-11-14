@@ -13,7 +13,9 @@ import Homes from './components/home/Homes';
 import Devices from './components/devices/Devices';
 import Profile from './components/Profile';
 import EditHome from './components/home/EditHome';
-import DeviceDetails from './components/devices/DeviceDetails';
+import DeviceSettings from './components/devices/DeviceSettings';
+import Controller from './components/devices/Controller';
+import Sensor from './components/devices/Sensor';
 
 const darkTheme = createTheme({
   palette: {
@@ -34,11 +36,13 @@ export default function App() {
             <Route path="postlogin" element={<PostLogin/>}/>
             <Route path="profile" element={<RequireAuth> <Profile/> </RequireAuth>}/>
             <Route path="main" element={<Main/>}>
-              <Route index element={<RequireAuth> <Homes/> </RequireAuth>}/>
-              <Route index path="homes" element={<RequireAuth> <Homes/> </RequireAuth>}/>
+              <Route index element={<RequireAuth><Devices/></RequireAuth>}/>
+              <Route index path="devices" element={<RequireAuth><Devices/></RequireAuth>}/>
+              <Route path="devices/:id" element={<RequireAuth><DeviceSettings/></RequireAuth>}/>
+              <Route path="devices/:id/controller" element={<RequireAuth><Controller/></RequireAuth>}/>
+              <Route path="devices/:id/sensor" element={<RequireAuth><Sensor/></RequireAuth>}/>
+              <Route path="homes" element={<RequireAuth> <Homes/> </RequireAuth>}/>
               <Route path="homes/:id/edit" element={<RequireAuth> <EditHome/> </RequireAuth>}/>
-              <Route path="devices" element={<RequireAuth><Devices/></RequireAuth>}/>
-              <Route path="devices/:id" element={<RequireAuth><DeviceDetails/></RequireAuth>}/>
             </Route>
             <Route
               path="*"

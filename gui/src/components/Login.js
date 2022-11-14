@@ -8,7 +8,7 @@ import './Login.css';
 import { isLoggedIn } from '../auth/auth-utils';
 import { getApi } from '../apis/api';
 
-import logoPng from '../air-conditioner.png'
+import logoPng from '../home-anthill.png'
 
 export default function Login() {
   const [state, setState] = useState({loginURL: null});
@@ -39,16 +39,16 @@ export default function Login() {
 
   return (
     <div className="Login">
-      <Typography variant="h2" component="h1">
-        Welcome to air-conditioner
+      <Typography variant="h2" component="h1" textAlign={'center'}>
+        Welcome to home-anthill
       </Typography>
-      <img className="Logo" src={logoPng} width="250" height="auto" alt="Air conditioner"></img>
+      <img className="Logo" src={logoPng} width="250" height="auto" alt="Home Anthill"></img>
       <Button variant="contained" className="BtnContained" onClick={login} disabled={!state.loginURL}>LOGIN</Button>
-      <Link href="https://www.flaticon.com/free-icons/air-conditioner"
+      <Link href="https://www.freepik.com/free-vector/underground-ant-nest-with-red-ants_18582279.htm"
             sx={{marginTop: '45px'}}
             underline="hover"
             title="air conditioner icons">
-        Air conditioner icons created by Freepik - Flaticon
+        Image by brgfx
       </Link>
     </div>
   )

@@ -8,7 +8,6 @@ const useHomes = (homes) => {
   const [error, setError] = useState();
 
   useEffect(() => {
-    console.log('triggered homes:', homes);
     let didCancel = false;
     setError(null);
     (async () => {

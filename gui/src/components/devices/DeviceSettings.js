@@ -3,16 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import { Button, FormControl, InputLabel, MenuItem, Select, Typography } from '@mui/material';
 
-import './DeviceDetails.css';
-
-import Values from './Values';
+import './DeviceSettings.css';
 
 import { deleteApi, getApi, putApi } from '../../apis/api';
 
 const DEFAULT_HOME = {id: 'h0', name: '---', location: '', rooms: []};
 const DEFAULT_ROOM = {id: 'r0', name: '---'};
 
-export default function DeviceDetails() {
+export default function DeviceSettings() {
   const {state} = useLocation();
   const device = state.device;
   const navigate = useNavigate();
@@ -41,9 +39,6 @@ export default function DeviceDetails() {
           });
         });
 
-        console.log('Init - homeFound: ', homeFound);
-        console.log('Init - roomFound: ', roomFound);
-
         if (homeFound) {
           setRooms([DEFAULT_ROOM, ...homeFound.rooms])
 
@@ -54,17 +49,14 @@ export default function DeviceDetails() {
         console.error('Cannot get homes', err);
       }
     }
-
     fn();
-  }, []);
+  }, [device.id]);
 
   function onChangeHome(event) {
     if (!event || !event.target || !event.target.value) {
       return;
     }
     const home = homes.find(home => home.id === event.target.value.id)
-    console.log('onChangeHome - home: ', home);
-
     setRooms([DEFAULT_ROOM, ...home.rooms])
     setSelectedHome(home);
     setSelectedRoom(DEFAULT_ROOM)
@@ -75,13 +67,10 @@ export default function DeviceDetails() {
       return;
     }
     const room = rooms.find(room => room.id === event.target.value.id)
-    console.log('onChangeRoom - room: ', room);
-
     setSelectedRoom(room);
   }
 
   async function onSave() {
-    console.log('onSave', {selectedHome, selectedRoom});
     const newRoom = Object.assign({}, selectedRoom);
     if (!newRoom.devices) {
       newRoom.devices = [device.id];
@@ -98,7 +87,6 @@ export default function DeviceDetails() {
   }
 
   async function onRemove() {
-    console.log('onRemove');
     try {
       await deleteApi(`/api/devices/${device.id}?homeId=${selectedHome.id}&roomId=${selectedRoom.id}`);
       // navigate back
@@ -109,13 +97,16 @@ export default function DeviceDetails() {
   }
 
   return (
-    <div className="DeviceDetails">
+    <div className="DeviceSettings">
       <Typography variant="h2" component="h1">
-        Device
+        Settings
       </Typography>
-      <div className="DeviceDetailsContainer">
+      <div className="DeviceSettingsContainer">
         <Typography variant="h5" component="h2">
-          {device?.name} - {device?.manufacturer} - {device?.model}
+          {device?.mac}
+        </Typography>
+        <Typography variant="subtitle1" component="h3">
+          {device?.manufacturer} - {device?.model}
         </Typography>
         <br/>
 
@@ -129,9 +120,7 @@ export default function DeviceDetails() {
               label="home"
               onChange={onChangeHome}
             >
-              {
-                homes.map(home => <MenuItem key={home.id} value={home}>{home.name}</MenuItem>)
-              }
+              {homes.map(home => <MenuItem key={home.id} value={home}>{home.name}</MenuItem>)}
             </Select>
           </FormControl>
         }
@@ -162,9 +151,6 @@ export default function DeviceDetails() {
         <br/>
         <Button onClick={() => onRemove()}>Remove this Device</Button>
         <br/>
-        <div className="DeviceDetailsDivider"></div>
-
-        <Values device={device}/>
       </div>
     </div>
   )

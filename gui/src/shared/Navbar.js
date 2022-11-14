@@ -15,7 +15,7 @@ import MenuItem from '@mui/material/MenuItem';
 
 import './Navbar.css';
 
-import logoPng from '../air-conditioner.png'
+import logoPng from '../home-anthill.png'
 
 import { getApi } from '../apis/api';
 
@@ -84,25 +84,25 @@ export default function Navbar () {
                 display: { xs: 'block', md: 'none' },
               }}
             >
-              <MenuItem key="home" onClick={() => onNavigateTo('homes')}>
-                <Typography textAlign="center">HOMES</Typography>
-              </MenuItem>
               <MenuItem key="devices" onClick={() => onNavigateTo('devices')}>
                 <Typography textAlign="center">DEVICES</Typography>
+              </MenuItem>
+              <MenuItem key="home" onClick={() => onNavigateTo('homes')}>
+                <Typography textAlign="center">HOMES</Typography>
               </MenuItem>
             </Menu>
           </Box>
           <Box className="BoxContainer"
                sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-            <Button key="home"
-                    onClick={() => onNavigateTo('homes')}
-                    sx={{ my: 2, color: 'white', display: 'block' }}>
-              HOMES
-            </Button>
             <Button key="devices"
                     onClick={() => onNavigateTo('devices')}
                     sx={{ my: 2, color: 'white', display: 'block' }}>
               DEVICES
+            </Button>
+            <Button key="home"
+                    onClick={() => onNavigateTo('homes')}
+                    sx={{ my: 2, color: 'white', display: 'block' }}>
+              HOMES
             </Button>
           </Box>
 

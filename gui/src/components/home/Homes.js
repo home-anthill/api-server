@@ -53,7 +53,7 @@ export default function Homes() {
       <NewHomeDialog
         open={open}
         onClose={handleClose}/>
-      <Typography variant="h2" component="h1">
+      <Typography variant="h2" component="h1" textAlign={'center'}>
         Homes
       </Typography>
       <div className="HomesContainer">
