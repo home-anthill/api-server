@@ -12,7 +12,7 @@ type Device struct {
   Mac          string             `json:"mac" bson:"mac"`
   Manufacturer string             `json:"manufacturer" bson:"manufacturer"`
   Model        string             `json:"model" bson:"model"`
-  Features     []Feature          `json:"feature" bson:"feature"`
+  Features     []Feature          `json:"features" bson:"features"`
   CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
   ModifiedAt   time.Time          `json:"modifiedAt" bson:"modifiedAt"`
 }

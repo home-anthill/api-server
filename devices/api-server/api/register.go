@@ -22,12 +22,20 @@ import (
   "time"
 )
 
+type featureReq struct {
+  Type     models.Type `json:"type" validate:"required,oneof='controller' 'sensor'"`
+  Name     string      `json:"name" validate:"required,min=2,max=20"`
+  Enable   bool        `json:"enable" validate:"required,boolean"`
+  Priority int         `json:"priority" validate:"required,gte=1"`
+  Unit     string      `json:"unit" validate:"required,min=1,max=10"`
+}
+
 type deviceRegisterReq struct {
-  Mac          string           `json:"mac" validate:"required,mac"`
-  Manufacturer string           `json:"manufacturer" validate:"required,min=3,max=50"`
-  Model        string           `json:"model" validate:"required,min=3,max=20"`
-  ApiToken     string           `json:"apiToken" validate:"required,uuid4"`
-  Features     []models.Feature `json:"features" validate:"required,dive"`
+  Mac          string       `json:"mac" validate:"required,mac"`
+  Manufacturer string       `json:"manufacturer" validate:"required,min=3,max=50"`
+  Model        string       `json:"model" validate:"required,min=3,max=20"`
+  ApiToken     string       `json:"apiToken" validate:"required,uuid4"`
+  Features     []featureReq `json:"features" validate:"required,dive"`
 }
 
 type sensorRegisterReq struct {
@@ -103,8 +111,6 @@ func (handler *Register) PostRegister(c *gin.Context) {
     return
   }
 
-  isController := hasControllerFeature(registerBody.Features)
-
   // search if profile token exists and retrieve profile
   var profileFound models.Profile
   errProfile := handler.collectionProfiles.FindOne(handler.ctx, bson.M{
@@ -129,6 +135,15 @@ func (handler *Register) PostRegister(c *gin.Context) {
     return
   }
 
+  isController := false
+  for _, feature := range registerBody.Features {
+    if feature.Type == models.Controller {
+      isController = true
+    }
+  }
+
+  handler.logger.Debugf("REST - PostRegister - registering device, isController = %v", isController)
+
   insertDate := time.Now()
   device = models.Device{}
   device.ID = primitive.NewObjectID()
@@ -136,9 +151,19 @@ func (handler *Register) PostRegister(c *gin.Context) {
   device.Mac = registerBody.Mac
   device.Manufacturer = registerBody.Manufacturer
   device.Model = registerBody.Model
-  device.Features = registerBody.Features
   device.CreatedAt = insertDate
   device.ModifiedAt = insertDate
+
+  device.Features = utils.MapSlice(registerBody.Features, func(fReq featureReq) models.Feature {
+    return models.Feature{
+      UUID:     uuid.NewString(),
+      Type:     fReq.Type,
+      Name:     fReq.Name,
+      Enable:   fReq.Enable,
+      Priority: fReq.Priority,
+      Unit:     fReq.Unit,
+    }
+  })
 
   // if it's a controller device => call gRPC
   // otherwise REST call to sensor service
@@ -301,13 +326,4 @@ func (handler *Register) insertDevice(device *models.Device, profile *models.Pro
     return custom_errors.Wrap(http.StatusInternalServerError, errUpd, "Cannot update profile with the new device")
   }
   return nil
-}
-
-func hasControllerFeature(features []models.Feature) bool {
-  for _, feature := range features {
-    if feature.Type == models.Controller {
-      return true
-    }
-  }
-  return false
 }

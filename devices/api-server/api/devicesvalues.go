@@ -5,6 +5,7 @@ import (
   custom_errors "api-server/custom-errors"
   "api-server/models"
   "api-server/utils"
+  "encoding/json"
   "fmt"
   "github.com/gin-gonic/contrib/sessions"
   "github.com/gin-gonic/gin"
@@ -16,11 +17,17 @@ import (
   "golang.org/x/net/context"
   "google.golang.org/grpc"
   "google.golang.org/grpc/credentials/insecure"
+  "io"
   "net/http"
   "os"
   "reflect"
   "time"
 )
+
+type sensorValue struct {
+  UUID  string  `json:"uuid"` // feature uuid
+  Value float64 `json:"value"`
+}
 
 type DevicesValues struct {
   collection         *mongo.Collection
@@ -29,11 +36,15 @@ type DevicesValues struct {
   ctx                context.Context
   logger             *zap.SugaredLogger
   grpcTarget         string
+  sensorGetValueUrl  string
   validate           *validator.Validate
 }
 
 func NewDevicesValues(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, collectionHomes *mongo.Collection, validate *validator.Validate) *DevicesValues {
   grpcUrl := os.Getenv("GRPC_URL")
+  sensorServerUrl := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
+  sensorGetValueUrl := sensorServerUrl + os.Getenv("HTTP_SENSOR_GETVALUE_API")
+
   return &DevicesValues{
     collection:         collection,
     collectionProfiles: collectionProfiles,
@@ -41,6 +52,7 @@ func NewDevicesValues(ctx context.Context, logger *zap.SugaredLogger, collection
     ctx:                ctx,
     logger:             logger,
     grpcTarget:         grpcUrl,
+    sensorGetValueUrl:  sensorGetValueUrl,
     validate:           validate,
   }
 }
@@ -78,37 +90,76 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
     return
   }
 
-  // Set up a connection to the server.
-  conn, err := grpc.Dial(handler.grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+  isController := utils.HasControllerFeature(device.Features)
+
+  if isController {
+    // Set up a connection to the server.
+    conn, err := grpc.Dial(handler.grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+    if err != nil {
+      handler.logger.Error("REST - GET - GetValuesDevice - cannot establish gRPC connection")
+      c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values - connection error"})
+      return
+    }
+    defer conn.Close()
+    client := device3.NewDeviceClient(conn)
+    ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+    defer cancel()
+
+    response, errSend := client.GetStatus(ctx, &device3.StatusRequest{
+      Id:       device.ID.Hex(),
+      Mac:      device.Mac,
+      ApiToken: profile.ApiToken,
+    })
+
+    if errSend != nil {
+      handler.logger.Error("REST - GET - GetValuesDevice - cannot get values via gRPC")
+      c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values"})
+      return
+    }
+
+    c.JSON(http.StatusOK, gin.H{
+      "on":          response.On,
+      "temperature": response.Temperature,
+      "mode":        response.Mode,
+      "fanMode":     response.FanMode,
+      "fanSpeed":    response.FanSpeed,
+    })
+  } else {
+    deviceValues := make([]sensorValue, 0)
+    for _, feature := range device.Features {
+      path := handler.sensorGetValueUrl + device.UUID + "/" + feature.Name
+      _, result, err := handler.getSensorValue(path)
+      if err != nil {
+        // TODO manage errors
+        // return custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot register sensor device feature "+feature.Name)
+      }
+
+      sensorFeatureValue := sensorValue{}
+      err = json.Unmarshal([]byte(result), &sensorFeatureValue)
+      if err != nil {
+        // TODO
+      }
+      // add to the object with the value also other information
+      // to associate the value to the specific feature
+      sensorFeatureValue.UUID = feature.UUID
+
+      handler.logger.Debugf("REST - GetValuesDevice - sensor value for feature = %s is = %#v\n", feature.Name, sensorFeatureValue)
+      deviceValues = append(deviceValues, sensorFeatureValue)
+    }
+
+    c.JSON(http.StatusOK, deviceValues)
+
+  }
+}
+
+func (handler *DevicesValues) getSensorValue(url string) (int, string, error) {
+  response, err := http.Get(url)
   if err != nil {
-    handler.logger.Error("REST - GET - GetValuesDevice - cannot establish gRPC connection")
-    c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values - connection error"})
-    return
+    return -1, "", custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot get sensor value via HTTP")
   }
-  defer conn.Close()
-  client := device3.NewDeviceClient(conn)
-  ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-  defer cancel()
-
-  response, errSend := client.GetStatus(ctx, &device3.StatusRequest{
-    Id:       device.ID.Hex(),
-    Mac:      device.Mac,
-    ApiToken: profile.ApiToken,
-  })
-
-  if errSend != nil {
-    handler.logger.Error("REST - GET - GetValuesDevice - cannot get values via gRPC")
-    c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values"})
-    return
-  }
-
-  c.JSON(http.StatusOK, gin.H{
-    "on":          response.On,
-    "temperature": response.Temperature,
-    "mode":        response.Mode,
-    "fanMode":     response.FanMode,
-    "fanSpeed":    response.FanSpeed,
-  })
+  defer response.Body.Close()
+  body, _ := io.ReadAll(response.Body)
+  return response.StatusCode, string(body), nil
 }
 
 func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
@@ -174,7 +225,6 @@ func (handler *DevicesValues) PostOnOffDevice(c *gin.Context) {
 
   c.JSON(http.StatusOK, gin.H{"message": "set value success"})
 }
-
 func (handler *DevicesValues) PostTemperatureDevice(c *gin.Context) {
   handler.logger.Info("REST - POST - PostTemperatureDevice called")
 
