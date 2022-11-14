@@ -89,14 +89,14 @@ Open every microservice in a terminal tab (or multiple windows)
 
 ```bash
 cd devices/api-server
-make air
+make run
 ```
 
 2. api-devices
 
 ```bash
 cd devices/api-devices
-make air
+make run
 ```
 
 3. sensor register
