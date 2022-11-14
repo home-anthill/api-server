@@ -20,7 +20,7 @@ pub async fn keep_alive() -> ApiResponse {
 }
 
 /// register a new temperature sensor
-#[post("/register/temperature", data = "<input>")]
+#[post("/sensors/register/temperature", data = "<input>")]
 pub async fn post_register_temperature(
     db: &State<Database>,
     input: Json<RegisterInput>,
@@ -30,7 +30,7 @@ pub async fn post_register_temperature(
 }
 
 /// register a new humidity sensor
-#[post("/register/humidity", data = "<input>")]
+#[post("/sensors/register/humidity", data = "<input>")]
 pub async fn post_register_humidity(
     db: &State<Database>,
     input: Json<RegisterInput>,
@@ -40,10 +40,21 @@ pub async fn post_register_humidity(
 }
 
 /// register a new light sensor
-#[post("/register/light", data = "<input>")]
+#[post("/sensors/register/light", data = "<input>")]
 pub async fn post_register_light(db: &State<Database>, input: Json<RegisterInput>) -> ApiResponse {
     info!(target: "app", "REST - POST - post_register_light");
     insert_register(db, input, "light").await
+}
+
+/// get sensor value by UUID and type
+#[get("/sensors/<uuid>/<sensor_type>")]
+pub async fn get_sensor_value(
+    db: &State<Database>,
+    uuid: String,
+    sensor_type: String,
+) -> ApiResponse {
+    info!(target: "app", "REST - GET - get_temperature");
+    get_sensor(db, uuid, sensor_type).await
 }
 
 async fn insert_register(
@@ -69,6 +80,46 @@ async fn insert_register(
                 })
                 .unwrap(),
                 code: Status::BadRequest.code,
+            }
+        }
+    }
+}
+
+async fn get_sensor(db: &State<Database>, uuid: String, sensor_type: String) -> ApiResponse {
+    debug!(target: "app", "get_sensor - called with sensor_type = {}, uuid = {}", sensor_type, uuid);
+    match sensor::get_sensor(db, &uuid, &sensor_type).await {
+        Ok(sensor_doc_opt) => {
+            debug!(target: "app", "get_sensor - result sensor_doc_opt = {:?}", sensor_doc_opt);
+            match sensor_doc_opt {
+                Some(sensor_doc) => {
+                    info!(target: "app", "get_sensor - result sensor_doc = {}", sensor_doc);
+                    ApiResponse {
+                        json: json!(sensor_doc),
+                        code: Status::Ok.code,
+                    }
+                }
+                None => {
+                    error!(target: "app", "get_sensor - sensor with uuid = {} not found", &uuid);
+                    ApiResponse {
+                        json: serde_json::to_value(ApiError {
+                            message: "Sensor not found".to_string(),
+                            code: Status::NotFound.code,
+                        })
+                        .unwrap(),
+                        code: Status::NotFound.code,
+                    }
+                }
+            }
+        }
+        Err(error) => {
+            error!(target: "app", "get_sensor - error {:?}", error);
+            ApiResponse {
+                json: serde_json::to_value(ApiError {
+                    message: "Internal server error".to_string(),
+                    code: Status::InternalServerError.code,
+                })
+                .unwrap(),
+                code: Status::InternalServerError.code,
             }
         }
     }
