@@ -24,7 +24,11 @@ export default function SensorValue({sensorFeatureValue}) {
                 case 'light':
                   return <LightModeIcon fontSize="large"></LightModeIcon>
                 default:
-                  return null
+                  return (
+                    <>
+                      Unsupported feature = {sensorFeatureValue.name}
+                    </>
+                  )
               }
             })()}
             <Typography sx={{fontSize: 14}} component="div">
@@ -32,9 +36,35 @@ export default function SensorValue({sensorFeatureValue}) {
             </Typography>
           </div>
           <div className="SensorValue">
-            <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
-              {sensorFeatureValue?.value} {sensorFeatureValue?.unit}
-            </Typography>
+            {(() => {
+              switch(sensorFeatureValue.name) {
+                case 'temperature':
+                case 'humidity':
+                  return (
+                    <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
+                      {sensorFeatureValue?.value.toFixed(2)} {sensorFeatureValue?.unit}
+                    </Typography>
+                  )
+                case 'light':
+                  return (
+                    <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
+                      {sensorFeatureValue?.value.toFixed(0)} {sensorFeatureValue?.unit}
+                    </Typography>
+                  )
+                case 'motion':
+                  return (
+                    <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
+                      {sensorFeatureValue?.value === 1 ? 'True' : 'False' }
+                    </Typography>
+                  )
+                default:
+                  return (
+                    <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
+                      Unsupported feature = {sensorFeatureValue.name}
+                    </Typography>
+                  )
+              }
+            })()}
           </div>
         </div>
       </CardContent>
