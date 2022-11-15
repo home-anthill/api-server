@@ -43,8 +43,13 @@ export default function Devices() {
     navigate(`/main/devices/${device.id}/sensor`, {state: {device}});
   }
 
-  function isController (device) {
+  function isController(device) {
     return device.features.find(feature => feature.type === 'controller') !== undefined;
+  }
+
+  function hasDevices(devicesResult) {
+    return devicesResult && ((devicesResult.homeDevices && devicesResult.homeDevices.length > 0)
+      || (devicesResult.unassignedDevices && devicesResult.unassignedDevices.length > 0));
   }
 
   return (
@@ -61,7 +66,7 @@ export default function Devices() {
         </div>
       ) : devicesLoading ? (
         <div className="loading">Loading...</div>
-      ) : devicesResult?.homeDevices?.length ? (
+      ) : hasDevices(devicesResult) ? (
         <>
           {devicesResult.unassignedDevices &&
             <>
