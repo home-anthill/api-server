@@ -37,6 +37,8 @@ jobs:
           file: ./devices/api-server/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: api-devices - build and push
         uses: docker/build-push-action@v3
         with:
@@ -44,6 +46,8 @@ jobs:
           file: ./devices/api-devices/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-devices:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: mosquitto - build and push
         uses: docker/build-push-action@v3
         with:
@@ -51,6 +55,8 @@ jobs:
           file: ./mosquitto/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mosquitto:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: gui - build and push
         uses: docker/build-push-action@v3
         with:
@@ -58,6 +64,8 @@ jobs:
           file: ./gui/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-gui:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: register - build and push
         uses: docker/build-push-action@v3
         with:
@@ -65,6 +73,8 @@ jobs:
           file: ./sensors/register/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-register:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: consumer - build and push
         uses: docker/build-push-action@v3
         with:
@@ -72,6 +82,8 @@ jobs:
           file: ./sensors/consumer/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-consumer:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: producer - build and push
         uses: docker/build-push-action@v3
         with:
@@ -79,6 +91,8 @@ jobs:
           file: ./sensors/producer/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-producer:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: esp32-configurator - build and push
         uses: docker/build-push-action@v3
         with:
@@ -86,6 +100,8 @@ jobs:
           file: ./esp32-configurator/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-esp32-configurator:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: certbot - build and push
         uses: docker/build-push-action@v3
         with:
@@ -93,3 +109,5 @@ jobs:
           file: ./certbot/Dockerfile
           push: true
           tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-certbot:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
