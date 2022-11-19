@@ -63,6 +63,16 @@ pub async fn post_register_airquality(
     insert_register(db, input, "airquality").await
 }
 
+/// register a new airpressure sensor
+#[post("/sensors/register/airpressure", data = "<input>")]
+pub async fn post_register_airpressure(
+    db: &State<Database>,
+    input: Json<RegisterInput>,
+) -> ApiResponse {
+    info!(target: "app", "REST - POST - post_register_airpressure");
+    insert_register(db, input, "airpressure").await
+}
+
 /// get sensor value by UUID and type
 #[get("/sensors/<uuid>/<sensor_type>")]
 pub async fn get_sensor_value(

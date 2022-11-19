@@ -22,7 +22,7 @@ pub async fn insert_register(
         serialized_data = new_from_register_input::<FloatSensor>(input).unwrap();
     } else if sensor_type == "motion" {
         serialized_data = new_from_register_input::<BooleanSensor>(input).unwrap();
-    } else if sensor_type == "airquality" {
+    } else if sensor_type == "airquality" || sensor_type == "airpressure" {
         serialized_data = new_from_register_input::<IntSensor>(input).unwrap();
     } else {
         error!(target: "app", "insert_register - Unknown sensor_type = {}", sensor_type);

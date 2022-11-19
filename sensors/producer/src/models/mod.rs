@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::models::message::Message;
 use crate::models::notification::Notification;
 use crate::models::payload_trait::{
-    AirQuality, Humidity, Light, Motion, PayloadTrait, Temperature,
+    AirPressure, AirQuality, Humidity, Light, Motion, PayloadTrait, Temperature,
 };
 use crate::models::topic::Topic;
 
@@ -20,6 +20,7 @@ pub fn get_msq_byte(topic: &Topic, payload_str: &str) -> Vec<u8> {
         "light" => message_payload_to_bytes::<Light>(payload_str, topic),
         "motion" => message_payload_to_bytes::<Motion>(payload_str, topic),
         "airquality" => message_payload_to_bytes::<AirQuality>(payload_str, topic),
+        "airpressure" => message_payload_to_bytes::<AirPressure>(payload_str, topic),
         _ => vec![],
     };
     msg_byte

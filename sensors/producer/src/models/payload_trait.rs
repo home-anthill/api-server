@@ -25,6 +25,11 @@ pub struct AirQuality {
     pub value: i32,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AirPressure {
+    pub value: i32,
+}
+
 pub trait PayloadTrait {}
 
 impl PayloadTrait for Temperature {}
@@ -36,3 +41,5 @@ impl PayloadTrait for Light {}
 impl PayloadTrait for Motion {}
 
 impl PayloadTrait for AirQuality {}
+
+impl PayloadTrait for AirPressure {}

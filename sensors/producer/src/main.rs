@@ -22,6 +22,7 @@ const TOPICS: &[&str] = &[
     "sensors/+/light",
     "sensors/+/motion",
     "sensors/+/airquality",
+    "sensors/+/airpressure",
 ];
 const QOS: i32 = 0;
 
