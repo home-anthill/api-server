@@ -20,6 +20,11 @@ pub struct Motion {
     pub value: bool,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AirQuality {
+    pub value: i32,
+}
+
 pub trait PayloadTrait {
     fn get_value(&self) -> f32;
 }
@@ -49,5 +54,11 @@ impl PayloadTrait for Motion {
         } else {
             0.0
         }
+    }
+}
+
+impl PayloadTrait for AirQuality {
+    fn get_value(&self) -> f32 {
+        self.value as f32
     }
 }

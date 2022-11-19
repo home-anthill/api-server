@@ -46,6 +46,23 @@ pub async fn post_register_light(db: &State<Database>, input: Json<RegisterInput
     insert_register(db, input, "light").await
 }
 
+/// register a new motion sensor
+#[post("/sensors/register/motion", data = "<input>")]
+pub async fn post_register_motion(db: &State<Database>, input: Json<RegisterInput>) -> ApiResponse {
+    info!(target: "app", "REST - POST - post_register_motion");
+    insert_register(db, input, "motion").await
+}
+
+/// register a new airquality sensor
+#[post("/sensors/register/airquality", data = "<input>")]
+pub async fn post_register_airquality(
+    db: &State<Database>,
+    input: Json<RegisterInput>,
+) -> ApiResponse {
+    info!(target: "app", "REST - POST - post_register_airquality");
+    insert_register(db, input, "airquality").await
+}
+
 /// get sensor value by UUID and type
 #[get("/sensors/<uuid>/<sensor_type>")]
 pub async fn get_sensor_value(
@@ -53,7 +70,7 @@ pub async fn get_sensor_value(
     uuid: String,
     sensor_type: String,
 ) -> ApiResponse {
-    info!(target: "app", "REST - GET - get_temperature");
+    info!(target: "app", "REST - GET - get_sensor_value");
     get_sensor(db, uuid, sensor_type).await
 }
 

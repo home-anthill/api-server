@@ -8,8 +8,11 @@ use consumer::amqp::{amqp_connect, read_message};
 use consumer::db::connect;
 use consumer::db::sensor::update_message;
 use consumer::models::message::{GenericMessage, Message};
-use consumer::models::payload_trait::{Humidity, Light, Temperature};
-use consumer::models::{new_humidity_message, new_light_message, new_temperature_message};
+use consumer::models::payload_trait::{AirQuality, Humidity, Light, Motion, Temperature};
+use consumer::models::{
+    new_airquality_message, new_humidity_message, new_light_message, new_motion_message,
+    new_temperature_message,
+};
 
 #[tokio::main]
 async fn main() {
@@ -90,12 +93,34 @@ async fn main() {
                         debug!(target: "app", "message light {:?}", &message);
                         match update_message(&client, &message).await {
                             Ok(_register_doc_id) => {
-                                debug!(target: "app", "update success");
+                                debug!(target: "app", "update success {:?}", _register_doc_id);
                             }
                             Err(_error) => {
                                 error!(target: "app", "{:?}", _error);
                             }
-                        }
+                        };
+                    } else if generic_msg.topic.feature == "motion" {
+                        let message: Message<Motion> = new_motion_message(generic_msg);
+                        debug!(target: "app", "message motion {:?}", &message);
+                        match update_message(&client, &message).await {
+                            Ok(_register_doc_id) => {
+                                debug!(target: "app", "update success {:?}", _register_doc_id);
+                            }
+                            Err(_error) => {
+                                error!(target: "app", "{:?}", _error);
+                            }
+                        };
+                    } else if generic_msg.topic.feature == "airquality" {
+                        let message: Message<AirQuality> = new_airquality_message(generic_msg);
+                        debug!(target: "app", "message airquality {:?}", &message);
+                        match update_message(&client, &message).await {
+                            Ok(_register_doc_id) => {
+                                debug!(target: "app", "update success {:?}", _register_doc_id);
+                            }
+                            Err(_error) => {
+                                error!(target: "app", "{:?}", _error);
+                            }
+                        };
                     } else {
                         error!(target: "app", "Cannot recognize Message payload type");
                     }

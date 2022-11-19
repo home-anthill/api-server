@@ -4,6 +4,8 @@ import { Card, CardContent, Typography } from '@mui/material';
 import DeviceThermostatIcon from '@mui/icons-material/DeviceThermostat';
 import InvertColorsIcon from '@mui/icons-material/InvertColors';
 import LightModeIcon from '@mui/icons-material/LightMode';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
+import WbCloudyIcon from '@mui/icons-material/WbCloudy';
 
 import './SensorValue.css';
 
@@ -23,6 +25,10 @@ export default function SensorValue({sensorFeatureValue}) {
                   return <InvertColorsIcon fontSize="large"></InvertColorsIcon>
                 case 'light':
                   return <LightModeIcon fontSize="large"></LightModeIcon>
+                case 'motion':
+                  return <DirectionsRunIcon fontSize="large"></DirectionsRunIcon>
+                case 'airquality':
+                  return <WbCloudyIcon fontSize="large"></WbCloudyIcon>
                 default:
                   return (
                     <>
@@ -55,6 +61,25 @@ export default function SensorValue({sensorFeatureValue}) {
                   return (
                     <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
                       {sensorFeatureValue?.value === 1 ? 'True' : 'False' }
+                    </Typography>
+                  )
+                case 'airquality':
+                  return (
+                    <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
+                      {(() => {
+                        switch(sensorFeatureValue?.value) {
+                          case 0:
+                            return 'Extreme pollution'
+                          case 1:
+                            return 'High pollution'
+                          case 2:
+                            return 'Mid pollution'
+                          case 3:
+                            return 'Low pollution'
+                          default:
+                            return 'Unknown'
+                        }
+                      })()}
                     </Typography>
                   )
                 default:

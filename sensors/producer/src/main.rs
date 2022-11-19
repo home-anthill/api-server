@@ -21,6 +21,7 @@ const TOPICS: &[&str] = &[
     "sensors/+/humidity",
     "sensors/+/light",
     "sensors/+/motion",
+    "sensors/+/airquality",
 ];
 const QOS: i32 = 0;
 
@@ -211,7 +212,7 @@ fn merge_ca_files(root_ca: &String, mqtt_cert_file: &String) {
     match &combined_root_ca_res {
         Ok(_res) => {
             info!(target: "app", "merge_ca_files - {} file created", COMBINED_CA_FILES_PATH);
-        },
+        }
         Err(err) => {
             error!(target: "app", "merge_ca_files - cannot create {} file, err = {:?}", COMBINED_CA_FILES_PATH, err);
         }

@@ -10,7 +10,8 @@
 // include the TimeAlarms library (https://www.arduino.cc/reference/en/libraries/timealarms/)
 #include <Time.h>
 #include <TimeAlarms.h>
-// include DHT libraries:
+
+// include libraries:
 // - DHT Sensor: https://github.com/adafruit/DHT-sensor-library
 // - Adafruit Unified Sensor: https://github.com/adafruit/Adafruit_Sensor
 #include <Adafruit_Sensor.h>
@@ -77,6 +78,7 @@ const char* ca_cert = \
 // ----------------------- WIFI -------------------------
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
+String macAddress;
 # if SSL==true
 WiFiClientSecure client;
 # else 
@@ -118,11 +120,16 @@ char* getRegisterUrl() {
 
 void reconnect() { 
   while (!mqttClient.connected()) {
-    Serial.println("reconnect - Attempting MQTT connection...");
+    Serial.println("reconnect - attempting MQTT connection...");
     mqttClient.setBufferSize(4096);
     
-    if (mqttClient.connect("arduinoClient")) {
-      Serial.print("reconnect - Connected and subscribing with savedUuid: ");
+    // here you can use the version with `connect(const char* id, const char* user, const char* pass)` with authentication
+    const char* idClient = savedUuid.c_str();
+    Serial.print("reconnect - connecting to MQTT with client id = ");
+    Serial.println(idClient);
+
+    if (mqttClient.connect(idClient)) {
+      Serial.print("reconnect - connected and subscribing with savedUuid: ");
       Serial.println(savedUuid);
     } else {
       Serial.print("reconnect - failed, rc=");
@@ -163,7 +170,15 @@ void notifyValue(char* type, float value) {
   mqttClient.publish(topic, payloadToSend);
 }
 
-void registerServer() {
+/*
+* registerServer function 
+* returns an uint:
+*  0 => registered or already registered successfully
+*  1 => cannot register, because http status code is not 200 (ok) or 209 (already registered)
+*  2 => register success, but cannot save the response UUID in preferences
+*  3 => cannot deserialize register JSON response payload (probably malformed or too big)
+*/
+uint registerServer() {
   HTTPClient http;
   # if SSL==true
   client.setCACert(ca_cert);
@@ -176,7 +191,7 @@ void registerServer() {
   http.begin(client, registerUrl);
   http.addHeader("Content-Type", "application/json; charset=utf-8");
 
-  String macAddress = WiFi.macAddress();
+  macAddress = WiFi.macAddress();
   String features = "[";
   features += "{\"type\": \"sensor\",\"name\": \"humidity\",\"enable\": true,\"priority\": 1,\"unit\": \"%\"},";
   features += "{\"type\": \"sensor\",\"name\": \"temperature\",\"enable\": true,\"priority\": 1,\"unit\": \"°C\"},";
@@ -199,8 +214,8 @@ void registerServer() {
 
     Serial.println("registerServer - Retrying in 60 seconds...");
     delay(60000);
-    registerServer();
-    return;
+    // call again registerServer() recursively after the delay
+    return registerServer();
   }
 
   Serial.print("registerServer - httpResponseCode = ");
@@ -208,7 +223,7 @@ void registerServer() {
 
   if (httpResponseCode != HTTP_CODE_OK && httpResponseCode != HTTP_CODE_CONFLICT) {
     Serial.println("registerServer - Bad httpResponseCode! Cannot register this device");
-    return;
+    return 1;
   }
 
   if (httpResponseCode == HTTP_CODE_OK) {
@@ -242,11 +257,11 @@ void registerServer() {
           // strcmp(MANUFACTURER, manufacturerValue) != 0 ||
           // strcmp(MODEL, modelValue) != 0) {
       //   Serial.println("--- ERROR : Request and response data don't match ---");
-      //   return;
+      //   return 4;
       // }
       // if (!macAddress.equals(macValue) || nameValue != NAME || manufacturerValue != MANUFACTURER || modelValue != MODEL) {
       //   Serial.println("--- ERROR : Request and response data don't match ---");
-      //   return;
+      //   return 5;
       // }
 
       preferences.begin("device", false); 
@@ -257,44 +272,79 @@ void registerServer() {
         Serial.println("************* ERROR **************");
         Serial.println("registerServer - Cannot SAVE UUID in Preferences");
         Serial.println("**********************************");
-        return;
+        return 2;
       }
     } else {
       Serial.println("registerServer - cannot deserialize register JSON payload");
-      return;
+      return 3;
     }
   } else if (httpResponseCode == HTTP_CODE_CONFLICT) {
     // this is not an error, it appears every reboot after the first registration
     Serial.println("registerServer - HTTP_CODE_CONFLICT - already registered");
   }
-
-  Serial.println("Starting 'notify*' functions...");
-  setTime(0,0,0,1,1,21); // set time to Saturday 00:00:00am Jan 1 2021
-  Alarm.timerRepeat(15, notifyDht);
+  return 0; // OK - registered without errors
 }
 
-void notifyDht() {
-  Serial.println("notifyDht - called");
+void readSensorValue() {
+  Serial.println("readSensorValue - called");
   sensors_event_t event;
   dht.temperature().getEvent(&event);
   if (isnan(event.temperature)) {
-      Serial.println("notifyDht - Error reading temperature!");
+      Serial.println("readSensorValue - error reading temperature!");
   } else {
-      Serial.print("notifyDht - Temperature: ");
+      Serial.print("readSensorValue - temperature: ");
       Serial.print(event.temperature);
       Serial.println("°C");
       notifyValue("temperature", event.temperature);
   }
-  // Get humidity event and print its value.
   dht.humidity().getEvent(&event);
   if (isnan(event.relative_humidity)) {
-      Serial.println("notifyDht - Error reading humidity!");
+      Serial.println("readSensorValue - error reading humidity!");
   } else {
-      Serial.print("notifyDht - Humidity: ");
+      Serial.print("readSensorValue - humidity: ");
       Serial.print(event.relative_humidity);
       Serial.println("%");
       notifyValue("humidity", event.relative_humidity);
   }
+
+  // TODO add logic as in airQuality so send values only if they changes in a specific range
+}
+
+void initSensor() {
+  Serial.println("initSensor - called");
+  // Initialize DHT device
+  dht.begin();
+  sensor_t sensor;
+  // Print temperature sensor details.
+  dht.temperature().getSensor(&sensor);
+  Serial.println(F("initSensor - temperature"));
+  Serial.print(F("initSensor - temperature - Sensor Type: "));
+  Serial.println(sensor.name);
+  Serial.print(F("initSensor - temperature - Driver Ver:  "));
+  Serial.println(sensor.version);
+  Serial.print(F("initSensor - temperature - Unique ID:   "));
+  Serial.println(sensor.sensor_id);
+  Serial.print(F("initSensor - temperature - Max Value:   "));
+  Serial.print(sensor.max_value); Serial.println(F("°C"));
+  Serial.print(F("initSensor - temperature - Min Value:   "));
+  Serial.print(sensor.min_value); Serial.println(F("°C"));
+  Serial.print(F("initSensor - temperature - Resolution:  "));
+  Serial.print(sensor.resolution); Serial.println(F("°C"));
+  // Print humidity sensor details.
+  dht.humidity().getSensor(&sensor);
+  Serial.println(F("initSensor - humidity"));
+  Serial.print(F("initSensor - humidity - Sensor Type: "));
+  Serial.println(sensor.name);
+  Serial.print(F("initSensor - humidity - Driver Ver:  "));
+  Serial.println(sensor.version);
+  Serial.print(F("initSensor - humidity - Unique ID:   "));
+  Serial.println(sensor.sensor_id);
+  Serial.print(F("initSensor - humidity - Max Value:   "));
+  Serial.print(sensor.max_value); Serial.println(F("%"));
+  Serial.print(F("initSensor - humidity - Min Value:   "));
+  Serial.print(sensor.min_value); Serial.println(F("%"));
+  Serial.print(F("initSensor - humidity - Resolution:  "));
+  Serial.print(sensor.resolution); Serial.println(F("%"));
 }
 
 void setup() {
@@ -307,43 +357,6 @@ void setup() {
   # else 
   Serial.println("setup - Running WITHOUT SSL");
   # endif
-
-  Serial.println("------------------------------------");
-  // Initialize DHT device
-  dht.begin();
-  sensor_t sensor;
-  // Print temperature sensor details.
-  dht.temperature().getSensor(&sensor);
-  Serial.println(F("setup - Temperature Sensor"));
-  Serial.print(F("setup - Sensor Type: "));
-  Serial.println(sensor.name);
-  Serial.print(F("setup - Driver Ver:  "));
-  Serial.println(sensor.version);
-  Serial.print(F("setup - Unique ID:   "));
-  Serial.println(sensor.sensor_id);
-  Serial.print(F("setup - Max Value:   "));
-  Serial.print(sensor.max_value); Serial.println(F("°C"));
-  Serial.print(F("setup - Min Value:   "));
-  Serial.print(sensor.min_value); Serial.println(F("°C"));
-  Serial.print(F("setup - Resolution:  "));
-  Serial.print(sensor.resolution); Serial.println(F("°C"));
-  Serial.println("------------------------------------");
-  // Print humidity sensor details.
-  dht.humidity().getSensor(&sensor);
-  Serial.println(F("setup - Humidity Sensor"));
-  Serial.print(F("setup - Sensor Type: "));
-  Serial.println(sensor.name);
-  Serial.print(F("setup - Driver Ver:  "));
-  Serial.println(sensor.version);
-  Serial.print(F("setup - Unique ID:   "));
-  Serial.println(sensor.sensor_id);
-  Serial.print(F("setup - Max Value:   "));
-  Serial.print(sensor.max_value); Serial.println(F("%"));
-  Serial.print(F("setup - Min Value:   "));
-  Serial.print(sensor.min_value); Serial.println(F("%"));
-  Serial.print(F("setup - Resolution:  "));
-  Serial.print(sensor.resolution); Serial.println(F("%"));
-  Serial.println("------------------------------------");
 
   Serial.println("--------------- WiFi ----------------");
   WiFi.begin(ssid, password);
@@ -359,7 +372,15 @@ void setup() {
   Serial.println(WiFi.macAddress());
 
   Serial.println("setup - Registering this device...");
-  registerServer();
+  uint result = registerServer();
+  if (result == 0) {
+    Serial.println("setup - Starting 'notify*' functions...");
+    setTime(0,0,0,1,1,21); // set time to Saturday 00:00:00am Jan 1 2021
+    Alarm.timerRepeat(15, readSensorValue);
+  } else {
+    Serial.println("setup - registerServer() returned error code, cannot continue");
+    return;
+  }
 
   Serial.println("setup - Getting saved UUID from preferences...");
   preferences.begin("device", false); 
@@ -373,10 +394,19 @@ void setup() {
     return;
   }
 
+  initSensor();
+
   delay(1500);
 }
 
 void loop() {
+  // if 'savedUuid' is not defined, you cannot use this device
+  if (savedUuid == NULL || savedUuid.length() == 0) {
+    Serial.println("loop - savedUuid NOT FOUND, cannot continue...");
+    delay(60000);
+    return;
+  }
+
   if (!mqttClient.connected()) {
     Serial.println("loop - RECONNECTING...");
     reconnect();

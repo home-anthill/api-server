@@ -1,13 +1,12 @@
 use log::{debug, error, info};
 
-use mongodb::bson::oid::ObjectId;
 use mongodb::bson::{doc, Bson, Document};
 use mongodb::options::FindOneOptions;
 use mongodb::Database;
 use rocket::serde::json::Json;
 
 use crate::models::inputs::RegisterInput;
-use crate::models::sensor::{new_from_register_input, BooleanSensor, FloatSensor};
+use crate::models::sensor::{new_from_register_input, BooleanSensor, FloatSensor, IntSensor};
 
 pub async fn insert_register(
     db: &Database,
@@ -23,6 +22,8 @@ pub async fn insert_register(
         serialized_data = new_from_register_input::<FloatSensor>(input).unwrap();
     } else if sensor_type == "motion" {
         serialized_data = new_from_register_input::<BooleanSensor>(input).unwrap();
+    } else if sensor_type == "airquality" {
+        serialized_data = new_from_register_input::<IntSensor>(input).unwrap();
     } else {
         error!(target: "app", "insert_register - Unknown sensor_type = {}", sensor_type);
         // TODO return a custom error instead of use `panic`
