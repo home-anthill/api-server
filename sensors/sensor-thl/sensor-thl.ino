@@ -24,10 +24,11 @@
 
 // ------------------------------------------------------
 // ----------------------- DHT --------------------------
-#define DHTPIN 4 // Digital pin connected to the DHT sensor
-#define DHTTYPE DHT22 // DHT 22 (AM2302)
-DHT_Unified dht(DHTPIN, DHTTYPE);
-const int dhtDelay = 60; // seconds
+#define DHT_PIN 4 // Digital pin connected to the DHT sensor
+#define DHT_TYPE DHT22 // DHT 22 (AM2302)
+DHT_Unified dht(DHT_PIN, DHT_TYPE);
+// ------------------------------------------------------
+// ------------------------------------------------------
 
 
 // Given below is the CA Certificate "ISRG Root X1" by Let's Encrypt.
