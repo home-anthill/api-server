@@ -1,2 +1,2 @@
 # empty
-# used only to define builder as a package
+# used only to define a package
