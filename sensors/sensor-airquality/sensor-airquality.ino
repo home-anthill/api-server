@@ -17,15 +17,18 @@
 //    You cannot use the one published on ArduinoIDE Library Manager, because it's outdated and not compatibile with ESP32 devices.
 #include "Air_Quality_Sensor.h"
 
- 
+
 #include "secrets.h"
 
 
 // ------------------------------------------------------
 // -------------------- AirQuality ----------------------
-AirQualitySensor sensor(4);
+#define AIR_QUALITY_PIN 4 // Digital pin connected to the airQuality sensor
+AirQualitySensor sensor(AIRQUALITYPIN);
+// global variable used to store the current value read by the sensor
 int currentValue = -1; // initial uninitialized value
-
+// ------------------------------------------------------
+// ------------------------------------------------------
 
 
 // Given below is the CA Certificate "ISRG Root X1" by Let's Encrypt.
