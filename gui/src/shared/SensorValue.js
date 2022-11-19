@@ -6,6 +6,7 @@ import InvertColorsIcon from '@mui/icons-material/InvertColors';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import WbCloudyIcon from '@mui/icons-material/WbCloudy';
+import CompressIcon from '@mui/icons-material/Compress';
 
 import './SensorValue.css';
 
@@ -29,6 +30,8 @@ export default function SensorValue({sensorFeatureValue}) {
                   return <DirectionsRunIcon fontSize="large"></DirectionsRunIcon>
                 case 'airquality':
                   return <WbCloudyIcon fontSize="large"></WbCloudyIcon>
+                case 'airpressure':
+                  return <CompressIcon fontSize="large"></CompressIcon>
                 default:
                   return (
                     <>
@@ -80,6 +83,12 @@ export default function SensorValue({sensorFeatureValue}) {
                             return 'Unknown'
                         }
                       })()}
+                    </Typography>
+                  )
+                case 'airpressure':
+                  return (
+                    <Typography sx={{fontSize: 24}} color="text.secondary" gutterBottom>
+                      {sensorFeatureValue?.value.toFixed(0)} {sensorFeatureValue?.unit}
                     </Typography>
                   )
                 default:
