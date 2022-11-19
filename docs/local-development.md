@@ -18,20 +18,43 @@ curl -sSfL https://raw.githubusercontent.com/cosmtrek/air/master/install.sh | sh
 
 Install Rust from [HERE](https://www.rust-lang.org/)
 
+Check if everything works fine running:
+```bash
+cargo --version
+```
+
 
 ## 3. Install NodeJS
 
 
 Install NodeJS LTS from [HERE](https://nodejs.org/)
 
+Check if everything works fine running:
+```bash
+node -v
+npm -v
+```
 
-## 4. Install and run Docker Desktop
+
+## 4. Install Python 3.10 (or greater)
+
+
+Install Python 3 from [HERE](https://www.python.org/downloads/)
+
+Check if everything works fine running:
+```bash
+python3 --version
+pip3 --version
+```
+
+
+## 5. Install and run Docker Desktop
 
 
 Install Docker Desktop from [HERE](https://www.docker.com/products/docker-desktop/)
 
 
-## 5. Deploy local docker containers
+## 6. Deploy local docker containers
 
 
 1. Mosquitto
@@ -63,7 +86,7 @@ docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:6
 ```
 
 
-## 6. Create GitHub oAuth2 application
+## 7. Create GitHub oAuth2 application
 
 
 ```bash
@@ -80,7 +103,7 @@ These 2 values are the clientID and secretID of your github oAuth2 application, 
 6. save the oAuth2 app
 
 
-## 7. Run all microservices
+## 8. Run all microservices
 
 
 Open every microservice in a terminal tab (or multiple windows)
@@ -134,7 +157,7 @@ From `http://localhost:8082` **login with the GitHub account used to create the 
 If you'll login successfully you'll be redirected to the main app page.
 
 
-## 8. Fill database with some data
+## 9. Fill database with some data
 
 
 At this point, you should be able to login to the app, so the DB has a valid profile inside.
@@ -183,17 +206,18 @@ localhost:8082/api/profiles/<YOUR PROFILE MONGODB OBJECTID>/tokens
 **The response of `regenApiToken` contains the re-generated `apiToken`**. This token changes every time you call the API and the previous value won't be valid anymore.
 
 
-## 9. Prepare ESP32 boards with wiring and electrical parts
+## 10. Prepare ESP32 boards with wiring and electrical parts
 
 
 **TODO add a tutorial and some photos**
 
 
-## 10. Flash and power on devices
+## 11. Flash and power on devices
 
 
 1. Configure [Arduino IDE 2.x](https://www.arduino.cc/en/software) to build and flash ESP32S2 dev-kitC firmwares. You need the `esp32` board in `Board Manager` as described in [the official tutorial](https://espressif-docs.readthedocs-hosted.com/projects/arduino-esp32/en/latest/installing.html).
 Then try to build and flash an an official example to see if everything is ok!
+
 2. From Arduino IDE install these libraries from `Library Manager` tab:
 - `Arduino Unified Sensor` by Adafruit (version `1.1.6`)
 - `ArduinoJson` by Benoit Blanchon (version `6.19.4`)
@@ -203,14 +227,11 @@ Then try to build and flash an an official example to see if everything is ok!
 - `PubSubClient` by Nick O'Leary (version `2.8`)
 - `Time` by Michael Margolis (version `1.6.1`)
 - `TimeAlarms` by Michael Margolis (version `1.5`)
-3. Prepare `secrets.h` files:
 
-```bash
-cp devices/device/secrets.h.template devices/device/secrets.h
-cp sensors/sensor/secrets.h.template sensors/sensor/secrets.h
-```
+Additionally, you need to manually add other libraries in Arduino folder. To do this, open that folder (`/Users/<YOUR_USERNAME>/Documents/Arduino/libraries/` on macOS) and copy the libraries:
+- `Grove - Air quality sensor` by Seeed Studio (latest version on `master branch` or commit hash `58e4c0bb5ce1b0c9b8aa1265e9f726025feb34f0` [FROM GITHUB](https://github.com/Seeed-Studio/Grove_Air_quality_Sensor)). You cannot use the one published on ArduinoIDE Library Manager, because it's outdated and not compatibile with ESP32 devices.
 
-4. Update `secrets.h` files in this way:
+3. Update `secrets.h` files using the `esp32-configurator` Python script
 
 First check the IP address of your pc (based on your OS):
 
@@ -218,28 +239,51 @@ First check the IP address of your pc (based on your OS):
 ip a
 # or
 ifconfig
-# or
+# or (on windows)
 ipconfig /a
 ```
 
-You'll have something like `192.168.1.???`, for example `192.168.1.7`
+You'll get something like `192.168.1.???`, for example `192.168.1.7`.
 
-```cpp
-// update the content of this file and rename it to 'secrets.h'
+4. Create a new file called `secrets-local.yaml` file with this content
 
-#define SECRET_SSID "WIFI_SSID"       // this is the name of your WiFi network
-#define SECRET_PASS "WIFI_PASSWORD"   // this is the password of your WiFi network
+```yaml
+# development configuration used locally
 
-#define MANUFACTURER "MANUFACTURER"   // choose a manufacturer name
-#define MODEL "MODEL"                 // choose a model name
+wifi_ssid: '<YOUR WIFI SSID>'
+wifi_password: '<YOUR WIFI PASSWORD>'
 
-// EXTREMELY IMPORTANT!!!
-// apiToken (check "section '8. Fill database with some data' > 'Postman' > point 5" in this file above)
-#define API_TOKEN "API_TOKEN_FROM_PROFILE_PAGE"
+manufacturer: 'ks89'
+api_token: '<PROFILE API TOKEN>' # from your local DB
 
-#define SERVER_URL "http://192.168.1.7/api/register"  // add your local IP (for example 192.168.1.7)
-#define MQTT_URL "192.168.1.7"        // your local IP (for example 192.168.1.7)
+ssl: false
+
+server_domain: '192.168.1.7' # your local IP (for example 192.168.1.7)
+server_port: '8082'
+server_path: '/api/register'
+
+mqtt_domain: '192.168.1.7' # your local IP (for example 192.168.1.7)
+mqtt_port: 1883
 ```
 
-4. Open `devices/device`, build and flash the firmware on a ESP32S2 DevKit-C boad
-5. Open `sensors/sensor`, build and flash the firmware on a ESP32S2 DevKit-C boad
+5. Run `esp32-configurator` Python script:
+
+```bash
+cd esp32-configurator
+
+python3 -m configurator --model=thl --source=../secrets-local.yaml --destination=../sensors/sensor-thl
+python3 -m configurator --model=light --source=../secrets-local.yaml --destination=../sensors/sensor-light
+python3 -m configurator --model=motion --source=../secrets-local.yaml --destination=../sensors/sensor-motion
+python3 -m configurator --model=airquality --source=../secrets-local.yaml --destination=../sensors/sensor-airquality
+python3 -m configurator --model=airpressure --source=../secrets-local.yaml --destination=../sensors/sensor-airpressure
+
+python3 -m configurator --model=ac --source=../secrets-local.yaml --destination=../devices/device
+```
+
+6. Build and flash firmwares
+
+- Open `devices/device/device.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
+- Open `sensors/sensor-thl/sensor-thl.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
+- Open `sensors/sensor-light/sensor-light.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
+- Open `sensors/sensor-airquality/sensor-airquality.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
+- Open `sensors/sensor-airpressure/sensor-airpressure.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad

@@ -49,9 +49,17 @@ At the moment, the only supported device is ESP32 S2 (DevKit-C)
     ```bash
     cd esp32-configurator
     
-    python3 -m configurator --model=sensor1 --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor
+    python3 -m configurator --model=thl --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-thl
+    
+    python3 -m configurator --model=light --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-light
+    
+    python3 -m configurator --model=motion --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-motion
 
-    python3 -m configurator --model=ac1 --source=../../air-conditioner-server-config/secrets.yaml --destination=../devices/device
+    python3 -m configurator --model=airquality --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-airquality
+
+    python3 -m configurator --model=airpressure --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-airpressure
+
+    python3 -m configurator --model=ac --source=../../air-conditioner-server-config/secrets.yaml --destination=../devices/device
     ```
 
 3. Build and flash firmwares via Arduino IDE
