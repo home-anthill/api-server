@@ -68,7 +68,7 @@ export default function Devices() {
         <div className="loading">Loading...</div>
       ) : hasDevices(devicesResult) ? (
         <>
-          {devicesResult.unassignedDevices && devicesResult.unassignedDevices.length &&
+          {devicesResult.unassignedDevices && devicesResult.unassignedDevices.length > 0 &&
             <>
               <div className="HomeContainer">
                 <Typography variant="h5" component="h1">
