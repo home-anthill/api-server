@@ -27,7 +27,7 @@ pub struct AirQuality {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AirPressure {
-    pub value: i32,
+    pub value: f32,
 }
 
 pub trait PayloadTrait {

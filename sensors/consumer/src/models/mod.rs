@@ -47,9 +47,9 @@ pub fn new_airquality_message(val: GenericMessage) -> Message<AirQuality> {
 }
 
 pub fn new_airpressure_message(val: GenericMessage) -> Message<AirPressure> {
-    let value: Option<i64> = val.payload.get("value").and_then(|value| value.as_i64());
+    let value: Option<f64> = val.payload.get("value").and_then(|value| value.as_f64());
     let payload = AirPressure {
-        value: value.unwrap() as i32,
+        value: value.unwrap() as f32,
     };
     Message::new(val.uuid, val.api_token, val.topic, payload)
 }
