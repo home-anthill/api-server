@@ -10,6 +10,8 @@
 // include the TimeAlarms library (https://www.arduino.cc/reference/en/libraries/timealarms/)
 #include <Time.h>
 #include <TimeAlarms.h>
+// include library to configure I2C port
+#include <Wire.h>
 
 // include libraries:
 // - `Grove - Digital Light sensor` by Seeed Studio (latest version on `master branch` or
@@ -19,6 +21,15 @@
 
 
 #include "secrets.h"
+
+
+// ------------------------------------------------------
+// ------------------------ Light -----------------------
+// Configure I2C GPIOs
+#define I2C_SDA 39
+#define I2C_SCL 40
+// ------------------------------------------------------
+// ------------------------------------------------------
 
 
 // Given below is the CA Certificate "ISRG Root X1" by Let's Encrypt.
@@ -285,14 +296,21 @@ void readSensorValue() {
 
 void initSensor() {
   Serial.println("initSensor - called");
+  Wire.setPins(I2C_SDA, I2C_SCL);
+  Wire.begin();
   TSL2561.init();
   Serial.println("initSensor - sensor initialized successfully!");
 }
 
 void setup() {
+  // Init serial port
   Serial.begin(115200);
-  // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
-  delay(4000);
+  // To be able to connect Serial monitor after reset or power up and before first print out.
+  // Do not wait for an attached Serial Monitor!
+  delay(3000);
+  // disable ESP32 Devkit-C built-in LED
+  pinMode (LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 
   # if SSL==true
   Serial.println("setup - Running with SSL enabled");

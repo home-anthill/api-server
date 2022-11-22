@@ -10,13 +10,14 @@
 // include the TimeAlarms library (https://www.arduino.cc/reference/en/libraries/timealarms/)
 #include <Time.h>
 #include <TimeAlarms.h>
+// include library to configure I2C port
+#include <Wire.h>
 
 // include libraries:
-// - `Grove - Barometer HP20x` by Seeed Studio (latest version on `master branch` or
-//    commit hash `3071459ff9df32a7d97b09e962ac2008aba67555` from `https://github.com/Seeed-Studio/Grove_Barometer_HP20x`).
-//    You cannot use the one published on ArduinoIDE Library Manager, because it's outdated and not compatibile with ESP32 devices.
-#include <HP20x_dev.h>
-#include <KalmanFilter.h>
+// - `DPS310-Pressure-Sensor` by Infineon (latest version on `dps310 branch` or
+//    commit hash `ed02f803fc780cbcab54ed8b35dd3d718f2ebbda` from `https://github.com/Infineon/DPS310-Pressure-Sensor`).
+//    You cannot use the one published on ArduinoIDE Library Manager, because it's outdated or not available.
+#include <Dps310.h>
 
 
 #include "secrets.h"
@@ -24,10 +25,11 @@
 
 // ------------------------------------------------------
 // --------------------- Barometric ---------------------
+// Configure I2C GPIOs
+#define I2C_SDA 39
+#define I2C_SCL 40
 // global variables
-KalmanFilter t_filter;    //temperature filter
-KalmanFilter p_filter;    //pressure filter
-KalmanFilter a_filter;    //altitude filter
+Dps310 Dps310PressureSensor = Dps310();
 // ------------------------------------------------------
 // ------------------------------------------------------
 
@@ -146,7 +148,7 @@ void reconnect() {
 void notifyValue(char* type, float value) {
   Serial.println("notifyValue - called with type=" + String(type));
   // check if type is supported
-  if (strcmp(type, "temperature") != 0 && strcmp(type, "airpressure") != 0 && strcmp(type, "altitude") != 0) {
+  if (strcmp(type, "temperature") != 0 && strcmp(type, "airpressure") != 0) {
     Serial.println("notifyValue - Cannot send data. Unsupported type=" + String(type));
     return;
   }
@@ -196,8 +198,7 @@ uint registerServer() {
   macAddress = WiFi.macAddress();
   String features = "[";
   features += "{\"type\": \"sensor\",\"name\": \"airpressure\",\"enable\": true,\"priority\": 1,\"unit\": \"hPa\"},";
-  features += "{\"type\": \"sensor\",\"name\": \"temperature\",\"enable\": true,\"priority\": 1,\"unit\": \"°C\"},";
-  features += "{\"type\": \"sensor\",\"name\": \"altitude\",\"enable\": true,\"priority\": 1,\"unit\": \"m\"}";
+  features += "{\"type\": \"sensor\",\"name\": \"temperature\",\"enable\": true,\"priority\": 1,\"unit\": \"°C\"}";
   features += "]";
 
  String registerPayload = "{\"mac\": \"" + WiFi.macAddress() + 
@@ -288,50 +289,40 @@ uint registerServer() {
 void readSensorValue() {
   Serial.println("readSensorValue - called");
 
-  long Temper = HP20x.ReadTemperature();
-  Serial.println("readSensorValue - temperature value:");
-  float t = Temper / 100.0;
-  Serial.print(t);
-  Serial.println("°C\n");
-  Serial.println("Filter:");
-  Serial.print(t_filter.Filter(t));
-  Serial.println("°C\n");
-  Serial.println("readSensorValue - notifying value temperature...");
-  // notifyValue("temperature", ???);
+  float pressure;
+  if (Dps310PressureSensor.measurePressureOnce(pressure) == 0) {
+    pressure = pressure / 1000;
+    Serial.print("readSensorValue - pressure [hPAa]: ");
+    Serial.println(pressure);
+    notifyValue("airpressure", pressure);
+  }
 
-  long Pressure = HP20x.ReadPressure();
-  Serial.println("readSensorValue - pressure value:");
-  t = Pressure / 100.0;
-  Serial.print(t);
-  Serial.println("hPa\n");
-  Serial.println("Filter:");
-  Serial.print(p_filter.Filter(t));
-  Serial.println("hPa\n");
-  Serial.println("readSensorValue - notifying value pressure...");
-  // notifyValue("airpressure", ???);
-
-  long Altitude = HP20x.ReadAltitude();
-  Serial.println("readSensorValue - altitude value:");
-  t = Altitude / 100.0;
-  Serial.print(t);
-  Serial.println("m\n");
-  Serial.println("Filter:");
-  Serial.print(a_filter.Filter(t));
-  Serial.println("m\n");
-  Serial.println("readSensorValue - notifying value altitude...");
-  // notifyValue("altitude", ???);
+  float temperature;
+  if (Dps310PressureSensor.measureTempOnce(temperature) == 0) {
+    Serial.print("readSensorValue - temperature [°C]: ");
+    Serial.println(temperature);
+    notifyValue("temperature", temperature);
+  }
 }
 
 void initSensor() {
   Serial.println("initSensor - called");
-  HP20x.begin();
+
+  Wire.setPins(I2C_SDA, I2C_SCL);
+  Dps310PressureSensor.begin(Wire);
+
   Serial.println("initSensor - sensor initialized successfully!");
 }
 
 void setup() {
+  // Init serial port
   Serial.begin(115200);
-  // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
-  delay(4000);
+  // To be able to connect Serial monitor after reset or power up and before first print out.
+  // Do not wait for an attached Serial Monitor!
+  delay(3000);
+  // disable ESP32 Devkit-C built-in LED
+  pinMode (LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 
   # if SSL==true
   Serial.println("setup - Running with SSL enabled");

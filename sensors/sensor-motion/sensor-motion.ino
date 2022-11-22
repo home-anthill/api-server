@@ -308,9 +308,14 @@ void initSensor() {
 }
 
 void setup() {
+  // Init serial port
   Serial.begin(115200);
-  // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
-  delay(4000);
+  // To be able to connect Serial monitor after reset or power up and before first print out.
+  // Do not wait for an attached Serial Monitor!
+  delay(3000);
+  // disable ESP32 Devkit-C built-in LED
+  pinMode (LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 
   # if SSL==true
   Serial.println("setup - Running with SSL enabled");
