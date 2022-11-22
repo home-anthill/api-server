@@ -5,6 +5,22 @@ import (
   "time"
 )
 
+type Type string
+
+const (
+  Controller Type = "controller"
+  Sensor     Type = "sensor"
+)
+
+type Feature struct {
+  UUID     string `json:"uuid" bson:"uuid"`
+  Type     Type   `json:"type" bson:"type"`
+  Name     string `json:"name" bson:"name"`
+  Enable   bool   `json:"enable" bson:"enable"`
+  Priority int    `json:"priority" bson:"priority"`
+  Unit     string `json:"unit" bson:"unit"`
+}
+
 type Device struct {
   //swagger:ignore
   ID           primitive.ObjectID `json:"id" bson:"_id"`
@@ -15,4 +31,13 @@ type Device struct {
   Features     []Feature          `json:"features" bson:"features"`
   CreatedAt    time.Time          `json:"createdAt" bson:"createdAt"`
   ModifiedAt   time.Time          `json:"modifiedAt" bson:"modifiedAt"`
+}
+
+type DeviceState struct {
+  // For 'On' and 'Swing' you cannot use required for boolean, otherwise you cannot set as false
+  On          bool `json:"on" validate:"boolean"`
+  Temperature int  `json:"temperature" validate:"required,min=17,max=30"`
+  Mode        int  `json:"mode" validate:"required,min=0,max=4"`
+  FanSpeed    int  `json:"fanSpeed" validate:"required,min=0,max=4"`
+  Swing       bool `json:"swing" validate:"boolean"`
 }

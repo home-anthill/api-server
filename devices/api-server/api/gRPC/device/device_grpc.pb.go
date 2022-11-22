@@ -19,11 +19,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DeviceClient interface {
 	GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
-	SetOnOff(ctx context.Context, in *OnOffValueRequest, opts ...grpc.CallOption) (*OnOffValueResponse, error)
-	SetTemperature(ctx context.Context, in *TemperatureValueRequest, opts ...grpc.CallOption) (*TemperatureValueResponse, error)
-	SetMode(ctx context.Context, in *ModeValueRequest, opts ...grpc.CallOption) (*ModeValueResponse, error)
-	SetFanMode(ctx context.Context, in *FanModeValueRequest, opts ...grpc.CallOption) (*FanModeValueResponse, error)
-	SetFanSpeed(ctx context.Context, in *FanSpeedValueRequest, opts ...grpc.CallOption) (*FanSpeedValueResponse, error)
+	SetValues(ctx context.Context, in *ValuesRequest, opts ...grpc.CallOption) (*ValuesResponse, error)
 }
 
 type deviceClient struct {
@@ -43,45 +39,9 @@ func (c *deviceClient) GetStatus(ctx context.Context, in *StatusRequest, opts ..
 	return out, nil
 }
 
-func (c *deviceClient) SetOnOff(ctx context.Context, in *OnOffValueRequest, opts ...grpc.CallOption) (*OnOffValueResponse, error) {
-	out := new(OnOffValueResponse)
-	err := c.cc.Invoke(ctx, "/device.Device/SetOnOff", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *deviceClient) SetTemperature(ctx context.Context, in *TemperatureValueRequest, opts ...grpc.CallOption) (*TemperatureValueResponse, error) {
-	out := new(TemperatureValueResponse)
-	err := c.cc.Invoke(ctx, "/device.Device/SetTemperature", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *deviceClient) SetMode(ctx context.Context, in *ModeValueRequest, opts ...grpc.CallOption) (*ModeValueResponse, error) {
-	out := new(ModeValueResponse)
-	err := c.cc.Invoke(ctx, "/device.Device/SetMode", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *deviceClient) SetFanMode(ctx context.Context, in *FanModeValueRequest, opts ...grpc.CallOption) (*FanModeValueResponse, error) {
-	out := new(FanModeValueResponse)
-	err := c.cc.Invoke(ctx, "/device.Device/SetFanMode", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *deviceClient) SetFanSpeed(ctx context.Context, in *FanSpeedValueRequest, opts ...grpc.CallOption) (*FanSpeedValueResponse, error) {
-	out := new(FanSpeedValueResponse)
-	err := c.cc.Invoke(ctx, "/device.Device/SetFanSpeed", in, out, opts...)
+func (c *deviceClient) SetValues(ctx context.Context, in *ValuesRequest, opts ...grpc.CallOption) (*ValuesResponse, error) {
+	out := new(ValuesResponse)
+	err := c.cc.Invoke(ctx, "/device.Device/SetValues", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +53,7 @@ func (c *deviceClient) SetFanSpeed(ctx context.Context, in *FanSpeedValueRequest
 // for forward compatibility
 type DeviceServer interface {
 	GetStatus(context.Context, *StatusRequest) (*StatusResponse, error)
-	SetOnOff(context.Context, *OnOffValueRequest) (*OnOffValueResponse, error)
-	SetTemperature(context.Context, *TemperatureValueRequest) (*TemperatureValueResponse, error)
-	SetMode(context.Context, *ModeValueRequest) (*ModeValueResponse, error)
-	SetFanMode(context.Context, *FanModeValueRequest) (*FanModeValueResponse, error)
-	SetFanSpeed(context.Context, *FanSpeedValueRequest) (*FanSpeedValueResponse, error)
+	SetValues(context.Context, *ValuesRequest) (*ValuesResponse, error)
 	mustEmbedUnimplementedDeviceServer()
 }
 
@@ -108,20 +64,8 @@ type UnimplementedDeviceServer struct {
 func (UnimplementedDeviceServer) GetStatus(context.Context, *StatusRequest) (*StatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
 }
-func (UnimplementedDeviceServer) SetOnOff(context.Context, *OnOffValueRequest) (*OnOffValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetOnOff not implemented")
-}
-func (UnimplementedDeviceServer) SetTemperature(context.Context, *TemperatureValueRequest) (*TemperatureValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetTemperature not implemented")
-}
-func (UnimplementedDeviceServer) SetMode(context.Context, *ModeValueRequest) (*ModeValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetMode not implemented")
-}
-func (UnimplementedDeviceServer) SetFanMode(context.Context, *FanModeValueRequest) (*FanModeValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetFanMode not implemented")
-}
-func (UnimplementedDeviceServer) SetFanSpeed(context.Context, *FanSpeedValueRequest) (*FanSpeedValueResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetFanSpeed not implemented")
+func (UnimplementedDeviceServer) SetValues(context.Context, *ValuesRequest) (*ValuesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetValues not implemented")
 }
 func (UnimplementedDeviceServer) mustEmbedUnimplementedDeviceServer() {}
 
@@ -154,92 +98,20 @@ func _Device_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Device_SetOnOff_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(OnOffValueRequest)
+func _Device_SetValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ValuesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DeviceServer).SetOnOff(ctx, in)
+		return srv.(DeviceServer).SetValues(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/device.Device/SetOnOff",
+		FullMethod: "/device.Device/SetValues",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeviceServer).SetOnOff(ctx, req.(*OnOffValueRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Device_SetTemperature_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(TemperatureValueRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DeviceServer).SetTemperature(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/device.Device/SetTemperature",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeviceServer).SetTemperature(ctx, req.(*TemperatureValueRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Device_SetMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ModeValueRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DeviceServer).SetMode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/device.Device/SetMode",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeviceServer).SetMode(ctx, req.(*ModeValueRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Device_SetFanMode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FanModeValueRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DeviceServer).SetFanMode(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/device.Device/SetFanMode",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeviceServer).SetFanMode(ctx, req.(*FanModeValueRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Device_SetFanSpeed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FanSpeedValueRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DeviceServer).SetFanSpeed(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/device.Device/SetFanSpeed",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeviceServer).SetFanSpeed(ctx, req.(*FanSpeedValueRequest))
+		return srv.(DeviceServer).SetValues(ctx, req.(*ValuesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -256,24 +128,8 @@ var Device_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Device_GetStatus_Handler,
 		},
 		{
-			MethodName: "SetOnOff",
-			Handler:    _Device_SetOnOff_Handler,
-		},
-		{
-			MethodName: "SetTemperature",
-			Handler:    _Device_SetTemperature_Handler,
-		},
-		{
-			MethodName: "SetMode",
-			Handler:    _Device_SetMode_Handler,
-		},
-		{
-			MethodName: "SetFanMode",
-			Handler:    _Device_SetFanMode_Handler,
-		},
-		{
-			MethodName: "SetFanSpeed",
-			Handler:    _Device_SetFanSpeed_Handler,
+			MethodName: "SetValues",
+			Handler:    _Device_SetValues_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

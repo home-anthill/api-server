@@ -1,20 +1,3 @@
-// Air Conditioner API
-//
-// Air Conditioner control system APIs.
-//
-//		Schemes: http
-//	 Host: localhost
-//		BasePath: /
-//		Version: 1.0.0
-//		Contact: Stefano Cappa https://github.com/Ks89
-//
-//		Consumes:
-//		- application/json
-//
-//		Produces:
-//		- application/json
-//
-// swagger:meta
 package main
 
 import (
@@ -280,11 +263,7 @@ func main() {
     private.DELETE("/devices/:id", devices.DeleteDevice)
 
     private.GET("/devices/:id/values", devicesValues.GetValuesDevice)
-    private.POST("/devices/:id/values/onoff", devicesValues.PostOnOffDevice)
-    private.POST("/devices/:id/values/temperature", devicesValues.PostTemperatureDevice)
-    private.POST("/devices/:id/values/mode", devicesValues.PostModeDevice)
-    private.POST("/devices/:id/values/fanmode", devicesValues.PostFanModeDevice)
-    private.POST("/devices/:id/values/fanspeed", devicesValues.PostFanSpeedDevice)
+    private.POST("/devices/:id/values", devicesValues.PostValueDevice)
   }
 
   fmt.Println("GIN - up and running with port: " + port)

@@ -1,31 +1,11 @@
 package models
 
-type OnOffValue struct {
-  Uuid     string `json:"uuid"`
-  ApiToken string `json:"apiToken"`
-  On       bool   `json:"on"`
-}
-
-type TemperatureValue struct {
+type Values struct {
   Uuid        string `json:"uuid"`
   ApiToken    string `json:"apiToken"`
+  On          bool   `json:"on"`
   Temperature int    `json:"temperature"`
-}
-
-type ModeValue struct {
-  Uuid     string `json:"uuid"`
-  ApiToken string `json:"apiToken"`
-  Mode     int    `json:"mode"`
-}
-
-type FanModeValue struct {
-  Uuid     string `json:"uuid"`
-  ApiToken string `json:"apiToken"`
-  FanMode  int    `json:"fanMode"`
-}
-
-type FanSpeedValue struct {
-  Uuid     string `json:"uuid"`
-  ApiToken string `json:"apiToken"`
-  FanSpeed int    `json:"fanSpeed"`
+  Mode        int    `json:"mode"`
+  FanSpeed    int    `json:"fanSpeed"`
+  Swing       bool   `json:"swing"`
 }

@@ -6,89 +6,37 @@ option go_package = "github.com/Ks89/air-conditioner/api-server/device";
 
 service Device {
   rpc GetStatus (StatusRequest) returns (StatusResponse) {}
-  rpc SetOnOff (OnOffValueRequest) returns (OnOffValueResponse) {}
-  rpc SetTemperature (TemperatureValueRequest) returns (TemperatureValueResponse) {}
-  rpc SetMode (ModeValueRequest) returns (ModeValueResponse) {}
-  rpc SetFanMode (FanModeValueRequest) returns (FanModeValueResponse) {}
-  rpc SetFanSpeed (FanSpeedValueRequest) returns (FanSpeedValueResponse) {}
+  rpc SetValues (ValuesRequest) returns (ValuesResponse) {}
 }
 
 message StatusRequest {
-  string  id = 1;
-  string  uuid = 2;
-  string          mac = 3;
-  string  api_token = 4;
-}
-
-message OnOffValueRequest {
-  string  id = 1;
-  string  uuid = 2;
-  string          mac = 3;
-  string  api_token = 4;
-  bool              on = 5;
-}
-
-message TemperatureValueRequest {
-  string  id = 1;
-  string  uuid = 2;
-  string          mac = 3;
-  string  api_token = 4;
-  int32  temperature = 5;
-}
-
-message ModeValueRequest {
-  string  id = 1;
-  string  uuid = 2;
-  string          mac = 3;
-  string  api_token = 4;
-  int32         mode = 5;
-}
-
-message FanModeValueRequest {
-  string  id = 1;
-  string  uuid = 2;
-  string          mac = 3;
-  string  api_token = 4;
-  int32          fan_mode = 5;
-}
-
-message FanSpeedValueRequest {
-  string  id = 1;
-  string  uuid = 2;
-  string          mac = 3;
-  string  api_token = 4;
-  int32        fan_speed = 5;
+  string id = 1;
+  string uuid = 2;
+  string mac = 3;
+  string api_token = 4;
 }
 
 message StatusResponse {
   bool on = 1;
   int32 temperature = 2;
   int32 mode = 3;
-  int32 fan_mode = 4;
-  int32 fan_speed = 5;
+  int32 fan_speed = 4;
+  bool swing = 5;
 }
 
-message OnOffValueResponse {
-  string status = 1;
-  string message = 2;
+message ValuesRequest {
+  string id = 1;
+  string uuid = 2;
+  string mac = 3;
+  string api_token = 4;
+  bool on = 5;
+  int32 temperature = 6;
+  int32 mode = 7;
+  int32 fan_speed = 8;
+  bool swing = 9;
 }
 
-message TemperatureValueResponse {
-  string status = 1;
-  string message = 2;
-}
-
-message ModeValueResponse {
-  string status = 1;
-  string message = 2;
-}
-
-message FanModeValueResponse {
-  string status = 1;
-  string message = 2;
-}
-
-message FanSpeedValueResponse {
+message ValuesResponse {
   string status = 1;
   string message = 2;
 }
