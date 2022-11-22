@@ -1,6 +1,6 @@
 # Air Conditioner 
 
-Personal project to control a Beko air conditioner using an ESP32 with an IR emitter.
+Personal project to control a Beko air conditioner (Remote type: RG52A9/BGEF) using an ESP32 with an IR emitter.
 On server-side, I'm using a Kubernetes cluster with a simple microservices architecture.
 
 ## Architecture
