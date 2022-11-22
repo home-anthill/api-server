@@ -1,4 +1,4 @@
-# Air Conditioner 
+# Home Anthill 
 
 Personal project to control a Beko air conditioner (Remote type: RG52A9/BGEF) using an ESP32 with an IR emitter.
 On server-side, I'm using a Kubernetes cluster with a simple microservices architecture.
@@ -6,7 +6,7 @@ On server-side, I'm using a Kubernetes cluster with a simple microservices archi
 ## Architecture
 
 <br/>
-<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/air-condirioner-architecture.png" alt="@ks89/air-conditioner">
+<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/air-condirioner-architecture.png" alt="@ks89/home-anthill">
 <br/>
 
 ## Install
@@ -19,7 +19,7 @@ To install and configure please follow this official tutorial `docs/hetzner-inst
 
 At the moment, the only supported device is ESP32 S2 (DevKit-C)
 
-1. Write your custom `air-conditioner-server-config/secrets.yaml` config file:
+1. Write your custom `home-anthill-server-config/secrets.yaml` config file:
 
     ```yaml
     wifi_ssid: 'your-wifi-ssid'
@@ -49,17 +49,17 @@ At the moment, the only supported device is ESP32 S2 (DevKit-C)
     ```bash
     cd esp32-configurator
     
-    python3 -m configurator --model=thl --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-thl
+    python3 -m configurator --model=dht --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-dht
     
-    python3 -m configurator --model=light --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-light
+    python3 -m configurator --model=light --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-light
     
-    python3 -m configurator --model=motion --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-motion
+    python3 -m configurator --model=motion --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-motion
 
-    python3 -m configurator --model=airquality --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-airquality
+    python3 -m configurator --model=airquality --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-airquality
 
-    python3 -m configurator --model=airpressure --source=../../air-conditioner-server-config/secrets.yaml --destination=../sensors/sensor-airpressure
+    python3 -m configurator --model=barometer --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-barometer
 
-    python3 -m configurator --model=ac --source=../../air-conditioner-server-config/secrets.yaml --destination=../devices/device
+    python3 -m configurator --model=ac-beko --source=../../home-anthill-server-config/secrets.yaml --destination=../devices/device-ac-beko
     ```
 
 3. Build and flash firmwares via Arduino IDE
@@ -67,7 +67,7 @@ At the moment, the only supported device is ESP32 S2 (DevKit-C)
 
 ## :fire: Releases :fire:
 
-- ??/??/2022 - 1.0.0-alpha.5 - [HERE](https://github.com/Ks89/air-conditioner/releases)
+- ??/??/2022 - 1.0.0-beta.1 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 08/26/2022 - 1.0.0-alpha.4 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 05/25/2022 - 1.0.0-alpha.3 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 05/18/2022 - 1.0.0-alpha.2 - [HERE](https://github.com/Ks89/air-conditioner/releases)
