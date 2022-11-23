@@ -170,6 +170,8 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
     return
   }
 
+  handler.logger.Debugf("REST - POST - PostValueDevice - body = %#v", value)
+
   err := handler.validate.Struct(value)
   if err != nil {
     handler.logger.Errorf("REST - POST - PostValueDevice - request body is not valid, err %#v", err)
