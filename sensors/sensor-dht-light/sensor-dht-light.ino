@@ -14,15 +14,26 @@
 #include <Wire.h>
 
 // include libraries:
+// - DHT Sensor: https://github.com/adafruit/DHT-sensor-library
+// - Adafruit Unified Sensor: https://github.com/adafruit/Adafruit_Sensor
+#include <Adafruit_Sensor.h>
+#include <DHT.h>
+#include <DHT_U.h>
 // - `Grove - Digital Light sensor` by Seeed Studio (latest version on `master branch` or
 //    commit hash `69f7175ed1349276364994d1d45041c6e90a129b` from `https://github.com/Seeed-Studio/Grove_Digital_Light_Sensor`).
 //    You cannot use the one published on ArduinoIDE Library Manager, because it's outdated and not compatibile with ESP32 devices.
+//    This sensor requires I2C port, so you need to import `Wire.h` to configure I2C
 #include <Digital_Light_TSL2561.h>
 
 
 #include "secrets.h"
 
 
+// ------------------------------------------------------
+// ----------------------- DHT --------------------------
+#define DHT_PIN 4 // Digital pin connected to the DHT sensor
+#define DHT_TYPE DHT22 // DHT 22 (AM2302)
+DHT_Unified dht(DHT_PIN, DHT_TYPE);
 // ------------------------------------------------------
 // ------------------------ Light -----------------------
 // Configure I2C GPIOs
@@ -146,7 +157,7 @@ void reconnect() {
 void notifyValue(char* type, float value) {
   Serial.println("notifyValue - called with type=" + String(type));
   // check if type is supported
-  if (strcmp(type, "light") != 0) {
+  if (strcmp(type, "temperature") != 0 && strcmp(type, "humidity") != 0  && strcmp(type, "light") != 0) {
     Serial.println("notifyValue - Cannot send data. Unsupported type=" + String(type));
     return;
   }
@@ -195,6 +206,8 @@ uint registerServer() {
 
   macAddress = WiFi.macAddress();
   String features = "[";
+  features += "{\"type\": \"sensor\",\"name\": \"humidity\",\"enable\": true,\"priority\": 1,\"unit\": \"%\"},";
+  features += "{\"type\": \"sensor\",\"name\": \"temperature\",\"enable\": true,\"priority\": 1,\"unit\": \"°C\"},";
   features += "{\"type\": \"sensor\",\"name\": \"light\",\"enable\": true,\"priority\": 1,\"unit\": \"lux\"}";
   features += "]";
 
@@ -285,21 +298,81 @@ uint registerServer() {
   return 0; // OK - registered without errors
 }
 
-void readSensorValue() {
-  Serial.println("readSensorValue - called");
+void readDHTSensorValue() {
+  Serial.println("readDHTSensorValue - called");
+  sensors_event_t event;
+  dht.temperature().getEvent(&event);
+  if (isnan(event.temperature)) {
+      Serial.println("readDHTSensorValue - error reading temperature!");
+  } else {
+      Serial.print("readDHTSensorValue - temperature: ");
+      Serial.print(event.temperature);
+      Serial.println("°C");
+      notifyValue("temperature", event.temperature);
+  }
+  dht.humidity().getEvent(&event);
+  if (isnan(event.relative_humidity)) {
+      Serial.println("readDHTSensorValue - error reading humidity!");
+  } else {
+      Serial.print("readDHTSensorValue - humidity: ");
+      Serial.print(event.relative_humidity);
+      Serial.println("%");
+      notifyValue("humidity", event.relative_humidity);
+  }
+}
+
+void readLightSensorValue() {
+  Serial.println("readLightSensorValue - called");
   int value = TSL2561.readVisibleLux();
-  Serial.print("readSensorValue - sensor value: ");
+  Serial.print("readLightSensorValue - sensor value: ");
   Serial.println(value);
-  Serial.println("readSensorValue - notifying value...");
+  Serial.println("readLightSensorValue - notifying value...");
   notifyValue("light", value);
 }
 
-void initSensor() {
-  Serial.println("initSensor - called");
+void initDHTSensor() {
+  Serial.println("initDHTSensor - called");
+  // Initialize DHT device
+  dht.begin();
+  sensor_t sensor;
+  // Print temperature sensor details.
+  dht.temperature().getSensor(&sensor);
+  Serial.println(F("initDHTSensor - temperature"));
+  Serial.print(F("initDHTSensor - temperature - Sensor Type: "));
+  Serial.println(sensor.name);
+  Serial.print(F("initDHTSensor - temperature - Driver Ver:  "));
+  Serial.println(sensor.version);
+  Serial.print(F("initDHTSensor - temperature - Unique ID:   "));
+  Serial.println(sensor.sensor_id);
+  Serial.print(F("initDHTSensor - temperature - Max Value:   "));
+  Serial.print(sensor.max_value); Serial.println(F("°C"));
+  Serial.print(F("initDHTSensor - temperature - Min Value:   "));
+  Serial.print(sensor.min_value); Serial.println(F("°C"));
+  Serial.print(F("initDHTSensor - temperature - Resolution:  "));
+  Serial.print(sensor.resolution); Serial.println(F("°C"));
+  // Print humidity sensor details.
+  dht.humidity().getSensor(&sensor);
+  Serial.println(F("initDHTSensor - humidity"));
+  Serial.print(F("initDHTSensor - humidity - Sensor Type: "));
+  Serial.println(sensor.name);
+  Serial.print(F("initDHTSensor - humidity - Driver Ver:  "));
+  Serial.println(sensor.version);
+  Serial.print(F("initDHTSensor - humidity - Unique ID:   "));
+  Serial.println(sensor.sensor_id);
+  Serial.print(F("initDHTSensor - humidity - Max Value:   "));
+  Serial.print(sensor.max_value); Serial.println(F("%"));
+  Serial.print(F("initDHTSensor - humidity - Min Value:   "));
+  Serial.print(sensor.min_value); Serial.println(F("%"));
+  Serial.print(F("initDHTSensor - humidity - Resolution:  "));
+  Serial.print(sensor.resolution); Serial.println(F("%"));
+}
+
+void initLightSensor() {
+  Serial.println("initLightSensor - called");
   Wire.setPins(I2C_SDA, I2C_SCL);
   Wire.begin();
   TSL2561.init();
-  Serial.println("initSensor - sensor initialized successfully!");
+  Serial.println("initLightSensor - sensor initialized successfully!");
 }
 
 void setup() {
@@ -336,7 +409,8 @@ void setup() {
   if (result == 0) {
     Serial.println("setup - Starting 'notify*' functions...");
     setTime(0,0,0,1,1,21); // set time to Saturday 00:00:00am Jan 1 2021
-    Alarm.timerRepeat(15, readSensorValue);
+    Alarm.timerRepeat(30, readDHTSensorValue);
+    Alarm.timerRepeat(45, readLightSensorValue);
   } else {
     Serial.println("setup - registerServer() returned error code, cannot continue");
     return;
@@ -354,7 +428,8 @@ void setup() {
     return;
   }
 
-  initSensor();
+  initDHTSensor();
+  initLightSensor();
 
   delay(1500);
 }
