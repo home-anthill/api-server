@@ -72,7 +72,7 @@ func (handler *DevicesGrpc) SetValues(ctx context.Context, in *device.ValuesRequ
     return nil, err
   }
 
-  onOffValue := models.Values{
+  values := models.Values{
     Uuid:        in.Uuid,
     ApiToken:    in.ApiToken,
     On:          in.On,
@@ -81,13 +81,13 @@ func (handler *DevicesGrpc) SetValues(ctx context.Context, in *device.ValuesRequ
     FanSpeed:    int(in.FanSpeed),
     Swing:       in.Swing,
   }
-  messageJSON, err := json.Marshal(onOffValue)
+  messageJSON, err := json.Marshal(values)
   if err != nil {
     handler.logger.Errorf("gRPC - SetValues - Cannot create mqtt payload %v\n", err)
     fmt.Println("gRPC - SetValues - Cannot create mqtt payload")
     return nil, err
   }
-  t := mqtt_client.SendValues(onOffValue.Uuid, messageJSON)
+  t := mqtt_client.SendValues(values.Uuid, messageJSON)
   timeoutResult := t.WaitTimeout(devicesTimeout)
   if t.Error() != nil || !timeoutResult {
     handler.logger.Errorf("gRPC - SetValues - Cannot send data via mqtt %v\n", t.Error())
