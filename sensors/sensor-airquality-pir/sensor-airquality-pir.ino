@@ -16,6 +16,7 @@
 //    commit hash `58e4c0bb5ce1b0c9b8aa1265e9f726025feb34f0` from `https://github.com/Seeed-Studio/Grove_Air_quality_Sensor`).
 //    You cannot use the one published on ArduinoIDE Library Manager, because it's outdated and not compatibile with ESP32 devices.
 #include "Air_Quality_Sensor.h"
+// - PIR sensor doesn't require any additional library
 
 
 #include "secrets.h"
@@ -24,9 +25,14 @@
 // ------------------------------------------------------
 // -------------------- AirQuality ----------------------
 #define AIR_QUALITY_PIN 4 // Digital pin connected to the airQuality sensor
-AirQualitySensor sensor(AIRQUALITYPIN);
+AirQualitySensor sensor(AIR_QUALITY_PIN);
 // global variable used to store the current value read by the sensor
-int currentValue = -1; // initial uninitialized value
+int currentAirValue = -1; // initial uninitialized value
+// ------------------------------------------------------
+// -------------------- PIR (Motion) --------------------
+#define MOTION_PIN 5 // Digital pin connected to the motion sensor
+// global variable used to store the current value read by the sensor
+int currentMotionValue = -1; // initial uninitialized value
 // ------------------------------------------------------
 // ------------------------------------------------------
 
@@ -145,7 +151,7 @@ void reconnect() {
 void notifyValue(char* type, float value) {
   Serial.println("notifyValue - called with type=" + String(type));
   // check if type is supported
-  if (strcmp(type, "airquality") != 0) {
+  if (strcmp(type, "airquality") != 0 && strcmp(type, "motion") != 0) {
     Serial.println("notifyValue - Cannot send data. Unsupported type=" + String(type));
     return;
   }
@@ -194,7 +200,8 @@ uint registerServer() {
 
   macAddress = WiFi.macAddress();
   String features = "[";
-  features += "{\"type\": \"sensor\",\"name\": \"airquality\",\"enable\": true,\"priority\": 1,\"unit\": \"-\"}";
+  features += "{\"type\": \"sensor\",\"name\": \"airquality\",\"enable\": true,\"priority\": 1,\"unit\": \"-\"},";
+  features += "{\"type\": \"sensor\",\"name\": \"motion\",\"enable\": true,\"priority\": 2,\"unit\": \"-\"}";
   features += "]";
 
  String registerPayload = "{\"mac\": \"" + WiFi.macAddress() + 
@@ -282,41 +289,61 @@ uint registerServer() {
   return 0; // OK - registered without errors
 }
 
-void readSensorValue() {
-  Serial.println("readSensorValue - called");
+void readAirQualitySensorValue() {
+  Serial.println("readAirQualitySensorValue - called");
   int newValue = -1; // initial uninitialized value
   int quality = sensor.slope();
-  Serial.print("readSensorValue - sensor value: ");
+  Serial.print("readAirQualitySensorValue - sensor value: ");
   Serial.println(sensor.getValue());
   if (quality == AirQualitySensor::FORCE_SIGNAL) {
-      Serial.println("readSensorValue - Very high pollution! Force signal active.");
+      Serial.println("readAirQualitySensorValue - Very high pollution! Force signal active.");
       newValue = AirQualitySensor::FORCE_SIGNAL;
   } else if (quality == AirQualitySensor::HIGH_POLLUTION) {
-      Serial.println("readSensorValue - High pollution!");
+      Serial.println("readAirQualitySensorValue - High pollution!");
       newValue = AirQualitySensor::HIGH_POLLUTION;
   } else if (quality == AirQualitySensor::LOW_POLLUTION) {
-      Serial.println("readSensorValue - Low pollution!");
+      Serial.println("readAirQualitySensorValue - Low pollution!");
       newValue = AirQualitySensor::LOW_POLLUTION;
   } else if (quality == AirQualitySensor::FRESH_AIR) {
-      Serial.println("readSensorValue - Fresh air.");
+      Serial.println("readAirQualitySensorValue - Fresh air.");
       newValue = AirQualitySensor::FRESH_AIR;
   }
 
   // notifiy only if the value is changed to prevent useless notifications
-  if (currentValue != newValue) {
-    currentValue = newValue;
-    Serial.println("readSensorValue - notifying value...");
-    notifyValue("airquality", currentValue);
+  if (currentAirValue != newValue) {
+    currentAirValue = newValue;
+    Serial.println("readAirQualitySensorValue - notifying value...");
+    notifyValue("airquality", currentAirValue);
   }
 }
 
-void initSensor() {
-  Serial.println("initSensor - called");
-  if (sensor.init()) {
-    Serial.println("initSensor - sensor initialized successfully!");
-  } else {
-    Serial.println("initSensor - cannot initialize sensor");
+void readMotionSensorValue() {
+  Serial.println("readMotionSensorValue - called");
+  int newValue = digitalRead(MOTION_PIN); 
+  Serial.print("readMotionSensorValue - digital value read = ");
+  Serial.println(newValue);
+
+  // notifiy only if the value is changed to prevent useless notifications
+  if (currentMotionValue != newValue) {
+    currentMotionValue = newValue;
+    Serial.println("readMotionSensorValue - notifying value...");
+    notifyValue("motion", currentMotionValue);
   }
+}
+
+void initAirQualitySensor() {
+  Serial.println("initAirQualitySensor - called");
+  if (sensor.init()) {
+    Serial.println("initAirQualitySensor - sensor initialized successfully!");
+  } else {
+    Serial.println("initAirQualitySensor - cannot initialize sensor");
+  }
+}
+
+void initMotionSensor() {
+  Serial.println("initMotionSensor - called");
+  pinMode(MOTION_PIN,INPUT);
+  Serial.println("initMotionSensor - pin configured as input to read values");
 }
 
 void setup() {
@@ -353,7 +380,8 @@ void setup() {
   if (result == 0) {
     Serial.println("setup - Starting 'notify*' functions...");
     setTime(0,0,0,1,1,21); // set time to Saturday 00:00:00am Jan 1 2021
-    Alarm.timerRepeat(15, readSensorValue);
+    Alarm.timerRepeat(60, readAirQualitySensorValue);
+    Alarm.timerRepeat(10, readMotionSensorValue);
   } else {
     Serial.println("setup - registerServer() returned error code, cannot continue");
     return;
@@ -371,7 +399,8 @@ void setup() {
     return;
   }
 
-  initSensor();
+  initAirQualitySensor();
+  initMotionSensor();
 
   delay(1500);
 }

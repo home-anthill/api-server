@@ -272,8 +272,7 @@ mqtt_port: 1883
 cd esp32-configurator
 
 python3 -m configurator --model=dht-light --source=../secrets-local.yaml --destination=../sensors/sensor-dht-light
-python3 -m configurator --model=motion --source=../secrets-local.yaml --destination=../sensors/sensor-motion
-python3 -m configurator --model=airquality --source=../secrets-local.yaml --destination=../sensors/sensor-airquality
+python3 -m configurator --model=airquality-pir --source=../secrets-local.yaml --destination=../sensors/sensor-airquality-pir
 python3 -m configurator --model=barometer --source=../secrets-local.yaml --destination=../sensors/sensor-barometer
 
 python3 -m configurator --model=ac --source=../secrets-local.yaml --destination=../devices/device
@@ -283,5 +282,5 @@ python3 -m configurator --model=ac --source=../secrets-local.yaml --destination=
 
 - Open `devices/device/device.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
 - Open `sensors/sensor-dht-light/sensor-dht-light.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
-- Open `sensors/sensor-airquality/sensor-airquality.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
+- Open `sensors/sensor-airquality-pir/sensor-airquality-pir.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
 - Open `sensors/sensor-barometer/sensor-barometer.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad

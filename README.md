@@ -50,10 +50,8 @@ At the moment, the only supported device is ESP32 S2 (DevKit-C)
     cd esp32-configurator
     
     python3 -m configurator --model=dht-light --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-dht-light
-        
-    python3 -m configurator --model=motion --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-motion
 
-    python3 -m configurator --model=airquality --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-airquality
+    python3 -m configurator --model=airquality-pir --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-airquality-pir
 
     python3 -m configurator --model=barometer --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-barometer
 
