@@ -17,7 +17,7 @@ pub struct Light {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Motion {
-    pub value: bool,
+    pub value: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -54,11 +54,7 @@ impl PayloadTrait for Light {
 
 impl PayloadTrait for Motion {
     fn get_value(&self) -> f32 {
-        if self.value {
-            1.0
-        } else {
-            0.0
-        }
+        self.value as f32
     }
 }
 

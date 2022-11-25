@@ -17,7 +17,7 @@ pub struct Light {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Motion {
-    pub value: bool,
+    pub value: i32,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

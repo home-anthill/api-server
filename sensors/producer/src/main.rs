@@ -186,7 +186,7 @@ fn build_mqtt_connect_options(
 
     if mqtt_tls == "true" {
         info!(target: "app", "build_mqtt_connect_options - MQTT TLS is enabled, creating ConnectOptions with certificates");
-        let ssl_options = build_ssl_options(&mqtt_cert_file, &mqtt_key_file);
+        let ssl_options = build_ssl_options(&mqtt_cert_file, mqtt_key_file);
         if let Some(ssl_opt) = ssl_options {
             conn_opts = connect_options_builder.ssl_options(ssl_opt).finalize();
             info!(target: "app", "build_mqtt_connect_options - MQTT ConnectOptions with SSL created successfully");

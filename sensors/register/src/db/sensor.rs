@@ -6,7 +6,7 @@ use mongodb::Database;
 use rocket::serde::json::Json;
 
 use crate::models::inputs::RegisterInput;
-use crate::models::sensor::{new_from_register_input, BooleanSensor, FloatSensor, IntSensor};
+use crate::models::sensor::{new_from_register_input, FloatSensor, IntSensor};
 
 pub async fn insert_register(
     db: &Database,
@@ -20,9 +20,7 @@ pub async fn insert_register(
     let serialized_data: Bson;
     if sensor_type == "temperature" || sensor_type == "humidity" || sensor_type == "light" {
         serialized_data = new_from_register_input::<FloatSensor>(input).unwrap();
-    } else if sensor_type == "motion" {
-        serialized_data = new_from_register_input::<BooleanSensor>(input).unwrap();
-    } else if sensor_type == "airquality" || sensor_type == "airpressure" {
+    } else if sensor_type == "motion" || sensor_type == "airquality" || sensor_type == "airpressure" {
         serialized_data = new_from_register_input::<IntSensor>(input).unwrap();
     } else {
         error!(target: "app", "insert_register - Unknown sensor_type = {}", sensor_type);

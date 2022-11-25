@@ -8,22 +8,6 @@ use crate::models::inputs::RegisterInput;
 
 #[allow(non_snake_case)]
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct BooleanSensor {
-    #[serde(rename = "_id")]
-    pub id: ObjectId,
-    pub uuid: String,
-    pub mac: String,
-    pub manufacturer: String,
-    pub model: String,
-    pub profileOwnerId: String,
-    pub apiToken: String,
-    pub createdAt: DateTime,
-    pub modifiedAt: DateTime,
-    pub value: bool,
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct IntSensor {
     #[serde(rename = "_id")]
     pub id: ObjectId,
@@ -65,19 +49,6 @@ pub trait Sensor {
     ) -> Self;
 }
 
-impl Sensor for BooleanSensor {
-    fn new(
-        uuid: String,
-        mac: String,
-        manufacturer: String,
-        model: String,
-        profile_owner_id: String,
-        api_token: String,
-    ) -> Self {
-        Self::new(uuid, mac, manufacturer, model, profile_owner_id, api_token)
-    }
-}
-
 impl Sensor for IntSensor {
     fn new(
         uuid: String,
@@ -101,31 +72,6 @@ impl Sensor for FloatSensor {
         api_token: String,
     ) -> Self {
         Self::new(uuid, mac, manufacturer, model, profile_owner_id, api_token)
-    }
-}
-
-impl BooleanSensor {
-    pub fn new(
-        uuid: String,
-        mac: String,
-        manufacturer: String,
-        model: String,
-        profile_owner_id: String,
-        api_token: String,
-    ) -> Self {
-        let date_now: DateTime = DateTime::now();
-        Self {
-            id: ObjectId::new(),
-            uuid,
-            mac,
-            manufacturer,
-            model,
-            profileOwnerId: profile_owner_id,
-            apiToken: api_token,
-            createdAt: date_now,
-            modifiedAt: date_now,
-            value: false,
-        }
     }
 }
 

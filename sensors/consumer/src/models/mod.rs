@@ -31,9 +31,9 @@ pub fn new_light_message(val: GenericMessage) -> Message<Light> {
 }
 
 pub fn new_motion_message(val: GenericMessage) -> Message<Motion> {
-    let value: Option<bool> = val.payload.get("value").and_then(|value| value.as_bool());
+    let value: Option<i64> = val.payload.get("value").and_then(|value| value.as_i64());
     let payload = Motion {
-        value: value.unwrap(),
+        value: value.unwrap() as i32,
     };
     Message::new(val.uuid, val.api_token, val.topic, payload)
 }
