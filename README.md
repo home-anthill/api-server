@@ -3,63 +3,41 @@
 Personal project to control a Beko air conditioner (Remote type: RG52A9/BGEF) using an ESP32 with an IR emitter.
 On server-side, I'm using a Kubernetes cluster with a simple microservices architecture.
 
+
 ## Architecture
 
 <br/>
 <img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/air-condirioner-architecture.png" alt="@ks89/home-anthill">
 <br/>
 
-## Install
+
+## Local development
+
+To setup this project on your PC to develop and run these microservices, please take a look at `docs/local-development.md`
+
+
+## Production installation and deploy
 
 ### Server
 
-To install and configure please follow this official tutorial `docs/hetzner-install.md`
+Check the official tutorial: `docs/hetzner-install.md`
 
 ### Device
 
-At the moment, the only supported device is ESP32 S2 (DevKit-C)
+Supported devices:
+- sensors:
+    **sensor-airquality-pir**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S2 DevKit-C (ESP32-S2-SOLO)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
+    **sensor-barometer**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S2 DevKit-C (ESP32-S2-SOLO)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
+    **sensor-dht-light**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S2 DevKit-C (ESP32-S2-SOLO)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
+- devices: 
+    **device-ac-beko**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
 
-1. Write your custom `home-anthill-server-config/secrets.yaml` config file:
+As you can see, devices are not working with `ESP32 S2 DevKit-C (ESP32-S2-SOLO)` because of [this issue](https://github.com/crankyoldgit/IRremoteESP8266/issues/1922)
 
-    ```yaml
-    wifi_ssid: 'your-wifi-ssid'
-    wifi_password: 'your-wifi-password'
+**Follow this guide `docs/devices-install.md`.**
 
-    manufacturer: 'ks89'
-    api_token: 'API_TOKEN_FROM_PROFILE_PAGE'
 
-    # enable both HTTPS and MQTTS
-    # you should change PORTS accordingly
-    # https port: 443
-    # mqtts port: 8883
-    ssl: true
-
-    server_domain: 'your-https-domain.com'
-    server_port: '443'
-    server_path: '/api/register'
-
-    mqtt_domain: 'your-mqtt-domain.com'
-    mqtt_port: 8883
-    ```
-
-    To generate the API_TOKEN_FROM_PROFILE_PAGE you have to login to the gui via `https://<SERVER.COM>` with GitHub, then click on the profile icon (upper right corner of the page) to open the profile page.
-    In that page, you can re-generate the api-token for your devices.
-2. Generate `secrets.h` files for all your devices:
-
-    ```bash
-    cd esp32-configurator
-    
-    python3 -m configurator --model=dht-light --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-dht-light
-
-    python3 -m configurator --model=airquality-pir --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-airquality-pir
-
-    python3 -m configurator --model=barometer --source=../../home-anthill-server-config/secrets.yaml --destination=../sensors/sensor-barometer
-
-    python3 -m configurator --model=ac-beko --source=../../home-anthill-server-config/secrets.yaml --destination=../devices/device-ac-beko
-    ```
-
-3. Build and flash firmwares via Arduino IDE
-
+<br/>
 
 ## :fire: Releases :fire:
 
@@ -68,12 +46,6 @@ At the moment, the only supported device is ESP32 S2 (DevKit-C)
 - 05/25/2022 - 1.0.0-alpha.3 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 05/18/2022 - 1.0.0-alpha.2 - [HERE](https://github.com/Ks89/air-conditioner/releases)
 - 05/15/2022 - 1.0.0-alpha.1 - [HERE](https://github.com/Ks89/air-conditioner/releases)
-
-<br/>
-
-## Local development
-
-To setup this project on your PC to develop and run these microservices, please take a look at `docs/local-development.md`
 
 
 <br/>

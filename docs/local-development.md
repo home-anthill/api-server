@@ -90,7 +90,7 @@ docker run -d --name mongodb -v ~/mongodb:/data/db -p 27017:27017 mongo:6
 
 
 ```bash
-cp devices/api-server/.env_template .env
+cp devices/api-server/.env_template devices/api-server/.env
 ```
 
 You have to update `OAUTH2_CLIENTID` and `OAUTH2_SECRETID` properties in `.env` file.
@@ -126,21 +126,21 @@ make run
 
 ```bash
 cd sensors/register
-cargo run
+make run
 ```
 
 4. producer
 
 ```bash
 cd sensors/producer
-cargo run
+make run
 ```
 
 5. consumer
 
 ```bash
 cd sensors/consumer
-cargo run
+make run
 ```
 
 6. gui
@@ -197,8 +197,8 @@ You can navigate across the webapp to add homes, rooms and so on, but I prefer t
 }
 ```
 
-5. You can try all other requests, but be sure to update path and query parameters with your object ids.
-For example, **to get the `apiToken` (required in the next steps) you have to call `regenApiToken` changing the fake profile id from the path param with your profile id.**
+5. You can try all other requests, but be sure to update **path** and **query parameters** with your object ids (taken from your local DB).
+For example, **to get the `apiToken` (required in the next steps) you have to call `regenApiToken` changing the fake profile id from the path param with your profile id**
 You can get your profile id from the response of step 4 (above) and update the path in this way:
 ```
 localhost:8082/api/profiles/<YOUR PROFILE MONGODB OBJECTID>/tokens
@@ -206,33 +206,11 @@ localhost:8082/api/profiles/<YOUR PROFILE MONGODB OBJECTID>/tokens
 **The response of `regenApiToken` contains the re-generated `apiToken`**. This token changes every time you call the API and the previous value won't be valid anymore.
 
 
-## 10. Prepare ESP32 boards with wiring and electrical parts
+## 10. Prepare devices and flash firmwares
 
+Starts from this guide here `docs/devices-install.md`
 
-**TODO add a tutorial and some photos**
-
-
-## 11. Flash and power on devices
-
-
-1. Configure [Arduino IDE 2.x](https://www.arduino.cc/en/software) to build and flash ESP32S2 dev-kitC firmwares. You need the `esp32` board in `Board Manager` as described in [the official tutorial](https://espressif-docs.readthedocs-hosted.com/projects/arduino-esp32/en/latest/installing.html).
-Then try to build and flash an an official example to see if everything is ok!
-
-2. From Arduino IDE install these libraries from `Library Manager` tab:
-- `Arduino Unified Sensor` by Adafruit (version `1.1.6`)
-- `ArduinoJson` by Benoit Blanchon (version `6.19.4`)
-- `DHT sensor library` by Adafruit (version `1.4.4`)
-- `HttpClient` by Adrian McEwen (version `2.2.0`)
-- `IRremote` by shirriff, z370, ArminJo... (version `3.9.0`)
-- `PubSubClient` by Nick O'Leary (version `2.8`)
-- `Time` by Michael Margolis (version `1.6.1`)
-- `TimeAlarms` by Michael Margolis (version `1.5`)
-
-Additionally, you need to manually add other libraries in Arduino folder. To do this, open that folder (`/Users/<YOUR_USERNAME>/Documents/Arduino/libraries/` on macOS) and copy the libraries:
-- `Grove - Air quality sensor` by Seeed Studio (latest version on `master branch` or commit hash `58e4c0bb5ce1b0c9b8aa1265e9f726025feb34f0` [FROM GITHUB](https://github.com/Seeed-Studio/Grove_Air_quality_Sensor)). You cannot use the one published on ArduinoIDE Library Manager, because it's outdated and not compatibile with ESP32 devices.
-
-3. Update `secrets.h` files using the `esp32-configurator` Python script
-
+To work locally, you need to change remote URLs with your local ip addresses
 First check the IP address of your pc (based on your OS):
 
 ```bash
@@ -245,7 +223,7 @@ ipconfig /a
 
 You'll get something like `192.168.1.???`, for example `192.168.1.7`.
 
-4. Create a new file called `secrets-local.yaml` file with this content
+In this way, you can create a new file called `home-anthill-server-config/secrets-local.yaml` with this content:
 
 ```yaml
 # development configuration used locally
@@ -265,22 +243,3 @@ server_path: '/api/register'
 mqtt_domain: '192.168.1.7' # your local IP (for example 192.168.1.7)
 mqtt_port: 1883
 ```
-
-5. Run `esp32-configurator` Python script:
-
-```bash
-cd esp32-configurator
-
-python3 -m configurator --model=dht-light --source=../secrets-local.yaml --destination=../sensors/sensor-dht-light
-python3 -m configurator --model=airquality-pir --source=../secrets-local.yaml --destination=../sensors/sensor-airquality-pir
-python3 -m configurator --model=barometer --source=../secrets-local.yaml --destination=../sensors/sensor-barometer
-
-python3 -m configurator --model=ac --source=../secrets-local.yaml --destination=../devices/device
-```
-
-6. Build and flash firmwares
-
-- Open `devices/device/device.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
-- Open `sensors/sensor-dht-light/sensor-dht-light.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
-- Open `sensors/sensor-airquality-pir/sensor-airquality-pir.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad
-- Open `sensors/sensor-barometer/sensor-barometer.ino` with ArduinoIDE and flash the firmware on a ESP32S2 DevKit-C boad

@@ -10,6 +10,40 @@
 			"name": "api-server",
 			"item": [
 				{
+					"name": "getKeepAlive",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8082/api/keepalive",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"port": "8082",
+							"path": [
+								"api",
+								"keepalive"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "getLoginURL",
 					"event": [
 						{
@@ -99,7 +133,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"mac\": \"99:02:01:99:99:11\",\n\t\"manufacturer\": \"beko2\",\n\t\"model\": \"beko2\",\n\t\"apiToken\": \"d8812432-7b52-4e1f-88a3-ce1f70a204c6\",\n    \"features\": [\n        {\n            \"type\": \"controller\",\n            \"name\": \"ac\",\n            \"enable\": true,\n            \"priority\": 1\n        }\n    ]\n}",
+							"raw": "{\n    \"mac\": \"77:02:33:77:22:55\",\n\t\"manufacturer\": \"beko3\",\n\t\"model\": \"beko3\",\n\t\"apiToken\": \"d8812432-7b52-4e1f-88a3-ce1f70a204c6\",\n    \"features\": [\n        {\n            \"type\": \"controller\",\n            \"name\": \"ac\",\n            \"enable\": true,\n            \"priority\": 1,\n            \"unit\": \"-\"\n        }\n    ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -128,7 +162,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"mac\": \"99:02:01:99:99:77\",\n\t\"manufacturer\": \"sensor1\",\n\t\"model\": \"sensor1\",\n\t\"apiToken\": \"d8812432-7b52-4e1f-88a3-ce1f70a204c6\",\n    \"features\": [\n        {\n            \"type\": \"sensor\",\n            \"name\": \"humidity\",\n            \"enable\": true,\n            \"priority\": 1\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"temperature\",\n            \"enable\": true,\n            \"priority\": 1\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"light\",\n            \"enable\": true,\n            \"priority\": 1\n        }\n    ]\n}",
+							"raw": "{\n    \"mac\": \"99:99:45:22:12:66\",\n\t\"manufacturer\": \"sensor4\",\n\t\"model\": \"sensor4\",\n\t\"apiToken\": \"d8812432-7b52-4e1f-88a3-ce1f70a204c6\",\n    \"features\": [\n        {\n            \"type\": \"sensor\",\n            \"name\": \"temperature\",\n            \"enable\": true,\n            \"priority\": 1,\n            \"unit\": \"°C\"\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"humidity\",\n            \"enable\": true,\n            \"priority\": 2,\n            \"unit\": \"%\"\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"light\",\n            \"enable\": true,\n            \"priority\": 3,\n            \"unit\": \"lux\"\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"motion\",\n            \"enable\": true,\n            \"priority\": 4,\n            \"unit\": \"-\"\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"airquality\",\n            \"enable\": true,\n            \"priority\": 5,\n            \"unit\": \"-\"\n        },\n        {\n            \"type\": \"sensor\",\n            \"name\": \"airpressure\",\n            \"enable\": true,\n            \"priority\": 6,\n            \"unit\": \"hPa\"\n        }\n    ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -419,7 +453,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:8082/api/devices/63395e2a296289168eb70aed/values",
+							"raw": "http://localhost:8082/api/devices/63725b0b59906d8e8ce9069a/values",
 							"protocol": "http",
 							"host": [
 								"localhost"
@@ -428,7 +462,7 @@
 							"path": [
 								"api",
 								"devices",
-								"63395e2a296289168eb70aed",
+								"63725b0b59906d8e8ce9069a",
 								"values"
 							]
 						}
