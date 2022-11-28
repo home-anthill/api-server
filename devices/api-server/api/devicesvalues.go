@@ -123,7 +123,6 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
       "temperature": response.Temperature,
       "mode":        response.Mode,
       "fanSpeed":    response.FanSpeed,
-      "swing":       response.Swing,
     })
   } else {
     deviceValues := make([]sensorValue, 0)
@@ -271,7 +270,6 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
     Temperature: int32(value.Temperature),
     Mode:        int32(value.Mode),
     FanSpeed:    int32(value.FanSpeed),
-    Swing:       value.Swing,
     ApiToken:    apiToken,
   })
   handler.logger.Debugf("gRPC - sendViaGrpc - Device set value status %s", response.GetStatus())

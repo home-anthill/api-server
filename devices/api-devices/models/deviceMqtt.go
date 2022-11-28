@@ -7,5 +7,4 @@ type Values struct {
   Temperature int    `json:"temperature"`
   Mode        int    `json:"mode"`
   FanSpeed    int    `json:"fanSpeed"`
-  Swing       bool   `json:"swing"`
 }

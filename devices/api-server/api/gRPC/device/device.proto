@@ -21,7 +21,6 @@ message StatusResponse {
   int32 temperature = 2;
   int32 mode = 3;
   int32 fan_speed = 4;
-  bool swing = 5;
 }
 
 message ValuesRequest {
@@ -33,7 +32,6 @@ message ValuesRequest {
   int32 temperature = 6;
   int32 mode = 7;
   int32 fan_speed = 8;
-  bool swing = 9;
 }
 
 message ValuesResponse {

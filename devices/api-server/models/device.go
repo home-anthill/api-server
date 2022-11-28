@@ -34,10 +34,9 @@ type Device struct {
 }
 
 type DeviceState struct {
-  // For 'On' and 'Swing' you cannot use required for boolean, otherwise you cannot set as false
+  // For 'On' you cannot use required for boolean, otherwise you cannot set as false
   On          bool `json:"on" validate:"boolean"`
   Temperature int  `json:"temperature" validate:"required,min=17,max=30"`
-  Mode        int  `json:"mode" validate:"required,min=0,max=4"`
-  FanSpeed    int  `json:"fanSpeed" validate:"required,min=0,max=4"`
-  Swing       bool `json:"swing" validate:"boolean"`
+  Mode        int  `json:"mode" validate:"required,min=1,max=5"`
+  FanSpeed    int  `json:"fanSpeed" validate:"required,min=1,max=5"`
 }

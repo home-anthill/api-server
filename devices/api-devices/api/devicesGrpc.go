@@ -47,7 +47,6 @@ func (handler *DevicesGrpc) GetStatus(ctx context.Context, in *device.StatusRequ
     Temperature: int32(ac.Status.Temperature),
     Mode:        int32(ac.Status.Mode),
     FanSpeed:    int32(ac.Status.FanSpeed),
-    Swing:       ac.Status.Swing,
   }, err
 }
 func (handler *DevicesGrpc) SetValues(ctx context.Context, in *device.ValuesRequest) (*device.ValuesResponse, error) {
@@ -62,7 +61,6 @@ func (handler *DevicesGrpc) SetValues(ctx context.Context, in *device.ValuesRequ
       "status.temperature": in.Temperature,
       "status.mode":        in.Mode,
       "status.fanSpeed":    in.FanSpeed,
-      "status.swing":       in.Swing,
       "modifiedAt":         time.Now(),
     },
   })
@@ -79,7 +77,6 @@ func (handler *DevicesGrpc) SetValues(ctx context.Context, in *device.ValuesRequ
     Temperature: int(in.Temperature),
     Mode:        int(in.Mode),
     FanSpeed:    int(in.FanSpeed),
-    Swing:       in.Swing,
   }
   messageJSON, err := json.Marshal(values)
   if err != nil {

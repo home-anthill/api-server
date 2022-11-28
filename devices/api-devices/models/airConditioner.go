@@ -11,7 +11,6 @@ type Status struct {
   Mode        int  `json:"mode" bson:"mode"`
   Temperature int  `json:"temperature" bson:"temperature"`
   FanSpeed    int  `json:"fanSpeed" bson:"fanSpeed"`
-  Swing       bool `json:"swing" bson:"swing"`
 }
 
 // swagger:parameters acs newAC
