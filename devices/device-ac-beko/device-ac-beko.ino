@@ -7,19 +7,56 @@
 #include <PubSubClient.h>
 // eeprom lib has been deprecated for esp32, the recommended way is to use Preferences
 #include <Preferences.h>
-// IRremoteESP8266 library (https://github.com/crankyoldgit/IRremoteESP8266)
-#include "PinDefinitionsAndMore.h"
-#include <IRremote.h>
-// #include <IRremoteESP8266.h>
-// #include <IRsend.h>
-// config IRremoteESP8266
-// const uint16_t irGpio = 4;  // ESP8266 GPIO pin to use. Recommended: 4 (D2).
-// IRsend irsend(irGpio);  // Set the GPIO to be used to sending the message.
-// const uint16_t NEC_KHZ = 38;
+
+// include libraries
+// - IRremoteESP8266: https://github.com/crankyoldgit/IRremoteESP8266
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+// Import the specific implementation to use COOLIX protocol to control Beko ACs
+#include <ir_Coolix.h>
+
 
 #include "secrets.h"
 
+
+// ------------------------------------------------------
+// ------------------ IRremoteESP8266 -------------------
+// GPIO pin to use to send IR signals
+#define IR_SEND_PIN 4
+// ------------------------------------------------------
+// ---------------- COOLIX protocol ---------------------
+#define SEND_COOLIX
+// Temoerature ranges
+#define TEMP_MIN kCoolixTempMin // 17
+#define TEMP_MAX kCoolixTempMax // 30
+// Mode possibile values (defined in ir_Coolix.h)
+#define MODE_COOL kCoolixCool // 0
+#define MODE_DRY kCoolixDry // 1
+#define MODE_AUTO kCoolixAuto // 2
+#define MODE_HEAT kCoolixHeat // 3
+#define MODE_FAN kCoolixFan // 4
+// Fan values (defined in ir_Coolix.h)
+#define FAN_AUTO0 kCoolixFanAuto0 // 0
+#define FAN_MAX kCoolixFanMax // 1
+#define FAN_MED kCoolixFanMed // 2
+#define FAN_MIN kCoolixFanMin // 4
+#define FAN_AUTO kCoolixFanAuto // 5
+// global initial state
+struct state {
+  bool powerStatus = false;
+  uint8_t temperature = TEMP_MAX;
+  uint8_t operation = MODE_COOL; // mode (heat, cold, ...)
+  uint8_t fan = FAN_AUTO0;
+};
+state acState;
+ // Create a A/C object using GPIO to sending messages with
+IRCoolixAC ac(IR_SEND_PIN);
+// ------------------------------------------------------
+// ------------------------------------------------------
+
+
 void callbackMqtt(char* topic, byte* payload, unsigned int length);
+
 
 // Given below is the CA Certificate "ISRG Root X1" by Let's Encrypt.
 // Expiration date June 2035.
@@ -69,6 +106,7 @@ const char* ca_cert = \
 // ----------------------- WIFI -------------------------
 const char* ssid = SECRET_SSID; 
 const char* password = SECRET_PASS;
+String macAddress;
 # if SSL==true
 WiFiClientSecure client;
 # else 
@@ -123,18 +161,19 @@ void subscribeDevices(const char* command) {
 
 void reconnect() { 
   while (!mqttClient.connected()) {
-    Serial.println("reconnect - Attempting MQTT connection...");
+    Serial.println("reconnect - attempting MQTT connection...");
     mqttClient.setBufferSize(4096);
     
-    if (mqttClient.connect("arduinoClient")) {
-      Serial.print("reconnect - Connected and subscribing with savedUuid: ");
+    // here you can use the version with `connect(const char* id, const char* user, const char* pass)` with authentication
+    const char* idClient = savedUuid.c_str();
+    Serial.print("reconnect - connecting to MQTT with client id = ");
+    Serial.println(idClient);
+    
+    if (mqttClient.connect(idClient)) {
+      Serial.print("reconnect - connected and subscribing with savedUuid: ");
       Serial.println(savedUuid);
       // subscribe
-      subscribeDevices("/onoff");
-      subscribeDevices("/temperature");
-      subscribeDevices("/mode");
-      subscribeDevices("/fanMode");
-      subscribeDevices("/fanSpeed");
+      subscribeDevices("/values");
     } else {
       Serial.print("reconnect - failed, rc=");
       Serial.print(mqttClient.state());
@@ -145,26 +184,15 @@ void reconnect() {
   }
 }
 
+void sendIRSignal() {
+  Serial.println("sendIRSignal - Sending value via IR...");
+  ac.send();
+  Serial.println("sendIRSignal - Value sent successfully!");
+}
+
 void callbackMqtt(char* topic, byte* payload, unsigned int length) {
   Serial.println("callbackMqtt - called");
-  const uint16_t irOn[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 };
-  const uint16_t irOff[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550 };
-  const uint16_t irTemperature24[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550 };
-  const uint16_t irTemperature25[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550 };
-  const uint16_t irTemperature26[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550 };
-  const uint16_t irTemperature27[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550 };
-  const uint16_t irTemperature28[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550 };
-  const uint16_t irTemperature29[] = { };
-  const uint16_t irModeAuto[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550 };
-  const uint16_t irModeCold[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,5304,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 };
-  const uint16_t irModeDry[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550 };
-  const uint16_t irModeHot[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,1650,550,550,550,550,550,550,550,1650,550,1650,550 };
-  const uint16_t irModeFan[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550 };
-  const uint16_t irFanSpeedOff[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 };
-  const uint16_t irFanSpeedLow[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 };
-  const uint16_t irFanSpeedMid[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 };
-  const uint16_t irFanSpeedMax[] = { 4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550,4500,4500,4500,550,1650,550,550,550,1650,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,1650,550,550,550,1650,550,550,550,550,550,550,550,550,550,550,550,550,550,1650,550,550,550,1650,550,1650,550,1650,550,1650,550 };
-
+ 
   StaticJsonDocument<250> doc;
   DeserializationError error = deserializeJson(doc, payload);
   if (error) {
@@ -185,72 +213,59 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length) {
     Serial.print("callbackMqtt - on: ");
     Serial.println(on);
     if (on == 1) {
-      Serial.println("callbackMqtt - Sending irOn");
-      Serial.flush();
-      IrSender.sendRaw(irOn, sizeof(irOn) / sizeof(irOn[0]), NEC_KHZ);
+      Serial.println("callbackMqtt - Setting On");
+      ac.on();
     } else if (on == 0) {
-      Serial.println("callbackMqtt - Sending irOff");
-      Serial.flush();
-      IrSender.sendRaw(irOff, sizeof(irOff) / sizeof(irOff[0]), NEC_KHZ);  
+      Serial.println("callbackMqtt - Setting Off");
+      ac.off();
+      sendIRSignal();
+      Serial.println("--------------------------");
+      return;
     }
   }
   if(doc["temperature"] != nullptr) {
     const int temperature = doc["temperature"];
     Serial.print("callbackMqtt - temperature: ");
     Serial.println(temperature);
-    switch(temperature) {
-      case 24:
-        Serial.println("callbackMqtt - Sending irTemperature24");
-        IrSender.sendRaw(irTemperature24, sizeof(irTemperature24) / sizeof(irTemperature24[0]), NEC_KHZ);
-        break;
-      case 25:
-        Serial.println("callbackMqtt - Sending irTemperature25");
-        IrSender.sendRaw(irTemperature25, sizeof(irTemperature25) / sizeof(irTemperature25[0]), NEC_KHZ);
-        break;
-      case 26:
-        Serial.println("callbackMqtt - Sending irTemperature26");
-        IrSender.sendRaw(irTemperature26, sizeof(irTemperature26) / sizeof(irTemperature26[0]), NEC_KHZ);
-        break;
-      case 27:
-        Serial.println("callbackMqtt - Sending irTemperature27");
-        IrSender.sendRaw(irTemperature27, sizeof(irTemperature27) / sizeof(irTemperature27[0]), NEC_KHZ);
-        break;
-      case 28:
-        Serial.println("callbackMqtt - Sending irTemperature28");
-        IrSender.sendRaw(irTemperature28, sizeof(irTemperature28) / sizeof(irTemperature28[0]), NEC_KHZ);
-        break;
-      default:
-        Serial.println("callbackMqtt - Cannot send irTemperature. Unsupported temperature value!");
-        break;
+
+    if (temperature < TEMP_MIN || temperature > TEMP_MAX) {
+      Serial.print("callbackMqtt - Cannot set value, because temperature is out of range. Temperature must be >= ");
+      Serial.print(TEMP_MIN);
+      Serial.print(" and <= ");
+      Serial.print(TEMP_MAX);
+      Serial.print("\n");
+      return;
     }
+    Serial.println("callbackMqtt - Setting temperature");
+    ac.setTemp(temperature);
   }
   if(doc["mode"] != nullptr) {
     const int mode = doc["mode"];
     Serial.print("callbackMqtt - mode: ");
     Serial.println(mode);
     switch(mode) {
-      case 0:
-        Serial.println("callbackMqtt - Sending irModeAuto");
-        IrSender.sendRaw(irModeAuto, sizeof(irModeAuto) / sizeof(irModeAuto[0]), NEC_KHZ);
-        break;
       case 1:
-        Serial.println("callbackMqtt - Sending irModeCold");
-        IrSender.sendRaw(irModeCold, sizeof(irModeCold) / sizeof(irModeCold[0]), NEC_KHZ);
+       Serial.println("callbackMqtt - Setting mode to Cool");
+        ac.setMode(MODE_COOL);
         break;
       case 2:
-        Serial.println("callbackMqtt - Sending irModeDry");
-        IrSender.sendRaw(irModeDry, sizeof(irModeDry) / sizeof(irModeDry[0]), NEC_KHZ);
+        Serial.println("callbackMqtt - Setting mode to Auto");
+        ac.setMode(MODE_AUTO);
         break;
       case 3:
-        Serial.println("callbackMqtt - Sending irModeHot");
-        IrSender.sendRaw(irModeHot, sizeof(irModeHot) / sizeof(irModeHot[0]), NEC_KHZ);
+        Serial.println("callbackMqtt - Setting mode to Heat");
+        ac.setMode(MODE_HEAT);
         break;
       case 4:
-        Serial.println("callbackMqtt - Sending irModeFan");
-        IrSender.sendRaw(irModeFan, sizeof(irModeFan) / sizeof(irModeFan[0]), NEC_KHZ);
+        Serial.println("callbackMqtt - Setting mode to Fan");
+        ac.setMode(MODE_FAN);
+        break;
+      case 5:
+        Serial.println("callbackMqtt - Setting mode to Dry");
+        ac.setMode(MODE_DRY);
         break;
       default:
-        Serial.println("callbackMqtt - Cannot send irMode. Unsupported mode value!");
+        Serial.println("callbackMqtt - Cannot set mode. Unsupported value!");
         break;
     }
   }
@@ -259,37 +274,44 @@ void callbackMqtt(char* topic, byte* payload, unsigned int length) {
     Serial.print("callbackMqtt - fanSpeed: ");
     Serial.println(fanSpeed);
     switch(fanSpeed) {
-      case 0:
-        Serial.println("callbackMqtt - Sending irFanSpeedOff");
-        IrSender.sendRaw(irFanSpeedOff, sizeof(irFanSpeedOff) / sizeof(irFanSpeedOff[0]), NEC_KHZ);
-        break;
       case 1:
-        Serial.println("callbackMqtt - Sending irFanSpeedLow");
-        IrSender.sendRaw(irFanSpeedLow, sizeof(irFanSpeedLow) / sizeof(irFanSpeedLow[0]), NEC_KHZ);
+        Serial.println("callbackMqtt - Setting fan speed to Min");
+        ac.setFan(FAN_MIN);
         break;
       case 2:
-        Serial.println("callbackMqtt - Sending irFanSpeedMid");
-        IrSender.sendRaw(irFanSpeedMid, sizeof(irFanSpeedMid) / sizeof(irFanSpeedMid[0]), NEC_KHZ);
+        Serial.println("callbackMqtt - Setting fan speed to Med");
+        ac.setFan(FAN_MED);
         break;
       case 3:
-        Serial.println("callbackMqtt - Sending irFanSpeedMax");
-        IrSender.sendRaw(irFanSpeedMax, sizeof(irFanSpeedMax) / sizeof(irFanSpeedMax[0]), NEC_KHZ);
+        Serial.println("callbackMqtt - Setting fan speed to Max");
+        ac.setFan(FAN_MAX);
+        break;
+      case 4:
+        Serial.println("callbackMqtt - Setting fan speed to Auto");
+        ac.setFan(FAN_AUTO);
+        break;
+      case 5:
+        Serial.println("callbackMqtt - Setting fan speed to Auto0");
+        ac.setFan(FAN_AUTO0);
         break;
       default:
-        Serial.println("callbackMqtt - Cannot send irFanSpeed. Unsupported fanSpeed value!");
+        Serial.println("callbackMqtt - Cannot set fan speed. Unsupported fan value!");
         break;
     }
   }
-  if(doc["fanMode"] != nullptr) {
-    const int fanMode = doc["fanMode"];
-    Serial.print("callbackMqtt - fanMode: ");
-    Serial.println(fanMode);
-    // TODO TODO TODO implement this
-  }
+  sendIRSignal();
   Serial.println("--------------------------");
 }
 
-void registerServer() {
+/*
+* registerServer function 
+* returns an uint:
+*  0 => registered or already registered successfully
+*  1 => cannot register, because http status code is not 200 (ok) or 209 (already registered)
+*  2 => register success, but cannot save the response UUID in preferences
+*  3 => cannot deserialize register JSON response payload (probably malformed or too big)
+*/
+uint registerServer() {
   HTTPClient http;
   # if SSL==true
   client.setCACert(ca_cert);
@@ -300,12 +322,11 @@ void registerServer() {
   Serial.println(registerUrl);
 
   http.begin(client, registerUrl);
-
   http.addHeader("Content-Type", "application/json; charset=utf-8");
 
-  String macAddress = WiFi.macAddress();
+  macAddress = WiFi.macAddress();
   String features = "[";
-  features += "{\"type\": \"controller\",\"name\": \"ac\",\"enable\": true,\"priority\": 1,\"unit\": \"-\"}";
+  features += "{\"type\": \"controller\",\"name\": \"ac-beko\",\"enable\": true,\"priority\": 1,\"unit\": \"-\"}";
   features += "]";
 
   String registerPayload = "{\"mac\": \"" + WiFi.macAddress() + 
@@ -324,8 +345,8 @@ void registerServer() {
 
     Serial.println("registerServer - Retrying in 60 seconds...");
     delay(60000);
-    registerServer();
-    return;
+    // call again registerServer() recursively after the delay
+    return registerServer();
   }
 
   Serial.print("registerServer - httpResponseCode = ");
@@ -333,7 +354,7 @@ void registerServer() {
 
   if (httpResponseCode != HTTP_CODE_OK && httpResponseCode != HTTP_CODE_CONFLICT) {
     Serial.println("registerServer - Bad httpResponseCode! Cannot register this device");
-    return;
+    return 1;
   }
 
   if (httpResponseCode == HTTP_CODE_OK) {
@@ -367,11 +388,11 @@ void registerServer() {
           // strcmp(MANUFACTURER, manufacturerValue) != 0 ||
           // strcmp(MODEL, modelValue) != 0) {
       //   Serial.println("--- ERROR : Request and response data don't match ---");
-      //   return;
+      //   return 4;
       // }
       // if (!macAddress.equals(macValue) || nameValue != NAME || manufacturerValue != MANUFACTURER || modelValue != MODEL) {
       //   Serial.println("--- ERROR : Request and response data don't match ---");
-      //   return;
+      //   return 5;
       // }
 
       preferences.begin("device", false); 
@@ -382,22 +403,28 @@ void registerServer() {
         Serial.println("************* ERROR **************");
         Serial.println("registerServer - Cannot SAVE UUID in Preferences");
         Serial.println("**********************************");
-        return;
+        return 2;
       }
     } else {
-      // this is not an error, it appears every reboot after the first registration
       Serial.println("registerServer - cannot deserialize register JSON payload");
-      return;
+      return 3;
     }
   } else if (httpResponseCode == HTTP_CODE_CONFLICT) {
+    // this is not an error, it appears every reboot after the first registration
     Serial.println("registerServer - HTTP_CODE_CONFLICT - already registered");
   }
+  return 0; // OK - registered without errors
 }
 
 void setup() {
+  // Init serial port
   Serial.begin(115200);
-  // To be able to connect Serial monitor after reset or power up and before first print out. Do not wait for an attached Serial Monitor!
-  delay(4000);
+  // To be able to connect Serial monitor after reset or power up and before first print out.
+  // Do not wait for an attached Serial Monitor!
+  delay(3000);
+  // disable ESP32 Devkit-C built-in LED
+  pinMode (LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
 
   # if SSL==true
   Serial.println("setup - Running with SSL enabled");
@@ -419,7 +446,13 @@ void setup() {
   Serial.println(WiFi.macAddress());
 
   Serial.println("setup - Registering this device...");
-  registerServer();
+  uint result = registerServer();
+  if (result == 0) {
+    Serial.println("setup - registered");
+  } else {
+    Serial.println("setup - registerServer() returned error code, cannot continue");
+    return;
+  }
 
   Serial.println("setup - Getting saved UUID from preferences...");
   preferences.begin("device", false); 
@@ -432,11 +465,26 @@ void setup() {
     Serial.println("**********************************");
     return;
   }
+
+  // Run the calibration to calculate uSec timing offsets for this platform.
+  // This will produce a 65ms IR signal pulse at 38kHz.
+  // Only ever needs to be run once per object instantiation, if at all.
+  ac.calibrate();
+  delay(1000);
+  // Start AC
+  ac.begin();
   
   delay(1500);
 }
 
 void loop() {
+  // if 'savedUuid' is not defined, you cannot use this device
+  if (savedUuid == NULL || savedUuid.length() == 0) {
+    Serial.println("loop - savedUuid NOT FOUND, cannot continue...");
+    delay(60000);
+    return;
+  }
+
   if (!mqttClient.connected()) {
     Serial.println("loop - RECONNECTING...");
     reconnect();
