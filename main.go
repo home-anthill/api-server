@@ -78,6 +78,7 @@ func main() {
   fmt.Println("COOKIE_SECRET = " + os.Getenv("COOKIE_SECRET"))
   fmt.Println("OAUTH2_CLIENTID = " + os.Getenv("OAUTH2_CLIENTID"))
   fmt.Println("OAUTH2_SECRETID = " + os.Getenv("OAUTH2_SECRETID"))
+  fmt.Println("INTERNAL_CLUSTER_PATH = " + os.Getenv("INTERNAL_CLUSTER_PATH"))
 
   // 4. Print .env vars
   logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
@@ -101,6 +102,7 @@ func main() {
   logger.Info("COOKIE_SECRET = " + os.Getenv("COOKIE_SECRET"))
   logger.Info("OAUTH2_CLIENTID = " + os.Getenv("OAUTH2_CLIENTID"))
   logger.Info("OAUTH2_SECRETID = " + os.Getenv("OAUTH2_SECRETID"))
+  logger.Info("INTERNAL_CLUSTER_PATH = " + os.Getenv("INTERNAL_CLUSTER_PATH"))
 
   if os.Getenv("JWT_PASSWORD") == "" {
     panic(fmt.Errorf("'JWT_PASSWORD' environment variable is mandatory"))
@@ -191,10 +193,10 @@ func main() {
     fmt.Println("GIN - CORS enabled and httpOrigin is = " + httpOrigin)
     config := cors.DefaultConfig()
     config.AllowOrigins = []string{
-      "http://api-server-svc.home-anthill.svc.cluster.local",
-      "http://api-server-svc.home-anthill.svc.cluster.local:80",
-      "https://api-server-svc.home-anthill.svc.cluster.local",
-      "https://api-server-svc.home-anthill.svc.cluster.local:443",
+      "http://" + os.Getenv("INTERNAL_CLUSTER_PATH"),
+      "http://" + os.Getenv("INTERNAL_CLUSTER_PATH") + ":80",
+      "https://" + os.Getenv("INTERNAL_CLUSTER_PATH"),
+      "https://" + os.Getenv("INTERNAL_CLUSTER_PATH") + ":443",
       "http://localhost",
       "http://localhost:80",
       "https://localhost",
