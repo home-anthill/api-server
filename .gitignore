@@ -2,7 +2,6 @@
 .DS_Store
 .vscode
 
-tmp/
-out/
-build/
-logs/
+/public
+credentials.json
+.env

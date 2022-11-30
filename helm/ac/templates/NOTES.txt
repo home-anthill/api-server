@@ -1,8 +1,0 @@
-1. Get the application URL by running these commands:
-{{- if .Values.domains.http }}
-Navigate to {{ .Values.domains.http }}
-{{- else }}
-Navigate to http://{{ .Values.gui.publicIp}}
-{{- end }}
-
-Deploy process could require a couple of minutes, please be patient.

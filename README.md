@@ -1,90 +1,28 @@
 <h1 align="center">
   <br>
-  <img src="https://github.com/Ks89/air-conditioner/blob/master/docs/icons/logo512.png?raw=true" alt="ks89/home-anthill" width="220">
+  <img src="https://github.com/home-anthill/docs/blob/master/icons/logo512.png?raw=true" alt="ks89/home-anthill" width="220">
   <br>
+home-anthill
   <br>
-Home Anthill
-  <br>
+api-server
 </h1>
 
-Personal project to manage ESP32 devices. I'm calling these with 2 different names:
-- `devices`: ESP32 devices to control something, like Air Conditioners.
-- `sensors`: ESP32 devices to read physical phenomenons like temperature, humidity, air quality.
 
-At the moment, the only supported `device` is the one to control `Beko air conditioner (Remote type: RG52A9/BGEF)`,
-but you can modify the firmware changing the protocol to control you specific model, if supported by [`crankyoldgit/IRremoteESP8266`](https://github.com/crankyoldgit/IRremoteESP8266).
+## :open_book: Documentation :open_book:
 
-`Sensors` can read temperature, humidity, light (lux), air quality, motion, air pressure.
-Feel free to extend this project to match your requirements.
+Take a look here [home-anthill/docs](https://github.com/home-anthill/docs)
 
-**Please check the `Devices and Sensors` section below to verify the compatibility with ESP32 devices**.
-
-On server-side, I'm using a Kubernetes cluster with a simple microservice architecture.
-
-
-## :house: Architecture :house:
-
-<br/>
-<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/air-condirioner-architecture.png" alt="ks89/home-anthill">
-<br/>
-
-### Devices sequence diagrams
-
-<br/>
-<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/1-register-devices.png" alt="Sequence diagram register devices">
-<br/>
-<br/>
-<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/2-control-devices.png" alt="Sequence diagram control devices">
-<br/>
-
-### Sensors sequence diagrams
-
-<br/>
-<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/3-register-sensors.png" alt="Sequence diagram register sensors">
-<br/>
-<br/>
-<img src="https://raw.githubusercontent.com/Ks89/air-conditioner/master/docs/diagrams/4-notification-sensors.png" alt="Sequence diagram notification sensors">
-<br/>
-
-
-## :building_construction: Local development :building_construction:
-
-To setup this project on your PC to develop and run these microservices, please take a look at `docs/local-development.md`
-
-
-## :earth_africa: Production installation and deploy :earth_africa:
-
-### Server
-
-Check the official tutorial: `docs/hetzner-install.md`
-
-### Devices and Sensors
-
-Supported devices:
-- devices:
-  **device-ac-beko**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
-- sensors:
-    **sensor-airquality-pir**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S2 DevKit-C (ESP32-S2-SOLO)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
-    **sensor-barometer**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S2 DevKit-C (ESP32-S2-SOLO)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
-    **sensor-dht-light**: `ESP32 DevKit-C (ESP32-WROOM-32)`, `ESP32 S2 DevKit-C (ESP32-S2-SOLO)`, `ESP32 S3 DevKit-C (ESP32-S3-WROOM-1)`
-
-As you can see, devices are not working with `ESP32 S2 DevKit-C (ESP32-S2-SOLO)` because of [this issue](https://github.com/crankyoldgit/IRremoteESP8266/issues/1922)
-
-**Follow this guide `docs/devices-install.md`.**
-
-
-<br/>
 
 ## :fire: Releases :fire:
 
-- ??/??/2022 - 1.0.0-beta.1 - [HERE](https://github.com/Ks89/air-conditioner/releases)
-- 08/26/2022 - 1.0.0-alpha.4 - [HERE](https://github.com/Ks89/air-conditioner/releases)
-- 05/25/2022 - 1.0.0-alpha.3 - [HERE](https://github.com/Ks89/air-conditioner/releases)
-- 05/18/2022 - 1.0.0-alpha.2 - [HERE](https://github.com/Ks89/air-conditioner/releases)
-- 05/15/2022 - 1.0.0-alpha.1 - [HERE](https://github.com/Ks89/air-conditioner/releases)
+DockerHub releases [HERE](https://hub.docker.com/repository/registry-1.docker.io/ks89/api-server/general)
 
+GitHub releases [HERE](https://github.com/home-anthill/api-server/releases)
 
-<br/>
+Versions:
+
+- ??/??/2022 - 1.0.0-beta.1
+
 
 ## :sparkling_heart: A big thank you to :sparkling_heart:
 
@@ -92,7 +30,6 @@ As you can see, devices are not working with `ESP32 S2 DevKit-C (ESP32-S2-SOLO)`
 
 - <a href="https://www.freepik.com/free-vector/underground-ant-nest-with-red-ants_18582279.htm">Image by brgfx</a> from <a href="https://www.freepik.com/" title="Freepik">Freepik</a>
 
-<br/>
 
 # :copyright: License :copyright:
 

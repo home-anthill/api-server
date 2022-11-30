@@ -3,102 +3,103 @@ name: Docker Image CI
 on:
   push:
     paths-ignore:
-      - 'devices/device/**'
-      - 'sensors/sensor/**'
-      - 'helm/**'
-      - 'docs/**'
       - '**.md'
       - '**.MD'
-    branches:
-      - '**' # every branch
+    branches: [ "master" ]
+    # Publish semver tags as releases.
+    tags: [ 'v*.*.*' ]
   pull_request:
-    branches: [ master ]
+    branches: [ "master" ]
+  # To run the workflow manually from the Actions tab
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  # github.repository as '<account>/<repo>',
+  # but here I have to use 'ks89/<repo name>', because
+  # on dockerhub.io I have a personal account called 'ks89', and not 'home-anthill'
+  IMAGE_NAME: ks89/${{ github.event.repository.name }}
 
 jobs:
   build:
     name: Build and publish
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+      # This is used to complete the identity challenge
+      # with sigstore/fulcio when running outside of PRs.
+      id-token: write
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      #      - name: Dump GitHub context
+      #        id: github_context_step
+      #        run: |
+      #          echo '${{ toJSON(github) }}'
+      #          echo '${{ github.event.repository.name }}'
+
+      #      # Install the cosign tool except on PR
+      #      # https://github.com/sigstore/cosign-installer
+      #      - name: Install cosign
+      #      if: github.event_name != 'pull_request'
+      #      uses: sigstore/cosign-installer@f3c664df7af409cb4873aa5068053ba9d61a57b6 #v2.6.0
+      #      with:
+      #        cosign-release: 'v1.11.0'
+
+      # Workaround: https://github.com/docker/build-push-action/issues/461
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: api-server - build and push
+
+      # Login against a Docker registry except on PR
+      # https://github.com/docker/login-action
+      - name: Log into registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=schedule
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push Docker image
+        id: build-and-push
         uses: docker/build-push-action@v3
         with:
-          context: ./devices/api-server
-          file: ./devices/api-server/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-server:latest
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: api-devices - build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: ./devices/api-devices
-          file: ./devices/api-devices/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-api-devices:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: mosquitto - build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: ./mosquitto
-          file: ./mosquitto/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/mosquitto:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: gui - build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: ./gui
-          file: ./gui/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-gui:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: register - build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: ./sensors/register
-          file: ./sensors/register/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-register:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: consumer - build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: ./sensors/consumer
-          file: ./sensors/consumer/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-consumer:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: producer - build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: ./sensors/producer
-          file: ./sensors/producer/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-producer:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-      - name: esp32-configurator - build and push
-        uses: docker/build-push-action@v3
-        with:
-          context: ./esp32-configurator
-          file: ./esp32-configurator/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/ac-esp32-configurator:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+
+#      # Sign the resulting Docker image digest except on PRs.
+#      # This will only write to the public Rekor transparency log when the Docker
+#      # repository is public to avoid leaking data.  If you would like to publish
+#      # transparency data even for private images, pass --force to cosign below.
+#      # https://github.com/sigstore/cosign
+#      - name: Sign the published Docker image
+#        if: ${{ github.event_name != 'pull_request' }}
+#        env:
+#          COSIGN_EXPERIMENTAL: "true"
+#        # This step uses the identity token to provision an ephemeral certificate
+#        # against the sigstore community Fulcio instance.
+#        run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign {}@${{ steps.build-and-push.outputs.digest }}
