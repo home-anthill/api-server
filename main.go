@@ -191,10 +191,10 @@ func main() {
     fmt.Println("GIN - CORS enabled and httpOrigin is = " + httpOrigin)
     config := cors.DefaultConfig()
     config.AllowOrigins = []string{
-      "http://api-server-svc.ac.svc.cluster.local",
-      "http://api-server-svc.ac.svc.cluster.local:80",
-      "https://api-server-svc.ac.svc.cluster.local",
-      "https://api-server-svc.ac.svc.cluster.local:443",
+      "http://api-server-svc.home-anthill.svc.cluster.local",
+      "http://api-server-svc.home-anthill.svc.cluster.local:80",
+      "https://api-server-svc.home-anthill.svc.cluster.local",
+      "https://api-server-svc.home-anthill.svc.cluster.local:443",
       "http://localhost",
       "http://localhost:80",
       "https://localhost",
