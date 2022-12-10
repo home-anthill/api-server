@@ -26,7 +26,7 @@ type featureReq struct {
   Type     models.Type `json:"type" validate:"required,oneof='controller' 'sensor'"`
   Name     string      `json:"name" validate:"required,min=2,max=20"`
   Enable   bool        `json:"enable" validate:"required,boolean"`
-  Priority int         `json:"priority" validate:"required,gte=1"`
+  Order    int         `json:"order" validate:"required,gte=1"`
   Unit     string      `json:"unit" validate:"required,min=1,max=10"`
 }
 
@@ -160,7 +160,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
       Type:     fReq.Type,
       Name:     fReq.Name,
       Enable:   fReq.Enable,
-      Priority: fReq.Priority,
+      Order:    fReq.Order,
       Unit:     fReq.Unit,
     }
   })

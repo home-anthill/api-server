@@ -17,7 +17,7 @@ type Feature struct {
   Type     Type   `json:"type" bson:"type"`
   Name     string `json:"name" bson:"name"`
   Enable   bool   `json:"enable" bson:"enable"`
-  Priority int    `json:"priority" bson:"priority"`
+  Order    int    `json:"order" bson:"order"`
   Unit     string `json:"unit" bson:"unit"`
 }
 
