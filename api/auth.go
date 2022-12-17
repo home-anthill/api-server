@@ -120,7 +120,7 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
       return jwtKey, nil
     })
 
-    if !token.Valid {
+    if token == nil || !token.Valid {
       if ve, ok := err.(*jwt.ValidationError); ok {
         if ve.Errors&jwt.ValidationErrorMalformed != 0 {
           handler.logger.Error("JWTMiddleware - that's not even a token")
