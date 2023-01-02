@@ -1,4 +1,4 @@
-package oauth
+package api
 
 import (
 	"api-server/models"
@@ -67,6 +67,7 @@ func (handler *Github) GetLoginURL(c *gin.Context) {
 
 	session := sessions.Default(c)
 	session.Set("state", state)
+	fmt.Println("************************* state = " + state)
 	err = session.Save()
 	if err != nil {
 		handler.logger.Error("REST - GET - GetLoginURL - cannot save session")
@@ -78,7 +79,9 @@ func (handler *Github) GetLoginURL(c *gin.Context) {
 	noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
 	handler.logger.Info("REST - GET - GetLoginURL - result noUnicodeString: ", noUnicodeString)
 
-	c.JSON(http.StatusOK, gin.H{"loginURL": noUnicodeString})
+	loginUrlRes := models.LoginUrl{}
+	loginUrlRes.LoginURL = noUnicodeString
+	c.JSON(http.StatusOK, &loginUrlRes)
 }
 
 func (handler *Github) OauthAuth() gin.HandlerFunc {

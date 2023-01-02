@@ -1,0 +1,60 @@
+package init_config
+
+import (
+	"api-server/db"
+	"context"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"go.uber.org/zap"
+	"os"
+)
+
+func BuildConfig() *zap.SugaredLogger {
+	// Init logger
+	logger := BuildLogger()
+	logger.Info("BuildConfig - called")
+
+	// Load .env file and print variables
+	envFile, err := InitEnv()
+	fmt.Println("BuildConfig - envFile=" + envFile)
+	if err != nil {
+		logger.Error("failed to load the env file")
+		panic("failed to load the env file at ./" + envFile)
+	}
+	PrintEnv(logger)
+	return logger
+}
+
+func BuildServer(httpOrigin string, logger *zap.SugaredLogger) *gin.Engine {
+	// Initialization
+	ctx := context.Background()
+	// Create a singleton validator instance. Validate is designed to be used as a singleton instance.
+	// It caches information about struct and validations.
+	validate := validator.New()
+
+	// Config Gin framework mode based on env
+	setGinMode()
+
+	// Connect to DB
+	collectionProfiles, collectionHomes, collectionDevices := db.InitDb(ctx, logger)
+
+	// Instantiate GIN and apply some middlewares
+	fmt.Println("GIN - Initializing...")
+	router := SetupRouter(httpOrigin)
+	RegisterRoutes(router, ctx, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
+	return router
+}
+
+func setGinMode() {
+	switch os.Getenv("ENV") {
+	case "prod":
+		gin.SetMode(gin.ReleaseMode)
+		break
+	case "testing":
+		gin.SetMode(gin.TestMode)
+		break
+	default:
+		gin.SetMode(gin.DebugMode)
+	}
+}

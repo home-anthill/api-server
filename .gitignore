@@ -7,3 +7,4 @@ credentials.json
 .env
 tmp
 logs
+coverage

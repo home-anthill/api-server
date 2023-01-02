@@ -1,8 +1,8 @@
 package api
 
 import (
-	"api-server/api/gRPC/register"
-	"api-server/custom-errors"
+	"api-server/api/grpc/register"
+	"api-server/custom_errors"
 	"api-server/models"
 	"api-server/utils"
 	"bytes"

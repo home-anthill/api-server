@@ -1,8 +1,8 @@
 package api
 
 import (
-	device3 "api-server/api/gRPC/device"
-	custom_errors "api-server/custom-errors"
+	device3 "api-server/api/grpc/device"
+	custom_errors "api-server/custom_errors"
 	"api-server/models"
 	"api-server/utils"
 	"encoding/json"

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"api-server/models"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -20,5 +21,7 @@ func NewKeepAlive(ctx context.Context, logger *zap.SugaredLogger) *KeepAlive {
 }
 func (handler *KeepAlive) GetKeepAlive(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetKeepAlive called")
-	c.JSON(http.StatusOK, gin.H{"message": "ok"})
+	response := models.KeepAlive{}
+	response.Message = "ok"
+	c.JSON(http.StatusOK, &response)
 }
