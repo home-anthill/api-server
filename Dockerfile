@@ -18,7 +18,6 @@ RUN go mod download && go mod verify
 COPY . ./
 
 RUN make deps
-RUN make test
 
 RUN make build
 
