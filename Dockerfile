@@ -4,9 +4,6 @@ RUN apk update && apk add --no-cache \
     protoc \
     make gcc musl-dev
 
-# install shadow
-RUN go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
-
 # install protoc requirements based on https://grpc.io/docs/languages/go/quickstart/
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
@@ -19,6 +16,9 @@ COPY go.sum ./
 RUN go mod download && go mod verify
 
 COPY . ./
+
+RUN make deps
+RUN make test
 
 RUN make build
 
