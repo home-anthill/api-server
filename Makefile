@@ -16,7 +16,7 @@ vet:
 .PHONY:vet
 
 proto:
-	protoc api/gRPC/*/*.proto \
+	protoc api/grpc/*/*.proto \
 			--go_out=. \
 			--go_opt=paths=source_relative \
 			--go-grpc_out=. \

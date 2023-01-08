@@ -2,7 +2,7 @@
 // versions:
 // 	protoc-gen-go v1.26.0
 // 	protoc        v3.21.9
-// source: api/gRPC/device/device.proto
+// source: api/grpc/device/device.proto
 
 package device
 
@@ -34,7 +34,7 @@ type StatusRequest struct {
 func (x *StatusRequest) Reset() {
 	*x = StatusRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_gRPC_device_device_proto_msgTypes[0]
+		mi := &file_api_grpc_device_device_proto_msgTypes[0]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -47,7 +47,7 @@ func (x *StatusRequest) String() string {
 func (*StatusRequest) ProtoMessage() {}
 
 func (x *StatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_gRPC_device_device_proto_msgTypes[0]
+	mi := &file_api_grpc_device_device_proto_msgTypes[0]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -60,7 +60,7 @@ func (x *StatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusRequest.ProtoReflect.Descriptor instead.
 func (*StatusRequest) Descriptor() ([]byte, []int) {
-	return file_api_gRPC_device_device_proto_rawDescGZIP(), []int{0}
+	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *StatusRequest) GetId() string {
@@ -105,7 +105,7 @@ type StatusResponse struct {
 func (x *StatusResponse) Reset() {
 	*x = StatusResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_gRPC_device_device_proto_msgTypes[1]
+		mi := &file_api_grpc_device_device_proto_msgTypes[1]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -118,7 +118,7 @@ func (x *StatusResponse) String() string {
 func (*StatusResponse) ProtoMessage() {}
 
 func (x *StatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_gRPC_device_device_proto_msgTypes[1]
+	mi := &file_api_grpc_device_device_proto_msgTypes[1]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -131,7 +131,7 @@ func (x *StatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusResponse.ProtoReflect.Descriptor instead.
 func (*StatusResponse) Descriptor() ([]byte, []int) {
-	return file_api_gRPC_device_device_proto_rawDescGZIP(), []int{1}
+	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *StatusResponse) GetOn() bool {
@@ -180,7 +180,7 @@ type ValuesRequest struct {
 func (x *ValuesRequest) Reset() {
 	*x = ValuesRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_gRPC_device_device_proto_msgTypes[2]
+		mi := &file_api_grpc_device_device_proto_msgTypes[2]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -193,7 +193,7 @@ func (x *ValuesRequest) String() string {
 func (*ValuesRequest) ProtoMessage() {}
 
 func (x *ValuesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_gRPC_device_device_proto_msgTypes[2]
+	mi := &file_api_grpc_device_device_proto_msgTypes[2]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -206,7 +206,7 @@ func (x *ValuesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValuesRequest.ProtoReflect.Descriptor instead.
 func (*ValuesRequest) Descriptor() ([]byte, []int) {
-	return file_api_gRPC_device_device_proto_rawDescGZIP(), []int{2}
+	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ValuesRequest) GetId() string {
@@ -277,7 +277,7 @@ type ValuesResponse struct {
 func (x *ValuesResponse) Reset() {
 	*x = ValuesResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_api_gRPC_device_device_proto_msgTypes[3]
+		mi := &file_api_grpc_device_device_proto_msgTypes[3]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -290,7 +290,7 @@ func (x *ValuesResponse) String() string {
 func (*ValuesResponse) ProtoMessage() {}
 
 func (x *ValuesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_gRPC_device_device_proto_msgTypes[3]
+	mi := &file_api_grpc_device_device_proto_msgTypes[3]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +303,7 @@ func (x *ValuesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ValuesResponse.ProtoReflect.Descriptor instead.
 func (*ValuesResponse) Descriptor() ([]byte, []int) {
-	return file_api_gRPC_device_device_proto_rawDescGZIP(), []int{3}
+	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ValuesResponse) GetStatus() string {
@@ -320,10 +320,10 @@ func (x *ValuesResponse) GetMessage() string {
 	return ""
 }
 
-var File_api_gRPC_device_device_proto protoreflect.FileDescriptor
+var File_api_grpc_device_device_proto protoreflect.FileDescriptor
 
-var file_api_gRPC_device_device_proto_rawDesc = []byte{
-	0x0a, 0x1c, 0x61, 0x70, 0x69, 0x2f, 0x67, 0x52, 0x50, 0x43, 0x2f, 0x64, 0x65, 0x76, 0x69, 0x63,
+var file_api_grpc_device_device_proto_rawDesc = []byte{
+	0x0a, 0x1c, 0x61, 0x70, 0x69, 0x2f, 0x67, 0x72, 0x70, 0x63, 0x2f, 0x64, 0x65, 0x76, 0x69, 0x63,
 	0x65, 0x2f, 0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x12, 0x06,
 	0x64, 0x65, 0x76, 0x69, 0x63, 0x65, 0x22, 0x62, 0x0a, 0x0d, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73,
 	0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20,
@@ -371,25 +371,25 @@ var file_api_gRPC_device_device_proto_rawDesc = []byte{
 }
 
 var (
-	file_api_gRPC_device_device_proto_rawDescOnce sync.Once
-	file_api_gRPC_device_device_proto_rawDescData = file_api_gRPC_device_device_proto_rawDesc
+	file_api_grpc_device_device_proto_rawDescOnce sync.Once
+	file_api_grpc_device_device_proto_rawDescData = file_api_grpc_device_device_proto_rawDesc
 )
 
-func file_api_gRPC_device_device_proto_rawDescGZIP() []byte {
-	file_api_gRPC_device_device_proto_rawDescOnce.Do(func() {
-		file_api_gRPC_device_device_proto_rawDescData = protoimpl.X.CompressGZIP(file_api_gRPC_device_device_proto_rawDescData)
+func file_api_grpc_device_device_proto_rawDescGZIP() []byte {
+	file_api_grpc_device_device_proto_rawDescOnce.Do(func() {
+		file_api_grpc_device_device_proto_rawDescData = protoimpl.X.CompressGZIP(file_api_grpc_device_device_proto_rawDescData)
 	})
-	return file_api_gRPC_device_device_proto_rawDescData
+	return file_api_grpc_device_device_proto_rawDescData
 }
 
-var file_api_gRPC_device_device_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
-var file_api_gRPC_device_device_proto_goTypes = []interface{}{
+var file_api_grpc_device_device_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_grpc_device_device_proto_goTypes = []interface{}{
 	(*StatusRequest)(nil),  // 0: device.StatusRequest
 	(*StatusResponse)(nil), // 1: device.StatusResponse
 	(*ValuesRequest)(nil),  // 2: device.ValuesRequest
 	(*ValuesResponse)(nil), // 3: device.ValuesResponse
 }
-var file_api_gRPC_device_device_proto_depIdxs = []int32{
+var file_api_grpc_device_device_proto_depIdxs = []int32{
 	0, // 0: device.Device.GetStatus:input_type -> device.StatusRequest
 	2, // 1: device.Device.SetValues:input_type -> device.ValuesRequest
 	1, // 2: device.Device.GetStatus:output_type -> device.StatusResponse
@@ -401,13 +401,13 @@ var file_api_gRPC_device_device_proto_depIdxs = []int32{
 	0, // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_api_gRPC_device_device_proto_init() }
-func file_api_gRPC_device_device_proto_init() {
-	if File_api_gRPC_device_device_proto != nil {
+func init() { file_api_grpc_device_device_proto_init() }
+func file_api_grpc_device_device_proto_init() {
+	if File_api_grpc_device_device_proto != nil {
 		return
 	}
 	if !protoimpl.UnsafeEnabled {
-		file_api_gRPC_device_device_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
+		file_api_grpc_device_device_proto_msgTypes[0].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*StatusRequest); i {
 			case 0:
 				return &v.state
@@ -419,7 +419,7 @@ func file_api_gRPC_device_device_proto_init() {
 				return nil
 			}
 		}
-		file_api_gRPC_device_device_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
+		file_api_grpc_device_device_proto_msgTypes[1].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*StatusResponse); i {
 			case 0:
 				return &v.state
@@ -431,7 +431,7 @@ func file_api_gRPC_device_device_proto_init() {
 				return nil
 			}
 		}
-		file_api_gRPC_device_device_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
+		file_api_grpc_device_device_proto_msgTypes[2].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ValuesRequest); i {
 			case 0:
 				return &v.state
@@ -443,7 +443,7 @@ func file_api_gRPC_device_device_proto_init() {
 				return nil
 			}
 		}
-		file_api_gRPC_device_device_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
+		file_api_grpc_device_device_proto_msgTypes[3].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*ValuesResponse); i {
 			case 0:
 				return &v.state
@@ -460,18 +460,18 @@ func file_api_gRPC_device_device_proto_init() {
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: file_api_gRPC_device_device_proto_rawDesc,
+			RawDescriptor: file_api_grpc_device_device_proto_rawDesc,
 			NumEnums:      0,
 			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_api_gRPC_device_device_proto_goTypes,
-		DependencyIndexes: file_api_gRPC_device_device_proto_depIdxs,
-		MessageInfos:      file_api_gRPC_device_device_proto_msgTypes,
+		GoTypes:           file_api_grpc_device_device_proto_goTypes,
+		DependencyIndexes: file_api_grpc_device_device_proto_depIdxs,
+		MessageInfos:      file_api_grpc_device_device_proto_msgTypes,
 	}.Build()
-	File_api_gRPC_device_device_proto = out.File
-	file_api_gRPC_device_device_proto_rawDesc = nil
-	file_api_gRPC_device_device_proto_goTypes = nil
-	file_api_gRPC_device_device_proto_depIdxs = nil
+	File_api_grpc_device_device_proto = out.File
+	file_api_grpc_device_device_proto_rawDesc = nil
+	file_api_grpc_device_device_proto_goTypes = nil
+	file_api_grpc_device_device_proto_depIdxs = nil
 }
