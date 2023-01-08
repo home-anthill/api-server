@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-var oauthGithub *api.Github
+var OauthGithub *api.Github
 var auth *api.Auth
 var homes *api.Homes
 var devices *api.Devices
@@ -112,7 +112,7 @@ func SetupRouter(httpOrigin string) *gin.Engine {
 }
 
 func RegisterRoutes(router *gin.Engine, ctx context.Context, logger *zap.SugaredLogger, validate *validator.Validate, collProfiles, collHomes, collDevices *mongo.Collection) {
-	oauthGithub = api.NewGithub(ctx, logger, collProfiles, oauthCallbackURL, oauthScopes)
+	OauthGithub = api.NewGithub(ctx, logger, collProfiles, oauthCallbackURL, oauthScopes)
 	auth = api.NewAuth(ctx, logger, collProfiles)
 	homes = api.NewHomes(ctx, logger, collHomes, collProfiles, validate)
 	devices = api.NewDevices(ctx, logger, collDevices, collProfiles, collHomes)
@@ -122,15 +122,15 @@ func RegisterRoutes(router *gin.Engine, ctx context.Context, logger *zap.Sugared
 	keepAlive = api.NewKeepAlive(ctx, logger)
 
 	// 12. Configure oAuth2 authentication
-	router.Use(oauthGithub.Session("session")) // session called "session"
+	router.Use(OauthGithub.Session("session")) // session called "session"
 	// public API to get Login URL
-	router.GET("/api/login", oauthGithub.GetLoginURL)
+	router.GET("/api/login", OauthGithub.GetLoginURL)
 	// public APIs
 	router.POST("/api/register", register.PostRegister)
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
 	// oAuth2 config to register the oauth callback API
 	authorized := router.Group("/api/callback")
-	authorized.Use(oauthGithub.OauthAuth())
+	authorized.Use(OauthGithub.OauthAuth())
 	authorized.GET("", auth.LoginCallback)
 
 	// 13. Define /api group protected via JWTMiddleware

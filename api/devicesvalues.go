@@ -2,11 +2,11 @@ package api
 
 import (
 	device3 "api-server/api/grpc/device"
-	custom_errors "api-server/custom_errors"
+	"api-server/custom_errors"
 	"api-server/models"
 	"api-server/utils"
 	"encoding/json"
-	"github.com/gin-gonic/contrib/sessions"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
@@ -22,11 +22,6 @@ import (
 	"reflect"
 	"time"
 )
-
-type sensorValue struct {
-	UUID  string  `json:"uuid"` // feature uuid
-	Value float64 `json:"value"`
-}
 
 type DevicesValues struct {
 	collection         *mongo.Collection
@@ -118,14 +113,15 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{
-			"on":          response.On,
-			"temperature": response.Temperature,
-			"mode":        response.Mode,
-			"fanSpeed":    response.FanSpeed,
-		})
+		deviceState := models.DeviceState{
+			On:          response.On,
+			Temperature: int(response.Temperature),
+			Mode:        int(response.Mode),
+			FanSpeed:    int(response.FanSpeed),
+		}
+		c.JSON(http.StatusOK, &deviceState)
 	} else {
-		deviceValues := make([]sensorValue, 0)
+		deviceValues := make([]models.SensorValue, 0)
 		for _, feature := range device.Features {
 			path := handler.sensorGetValueUrl + device.UUID + "/" + feature.Name
 			_, result, err := handler.getSensorValue(path)
@@ -134,7 +130,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 				// return custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot register sensor device feature "+feature.Name)
 			}
 
-			sensorFeatureValue := sensorValue{}
+			sensorFeatureValue := models.SensorValue{}
 			err = json.Unmarshal([]byte(result), &sensorFeatureValue)
 			if err != nil {
 				// TODO

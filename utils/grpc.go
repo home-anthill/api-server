@@ -1,7 +1,7 @@
 package utils
 
 import (
-	custom_errors "api-server/custom_errors"
+	"api-server/custom_errors"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"

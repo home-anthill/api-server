@@ -3,7 +3,7 @@ package api
 import (
 	"api-server/models"
 	"api-server/utils"
-	"github.com/gin-gonic/contrib/sessions"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

@@ -6,7 +6,8 @@ import (
 	"context"
 	"encoding/gob"
 	"fmt"
-	"github.com/gin-gonic/contrib/sessions"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/github"
 	"github.com/google/uuid"
@@ -27,13 +28,21 @@ type Github struct {
 	ctx                context.Context
 	logger             *zap.SugaredLogger
 	oauthConfig        *oauth2.Config
-	cookieStore        sessions.CookieStore
+	cookieStore        cookie.Store
+}
+
+var DbGithubUserTestmock = models.Github{
+	ID:        123456,
+	Login:     "Test",
+	Name:      "Test Test",
+	Email:     "test@test.com",
+	AvatarURL: "https://avatars.githubusercontent.com/u/123456?v=4",
 }
 
 func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, redirectURL string, scopes []string) *Github {
 	gob.Register(models.Profile{})
 
-	cookieStore := sessions.NewCookieStore([]byte(os.Getenv("COOKIE_SECRET")))
+	cookieStore := cookie.NewStore([]byte(os.Getenv("COOKIE_SECRET")))
 	// init global configuration with received params
 	oauthConfig := &oauth2.Config{
 		ClientID:     os.Getenv("OAUTH2_CLIENTID"),
@@ -67,7 +76,6 @@ func (handler *Github) GetLoginURL(c *gin.Context) {
 
 	session := sessions.Default(c)
 	session.Set("state", state)
-	fmt.Println("************************* state = " + state)
 	err = session.Save()
 	if err != nil {
 		handler.logger.Error("REST - GET - GetLoginURL - cannot save session")
@@ -97,7 +105,6 @@ func (handler *Github) OauthAuth() gin.HandlerFunc {
 			return
 		}
 
-		// read state query param from context (URL)
 		retrievedState := session.Get("state")
 		if retrievedState != c.Query("state") {
 			handler.logger.Error("OauthAuth - invalid session state: %s ", retrievedState)
@@ -105,29 +112,34 @@ func (handler *Github) OauthAuth() gin.HandlerFunc {
 			return
 		}
 
-		// read the "code"
-		tok, err := handler.oauthConfig.Exchange(context.TODO(), c.Query("code"))
-		if err != nil {
-			handler.logger.Errorf("OauthAuth - failed to do exchange: %v", err)
-			c.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to do exchange: %v", err))
-			return
-		}
+		var dbGithubUser models.Github
+		if os.Getenv("ENV") != "testing" {
+			// read the "code"
+			tok, err := handler.oauthConfig.Exchange(context.TODO(), c.Query("code"))
+			if err != nil {
+				handler.logger.Errorf("OauthAuth - failed to do exchange: %v", err)
+				c.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to do exchange: %v", err))
+				return
+			}
 
-		// create a new GitHub API client to perform authentication
-		client := github.NewClient(handler.oauthConfig.Client(context.TODO(), tok))
-		githubClientUser, _, err := client.Users.Get(context.TODO(), "")
-		if err != nil {
-			handler.logger.Errorf("OauthAuth - failed to get user: %v", err)
-			c.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
-			return
-		}
+			// create a new GitHub API client to perform authentication
+			client := github.NewClient(handler.oauthConfig.Client(context.TODO(), tok))
+			githubClientUser, _, err := client.Users.Get(context.TODO(), "")
+			if err != nil {
+				handler.logger.Errorf("OauthAuth - failed to get user: %v", err)
+				c.AbortWithError(http.StatusBadRequest, fmt.Errorf("failed to get user: %v", err))
+				return
+			}
 
-		dbGithubUser := models.Github{
-			ID:        *githubClientUser.ID,
-			Login:     *githubClientUser.Login,
-			Name:      *githubClientUser.Name,
-			Email:     *githubClientUser.Email,
-			AvatarURL: *githubClientUser.AvatarURL,
+			dbGithubUser = models.Github{
+				ID:        *githubClientUser.ID,
+				Login:     *githubClientUser.Login,
+				Name:      *githubClientUser.Name,
+				Email:     *githubClientUser.Email,
+				AvatarURL: *githubClientUser.AvatarURL,
+			}
+		} else {
+			dbGithubUser = DbGithubUserTestmock
 		}
 
 		// ATTENTION!!!
@@ -142,8 +154,8 @@ func (handler *Github) OauthAuth() gin.HandlerFunc {
 
 		// find profile searching by github.id == githubClientUser.ID
 		var profileFound models.Profile
-		err = handler.collectionProfiles.FindOne(c, bson.M{
-			"github.id": githubClientUser.ID,
+		err := handler.collectionProfiles.FindOne(c, bson.M{
+			"github.id": dbGithubUser.ID,
 		}).Decode(&profileFound)
 
 		if err == nil {

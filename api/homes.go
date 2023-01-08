@@ -1,38 +1,38 @@
 package api
 
 import (
-	"api-server/models"
-	"api-server/utils"
-	"github.com/gin-gonic/contrib/sessions"
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.uber.org/zap"
-	"golang.org/x/net/context"
-	"net/http"
-	"time"
+  "api-server/models"
+  "api-server/utils"
+  "github.com/gin-contrib/sessions"
+  "github.com/gin-gonic/gin"
+  "github.com/go-playground/validator/v10"
+  "go.mongodb.org/mongo-driver/bson"
+  "go.mongodb.org/mongo-driver/bson/primitive"
+  "go.mongodb.org/mongo-driver/mongo"
+  "go.mongodb.org/mongo-driver/mongo/options"
+  "go.uber.org/zap"
+  "golang.org/x/net/context"
+  "net/http"
+  "time"
 )
 
-type homeNewReq struct {
+type HomeNewReq struct {
 	Name     string       `json:"name" validate:"required,min=1,max=50"`
 	Location string       `json:"location" validate:"required,min=1,max=50"`
-	Rooms    []roomNewReq `json:"rooms" validate:"required,dive"`
+	Rooms    []RoomNewReq `json:"rooms" validate:"required,dive"`
 }
 
-type homeUpdateReq struct {
+type HomeUpdateReq struct {
 	Name     string `json:"name" validate:"required,min=1,max=50"`
 	Location string `json:"location" validate:"required,min=1,max=50"`
 }
 
-type roomNewReq struct {
+type RoomNewReq struct {
 	Name  string `json:"name" validate:"required,min=1,max=50"`
 	Floor int    `json:"floor" validate:"required,min=-50,max=300"`
 }
 
-type roomUpdateReq struct {
+type RoomUpdateReq struct {
 	Name    string               `json:"name" validate:"required,min=1,max=50"`
 	Floor   int                  `json:"floor" validate:"required,min=-50,max=300"`
 	Devices []primitive.ObjectID `json:"devices" bson:"devices,omitempty"`
@@ -132,7 +132,7 @@ func (handler *Homes) PostHome(c *gin.Context) {
 		return
 	}
 
-	var newHome homeNewReq
+	var newHome HomeNewReq
 	if err = c.ShouldBindJSON(&newHome); err != nil {
 		handler.logger.Error("REST - POST - PostHome - Cannot bind request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
@@ -215,7 +215,7 @@ func (handler *Homes) PutHome(c *gin.Context) {
 		return
 	}
 
-	var home homeUpdateReq
+	var home HomeUpdateReq
 	if err := c.ShouldBindJSON(&home); err != nil {
 		handler.logger.Error("REST - PUT - PutHome - Cannot bind request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
@@ -388,7 +388,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 		return
 	}
 
-	var newRoom roomNewReq
+	var newRoom RoomNewReq
 	if err := c.ShouldBindJSON(&newRoom); err != nil {
 		handler.logger.Error("REST - POST - PostRoom - Cannot bind request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
@@ -481,7 +481,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 		return
 	}
 
-	var updateRoom roomUpdateReq
+	var updateRoom RoomUpdateReq
 	if err := c.ShouldBindJSON(&updateRoom); err != nil {
 		handler.logger.Error("REST - PUT - PutRoom - Cannot bind request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})

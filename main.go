@@ -14,7 +14,7 @@ func main() {
 	// 2. Init server
 	port := os.Getenv("HTTP_PORT")
 	httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
-	router := init_config.BuildServer(httpOrigin, logger)
+	router, _, _, _, _ := init_config.BuildServer(httpOrigin, logger)
 
 	// 3. Start server
 	var err error

@@ -34,15 +34,15 @@ run: vet proto
 
 test:
 	mkdir -p ./coverage
-	ENV=testing go test -v -count=1 -coverpkg=./... -coverprofile=./coverage/profile.cov ./...
-	go tool cover -html=./coverage/profile.cov
+	ENV=testing go test -v -coverpkg ./... -coverprofile ./coverage/profile.cov ./...
+	# go tool cover -html ./coverage/profile.cov
+	go tool cover -html ./coverage/profile.cov -o ./coverage/cover.html
 	go-cover-treemap -coverprofile ./coverage/profile.cov > ./coverage/out.svg
 .PHONY: test
 
 deps:
 	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
-	go install golang.org/x/tools/cmd/cover
-	go install github.com/nikolaydubina/go-cover-treemap@latest
+	go install github.com/nikolaydubina/go-cover-treemap
 	go get -u
 	go mod tidy
 .PHONY: deps

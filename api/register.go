@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-type featureReq struct {
+type FeatureReq struct {
 	Type   models.Type `json:"type" validate:"required,oneof='controller' 'sensor'"`
 	Name   string      `json:"name" validate:"required,min=2,max=20"`
 	Enable bool        `json:"enable" validate:"required,boolean"`
@@ -30,15 +30,15 @@ type featureReq struct {
 	Unit   string      `json:"unit" validate:"required,min=1,max=10"`
 }
 
-type deviceRegisterReq struct {
+type DeviceRegisterReq struct {
 	Mac          string       `json:"mac" validate:"required,mac"`
 	Manufacturer string       `json:"manufacturer" validate:"required,min=3,max=50"`
 	Model        string       `json:"model" validate:"required,min=3,max=20"`
 	ApiToken     string       `json:"apiToken" validate:"required,uuid4"`
-	Features     []featureReq `json:"features" validate:"required,dive"`
+	Features     []FeatureReq `json:"features" validate:"required,dive"`
 }
 
-type sensorRegisterReq struct {
+type SensorRegisterReq struct {
 	Uuid           string `json:"uuid"`
 	Mac            string `json:"mac"`
 	Manufacturer   string `json:"manufacturer"`
@@ -59,7 +59,7 @@ type Register struct {
 }
 
 func ControllerDeviceValidation(sl validator.StructLevel) {
-	deviceReq, _ := sl.Current().Interface().(deviceRegisterReq)
+	deviceReq, _ := sl.Current().Interface().(DeviceRegisterReq)
 	var isController = false
 	for _, feature := range deviceReq.Features {
 		if feature.Type == models.Controller {
@@ -79,7 +79,7 @@ func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mon
 
 	// add custom validators
 	// validator to check that a controller device can have only one feature
-	validate.RegisterStructValidation(ControllerDeviceValidation, deviceRegisterReq{})
+	validate.RegisterStructValidation(ControllerDeviceValidation, DeviceRegisterReq{})
 
 	return &Register{
 		collection:         collection,
@@ -96,7 +96,7 @@ func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mon
 func (handler *Register) PostRegister(c *gin.Context) {
 	handler.logger.Info("REST - PostRegister called")
 
-	var registerBody deviceRegisterReq
+	var registerBody DeviceRegisterReq
 	if err := c.ShouldBindJSON(&registerBody); err != nil {
 		handler.logger.Errorf("REST - PostRegister - Cannot bind request body. Err = %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
@@ -154,7 +154,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 	device.CreatedAt = insertDate
 	device.ModifiedAt = insertDate
 
-	device.Features = utils.MapSlice(registerBody.Features, func(fReq featureReq) models.Feature {
+	device.Features = utils.MapSlice(registerBody.Features, func(fReq FeatureReq) models.Feature {
 		return models.Feature{
 			UUID:   uuid.NewString(),
 			Type:   fReq.Type,
@@ -167,7 +167,6 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
 	// if it's a controller device => call gRPC
 	// otherwise REST call to sensor service
-
 	if isController {
 		status, message, err := handler.registerControllerViaGRPC(&device, &profileFound)
 		if err != nil {
@@ -211,7 +210,7 @@ func (handler *Register) registerSensorViaHTTP(device *models.Device, profileFou
 	}
 
 	// do the real call to the remote registration service
-	payload := sensorRegisterReq{
+	payload := SensorRegisterReq{
 		Uuid:           device.UUID,
 		Mac:            device.Mac,
 		Manufacturer:   device.Manufacturer,
@@ -246,6 +245,8 @@ func (handler *Register) registerControllerViaGRPC(device *models.Device, profil
 	} else {
 		handler.logger.Info("registerControllerViaGRPC - GRPC secure NOT enabled!")
 	}
+
+	handler.logger.Debugf("gRPC - registerControllerViaGRPC - handler.grpcTarget = %s", handler.grpcTarget)
 
 	contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelBg()

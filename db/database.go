@@ -9,8 +9,6 @@ import (
 	"os"
 )
 
-const DbName = "api-server"
-
 var client *mongo.Client
 
 func InitDb(ctx context.Context, logger *zap.SugaredLogger) (*mongo.Collection, *mongo.Collection, *mongo.Collection) {
@@ -28,21 +26,14 @@ func InitDb(ctx context.Context, logger *zap.SugaredLogger) (*mongo.Collection, 
 	}
 	logger.Info("Connected to MongoDB")
 
-	// define DB collections
-	var collNameProfiles string
-	var collNameHomes string
-	var collNameDevices string
+	var dbName string
 	if os.Getenv("ENV") == "testing" {
-		collNameProfiles = "profiles_test"
-		collNameHomes = "homes_test"
-		collNameDevices = "devices_test"
+		dbName = "api-server-test"
 	} else {
-		collNameProfiles = "profiles"
-		collNameHomes = "homes"
-		collNameDevices = "devices"
+		dbName = "api-server"
 	}
-	collectionProfiles := client.Database(DbName).Collection(collNameProfiles)
-	collectionHomes := client.Database(DbName).Collection(collNameHomes)
-	collectionDevices := client.Database(DbName).Collection(collNameDevices)
+	collectionProfiles := client.Database(dbName).Collection("profiles")
+	collectionHomes := client.Database(dbName).Collection("homes")
+	collectionDevices := client.Database(dbName).Collection("devices")
 	return collectionProfiles, collectionHomes, collectionDevices
 }

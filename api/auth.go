@@ -48,14 +48,14 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
 
 	expirationTime := time.Now().Add(60 * time.Minute)
 
-	claims := &claims{
+	claimsObj := &claims{
 		ID:   profile.Github.ID,
 		Name: profile.Github.Name,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsObj)
 	tokenString, err := token.SignedString(jwtKey)
 
 	if err != nil {
@@ -106,16 +106,16 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		claims := &claims{}
+		claimsObj := &claims{}
 
 		// Parse takes the token string and a function for looking up the key. The latter is especially
 		// useful if you use multiple keys for your application.  The standard is to use 'kid' in the
 		// head of the token to identify which key to use, but the parsed token (head and claims) is provided
 		// to the callback, providing flexibility.
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		token, err := jwt.ParseWithClaims(tokenString, claimsObj, func(token *jwt.Token) (interface{}, error) {
 			// Don't forget to validate the alg is what you expect:
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			return jwtKey, nil
 		})
@@ -159,7 +159,6 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		//fmt.Println("Valid token: ", claims.ID, claims.Name, claims.ExpiresAt)
 		c.Next()
 	}
 }

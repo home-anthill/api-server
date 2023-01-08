@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"os"
 )
@@ -26,7 +27,7 @@ func BuildConfig() *zap.SugaredLogger {
 	return logger
 }
 
-func BuildServer(httpOrigin string, logger *zap.SugaredLogger) *gin.Engine {
+func BuildServer(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, context.Context, *mongo.Collection, *mongo.Collection, *mongo.Collection) {
 	// Initialization
 	ctx := context.Background()
 	// Create a singleton validator instance. Validate is designed to be used as a singleton instance.
@@ -43,7 +44,7 @@ func BuildServer(httpOrigin string, logger *zap.SugaredLogger) *gin.Engine {
 	fmt.Println("GIN - Initializing...")
 	router := SetupRouter(httpOrigin)
 	RegisterRoutes(router, ctx, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
-	return router
+	return router, ctx, collectionProfiles, collectionHomes, collectionDevices
 }
 
 func setGinMode() {
