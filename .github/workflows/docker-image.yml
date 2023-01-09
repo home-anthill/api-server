@@ -21,7 +21,26 @@ env:
   IMAGE_NAME: ks89/${{ github.event.repository.name }}
 
 jobs:
-  build:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.19
+      - name: Install make
+        run: make
+      - name: Run tests
+        run: |
+          make deps
+          make test
+
+  build-and-publish:
     name: Build and publish
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -103,21 +122,3 @@ jobs:
 #        # This step uses the identity token to provision an ephemeral certificate
 #        # against the sigstore community Fulcio instance.
 #        run: echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign {}@${{ steps.build-and-push.outputs.digest }}
-
-    # define the outputs of this job to be referenced in other jobs
-    outputs:
-      image_tag: ${{ steps.meta.outputs.version }}
-
-  run-and-test:
-    needs: build
-    runs-on: ubuntu-latest
-    container:
-      image: ks89/${{ github.event.repository.name }}:${{ needs.build.outputs.image_tag }}
-    steps:
-      - name: Run tests
-        run: |
-          cd /app
-          ls -la .
-          cat Makefile
-          make deps
-          make test
