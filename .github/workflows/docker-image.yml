@@ -112,7 +112,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
+      image: ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
     steps:
       - name: Run tests
         run: |
