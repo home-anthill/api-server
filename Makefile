@@ -44,5 +44,5 @@ deps:
 	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
 	go get -u
 	go mod tidy
-	go get github.com/nikolaydubina/go-cover-treemap
+	go install github.com/nikolaydubina/go-cover-treemap@latest
 .PHONY: deps
