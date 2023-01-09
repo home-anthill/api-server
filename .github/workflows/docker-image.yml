@@ -112,7 +112,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     container:
-      image: ${{ env.IMAGE_NAME }}:${{ needs.build.outputs.image_tag }}
+      image: ks89/${{ github.event.repository.name }}:${{ needs.build.outputs.image_tag }}
     steps:
       - name: Run tests
         run: |
