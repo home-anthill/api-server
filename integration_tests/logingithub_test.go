@@ -42,7 +42,9 @@ var _ = Describe("LoginGithub", func() {
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			Expect(err).ShouldNot(HaveOccurred())
 
-			prefix := `https://github.com/login/oauth/authorize?client_id=181a9b0e2ed4bb00c42f&redirect_uri=http%3A%2F%2Flocalhost%3A8082%2Fapi%2Fcallback%2F&response_type=code&scope=repo&state=`
+			prefix := `https://github.com/login/oauth/authorize?client_id=` +
+				os.Getenv("OAUTH2_CLIENTID") +
+				`&redirect_uri=http%3A%2F%2Flocalhost%3A8082%2Fapi%2Fcallback%2F&response_type=code&scope=repo&state=`
 
 			stateEscapedB64 := strings.ReplaceAll(response.LoginURL, prefix, "")
 			stateUnescapedB64, err := url.QueryUnescape(stateEscapedB64)
