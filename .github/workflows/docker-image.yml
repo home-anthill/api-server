@@ -35,6 +35,12 @@ jobs:
           go-version: 1.19
       - name: Install Make
         run: sudo apt-get install -y make
+      - name: Install and start MongoDB
+        uses: supercharge/mongodb-github-action@1.8.0
+        mongodb-replica-set: test-rs
+        mongodb-port: 27017
+        with:
+          mongodb-version: 6.0
       - name: Run tests
         run: |
           echo "Use fake clientid and secretid in .env"
