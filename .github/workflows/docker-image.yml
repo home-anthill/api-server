@@ -37,8 +37,13 @@ jobs:
         run: sudo apt-get install -y make
       - name: Run tests
         run: |
-          ls -la .
+          echo "Use fake clientid and secretid in .env"
+          sed -i "s/<GET CLIENTID FROM YOUR GITHUB OAUTH2 APP>/ea12a3ed0bd1fb9ad363/g" .env_template
+          sed -i "s/<GET SECRETID FROM YOUR GITHUB OAUTH2 APP>/29adeafac16e5cd95d4d5063a3560fcfa5539246/g" .env_template
+          cp .env_template .env
+          echo "Installing dependencies"
           make deps
+          echo "Running tests"
           make test
 
   build-and-publish:
