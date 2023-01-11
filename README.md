@@ -21,7 +21,7 @@ GitHub releases [HERE](https://github.com/home-anthill/api-server/releases)
 
 Versions:
 
-- ??/??/2022 - 1.0.0-beta.1
+- 11/01/2023 - 1.0.0-beta.1
 
 
 ## :sparkling_heart: A big thank you to :sparkling_heart:
