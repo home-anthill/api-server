@@ -8,7 +8,7 @@ import (
 	"regexp"
 )
 
-const projectDirName = "api-server" // change to relevant project name
+const projectDirName = "api-server"
 
 func InitEnv() (string, error) {
 	// solution taken from https://stackoverflow.com/a/68347834/3590376
