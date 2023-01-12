@@ -3,7 +3,6 @@ package init_config
 import (
 	"api-server/api"
 	"api-server/utils"
-	"fmt"
 	"github.com/gin-contrib/cors"
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-gonic/contrib/gzip"
@@ -31,7 +30,7 @@ var keepAlive *api.KeepAlive
 var oauthCallbackURL string
 var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scopes
 
-func SetupRouter(httpOrigin string) *gin.Engine {
+func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) *gin.Engine {
 	// init oauthCallbackURL based on httpOrigin
 	oauthCallbackURL = httpOrigin + "/api/callback/"
 
@@ -40,7 +39,7 @@ func SetupRouter(httpOrigin string) *gin.Engine {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// apply security config to GIN
-	fmt.Println("SetupRouter - starting SECURE middleware...")
+	logger.Info("SetupRouter - starting SECURE middleware...")
 	secureMiddleware := secure.New(getSecureOptions(httpOrigin))
 	router.Use(func() gin.HandlerFunc {
 		return func(c *gin.Context) {
@@ -58,7 +57,7 @@ func SetupRouter(httpOrigin string) *gin.Engine {
 	}())
 
 	// fix a max POST payload size
-	fmt.Println("SetupRouter - set mac POST payload size")
+	logger.Info("SetupRouter - set mac POST payload size")
 	router.Use(limits.RequestSizeLimiter(1024 * 1024))
 
 	// 10. Configure CORS
@@ -67,7 +66,7 @@ func SetupRouter(httpOrigin string) *gin.Engine {
 	// - Credentials share disabled
 	// - Preflight requests cached for 12 hours
 	if os.Getenv("HTTP_CORS") == "true" {
-		fmt.Println("SetupRouter - CORS enabled and httpOrigin is = " + httpOrigin)
+		logger.Warn("SetupRouter - CORS enabled and httpOrigin is = " + httpOrigin)
 		config := cors.DefaultConfig()
 		config.AllowOrigins = []string{
 			"http://" + os.Getenv("INTERNAL_CLUSTER_PATH"),
@@ -84,7 +83,7 @@ func SetupRouter(httpOrigin string) *gin.Engine {
 		}
 		router.Use(cors.New(config))
 	} else {
-		fmt.Println("SetupRouter - CORS disabled")
+		logger.Info("SetupRouter - CORS disabled")
 	}
 
 	// 11. Configure Gin to serve a Single Page Application
@@ -93,7 +92,7 @@ func SetupRouter(httpOrigin string) *gin.Engine {
 	// The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
 	// to the index.html page
 	if os.Getenv("ENV") != "prod" {
-		fmt.Println("SetupRouter - Adding NoRoute to handle static files")
+		logger.Info("SetupRouter - Adding NoRoute to handle static files")
 		router.NoRoute(func(c *gin.Context) {
 			dir, file := path.Split(c.Request.RequestURI)
 			ext := filepath.Ext(file)
@@ -106,7 +105,7 @@ func SetupRouter(httpOrigin string) *gin.Engine {
 			}
 		})
 	} else {
-		fmt.Println("SetupRouter - Skipping NoRoute config, because it's running in production mode")
+		logger.Info("SetupRouter - Skipping NoRoute config, because it's running in production mode")
 	}
 	return router
 }

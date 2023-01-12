@@ -2,7 +2,6 @@ package main
 
 import (
 	"api-server/init_config"
-	"fmt"
 	"os"
 )
 
@@ -18,9 +17,9 @@ func main() {
 
 	// 3. Start server
 	var err error
-	fmt.Println("GIN - up and running with port: " + port)
+	logger.Info("GIN - up and running with port: " + port)
 	if os.Getenv("HTTP_TLS") == "true" {
-		fmt.Println("TLS enabled, running HTTPS server...")
+		logger.Info("TLS enabled, running HTTPS server...")
 		err = router.RunTLS(
 			":"+port,
 			os.Getenv("HTTP_CERT_FILE"),

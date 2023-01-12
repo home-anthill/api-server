@@ -3,7 +3,6 @@ package init_config
 import (
 	"api-server/db"
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,9 +17,9 @@ func BuildConfig() *zap.SugaredLogger {
 
 	// Load .env file and print variables
 	envFile, err := InitEnv()
-	fmt.Println("BuildConfig - envFile=" + envFile)
+	logger.Infof("BuildConfig - envFile = %s", envFile)
 	if err != nil {
-		logger.Error("failed to load the env file")
+		logger.Error("BuildConfig - failed to load the env file")
 		panic("failed to load the env file at ./" + envFile)
 	}
 	PrintEnv(logger)
@@ -41,8 +40,8 @@ func BuildServer(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, con
 	collectionProfiles, collectionHomes, collectionDevices := db.InitDb(ctx, logger)
 
 	// Instantiate GIN and apply some middlewares
-	fmt.Println("GIN - Initializing...")
-	router := SetupRouter(httpOrigin)
+	logger.Info("BuildServer - GIN - Initializing...")
+	router := SetupRouter(httpOrigin, logger)
 	RegisterRoutes(router, ctx, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
 	return router, ctx, collectionProfiles, collectionHomes, collectionDevices
 }
