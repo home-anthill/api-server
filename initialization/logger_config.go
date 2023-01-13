@@ -1,4 +1,4 @@
-package init_config
+package initialization
 
 import (
 	"github.com/natefinch/lumberjack"
@@ -7,7 +7,14 @@ import (
 	"os"
 )
 
-func BuildLogger() *zap.SugaredLogger {
+func InitLogger() *zap.SugaredLogger {
+	// Init logger
+	logger := getLogger()
+	logger.Info("InitLogger - called")
+	return logger
+}
+
+func getLogger() *zap.SugaredLogger {
 	// taken from https://codewithmukesh.com/blog/structured-logging-in-golang-with-zap/
 	config := zap.NewProductionEncoderConfig()
 	config.EncodeTime = zapcore.ISO8601TimeEncoder

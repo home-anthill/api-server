@@ -1,4 +1,4 @@
-package init_config
+package initialization
 
 import (
 	"fmt"
@@ -10,7 +10,18 @@ import (
 
 const projectDirName = "api-server"
 
-func InitEnv() (string, error) {
+func InitEnv(logger *zap.SugaredLogger) {
+	// Load .env file and print variables
+	envFile, err := readEnv()
+	logger.Debugf("BuildConfig - envFile = %s", envFile)
+	if err != nil {
+		logger.Error("BuildConfig - failed to load the env file")
+		panic("InitEnv - failed to load the env file at ./" + envFile)
+	}
+	printEnv(logger)
+}
+
+func readEnv() (string, error) {
 	// solution taken from https://stackoverflow.com/a/68347834/3590376
 	projectName := regexp.MustCompile(`^(.*` + projectDirName + `)`)
 	currentWorkDirectory, _ := os.Getwd()
@@ -20,33 +31,10 @@ func InitEnv() (string, error) {
 	return envFilePath, err
 }
 
-func PrintEnv(logger *zap.SugaredLogger) {
+func printEnv(logger *zap.SugaredLogger) {
 	if os.Getenv("JWT_PASSWORD") == "" {
 		panic(fmt.Errorf("'JWT_PASSWORD' environment variable is mandatory"))
 	}
-
-	fmt.Println("ENVIRONMENT = " + os.Getenv("ENV"))
-	fmt.Println("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
-	fmt.Println("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
-	fmt.Println("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
-	fmt.Println("HTTP_TLS = " + os.Getenv("HTTP_TLS"))
-	fmt.Println("HTTP_CERT_FILE = " + os.Getenv("HTTP_CERT_FILE"))
-	fmt.Println("HTTP_KEY_FILE = " + os.Getenv("HTTP_KEY_FILE"))
-	fmt.Println("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
-	fmt.Println("HTTP_SENSOR_SERVER = " + os.Getenv("HTTP_SENSOR_SERVER"))
-	fmt.Println("HTTP_SENSOR_PORT = " + os.Getenv("HTTP_SENSOR_PORT"))
-	fmt.Println("HTTP_SENSOR_GETVALUE_API = " + os.Getenv("HTTP_SENSOR_GETVALUE_API"))
-	fmt.Println("HTTP_SENSOR_REGISTER_API = " + os.Getenv("HTTP_SENSOR_REGISTER_API"))
-	fmt.Println("HTTP_SENSOR_KEEPALIVE_API = " + os.Getenv("HTTP_SENSOR_KEEPALIVE_API"))
-	fmt.Println("GRPC_URL = " + os.Getenv("GRPC_URL"))
-	fmt.Println("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
-	fmt.Println("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
-	fmt.Println("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
-	fmt.Println("JWT_PASSWORD = " + os.Getenv("JWT_PASSWORD"))
-	fmt.Println("COOKIE_SECRET = " + os.Getenv("COOKIE_SECRET"))
-	fmt.Println("OAUTH2_CLIENTID = " + os.Getenv("OAUTH2_CLIENTID"))
-	fmt.Println("OAUTH2_SECRETID = " + os.Getenv("OAUTH2_SECRETID"))
-	fmt.Println("INTERNAL_CLUSTER_PATH = " + os.Getenv("INTERNAL_CLUSTER_PATH"))
 
 	logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
 	logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))

@@ -3,7 +3,7 @@ package integration_tests
 import (
 	"api-server/api"
 	"api-server/api/grpc/register"
-	"api-server/init_config"
+	"api-server/initialization"
 	"api-server/models"
 	"api-server/test_utils"
 	"bytes"
@@ -82,18 +82,11 @@ var _ = Describe("Register", func() {
 	})
 
 	BeforeEach(func() {
-		// 1. Init config
-		logger = init_config.BuildConfig()
+		logger, router, ctx, collProfiles, collHomes, collDevices = initialization.Start()
 		defer logger.Sync()
 
 		err := os.Setenv("SINGLE_USER_LOGIN_EMAIL", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())
-
-		// 2. Init server
-		port := os.Getenv("HTTP_PORT")
-		httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
-
-		router, ctx, collProfiles, collHomes, collDevices = init_config.BuildServer(httpOrigin, logger)
 
 		// --------- start a gRPC server ---------
 		grpcMockServer = grpc.NewServer()
@@ -101,7 +94,7 @@ var _ = Describe("Register", func() {
 		register.RegisterRegistrationServer(grpcMockServer, registerGrpc)
 		grpcListener, errGrpc := net.Listen("tcp", "localhost:50051")
 		Expect(errGrpc).ShouldNot(HaveOccurred())
-		fmt.Println("register_test - gRPC client listening at " + grpcListener.Addr().String())
+		logger.Infof("register_test - gRPC client listening at %s", grpcListener.Addr().String())
 		go func() {
 			errGrpc := grpcMockServer.Serve(grpcListener)
 			Expect(errGrpc).ShouldNot(HaveOccurred())
@@ -118,7 +111,7 @@ var _ = Describe("Register", func() {
 		mux.HandleFunc("/sensors/register/airquality", registerHandler)
 		mux.HandleFunc("/sensors/register/airpressure", registerHandler)
 		httpListener, errHttp := net.Listen("tcp", "localhost:8000")
-		fmt.Println("register_test - HTTP client listening at " + httpListener.Addr().String())
+		logger.Infof("register_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHttp).ShouldNot(HaveOccurred())
 		httpMockServer = httptest.NewUnstartedServer(mux)
 		// NewUnstartedServer creates a httpListener, so we need to Close that
@@ -131,10 +124,8 @@ var _ = Describe("Register", func() {
 	})
 
 	AfterEach(func() {
-		fmt.Println("register_test - stopping grpc and http servers")
 		grpcMockServer.Stop()
 		httpMockServer.Close()
-		fmt.Println("register_test - dropping collections")
 		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 

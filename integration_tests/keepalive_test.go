@@ -1,7 +1,7 @@
 package integration_tests
 
 import (
-	"api-server/init_config"
+	"api-server/initialization"
 	"api-server/models"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
-	"os"
 )
 
 var _ = Describe("KeepAlive", func() {
@@ -18,14 +17,8 @@ var _ = Describe("KeepAlive", func() {
 	var router *gin.Engine
 
 	BeforeEach(func() {
-		// 1. Init config
-		logger = init_config.BuildConfig()
+		logger, router, _, _, _, _ = initialization.Start()
 		defer logger.Sync()
-
-		// 2. Init server
-		port := os.Getenv("HTTP_PORT")
-		httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
-		router, _, _, _, _ = init_config.BuildServer(httpOrigin, logger)
 	})
 
 	Context("calling keepalive api", func() {

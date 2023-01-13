@@ -2,7 +2,7 @@ package integration_tests
 
 import (
 	"api-server/api"
-	"api-server/init_config"
+	"api-server/initialization"
 	"api-server/test_utils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -29,18 +29,11 @@ var _ = Describe("Profiles", func() {
 	var collDevices *mongo.Collection
 
 	BeforeEach(func() {
-		// 1. Init config
-		logger = init_config.BuildConfig()
+		logger, router, ctx, collProfiles, collHomes, collDevices = initialization.Start()
 		defer logger.Sync()
 
 		err := os.Setenv("SINGLE_USER_LOGIN_EMAIL", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())
-
-		// 2. Init server
-		port := os.Getenv("HTTP_PORT")
-		httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
-
-		router, ctx, collProfiles, collHomes, collDevices = init_config.BuildServer(httpOrigin, logger)
 	})
 
 	AfterEach(func() {

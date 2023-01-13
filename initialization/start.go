@@ -1,4 +1,4 @@
-package init_config
+package initialization
 
 import (
 	"api-server/db"
@@ -10,22 +10,23 @@ import (
 	"os"
 )
 
-func BuildConfig() *zap.SugaredLogger {
-	// Init logger
-	logger := BuildLogger()
-	logger.Info("BuildConfig - called")
+func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Collection, *mongo.Collection, *mongo.Collection) {
+	// 1. Init logger
+	logger := InitLogger()
+	defer logger.Sync()
 
-	// Load .env file and print variables
-	envFile, err := InitEnv()
-	logger.Infof("BuildConfig - envFile = %s", envFile)
-	if err != nil {
-		logger.Error("BuildConfig - failed to load the env file")
-		panic("failed to load the env file at ./" + envFile)
-	}
-	PrintEnv(logger)
-	return logger
+	// 2. Init env
+	InitEnv(logger)
+
+	// 3. Init server
+	port := os.Getenv("HTTP_PORT")
+	httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
+	router, ctx, collectionProfiles, collectionHomes, collectionDevices := BuildServer(httpOrigin, logger)
+
+	return logger, router, ctx, collectionProfiles, collectionHomes, collectionDevices
 }
 
+// BuildServer - Exposed only for testing purposes
 func BuildServer(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, context.Context, *mongo.Collection, *mongo.Collection, *mongo.Collection) {
 	// Initialization
 	ctx := context.Background()

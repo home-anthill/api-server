@@ -1,22 +1,16 @@
 package main
 
 import (
-	"api-server/init_config"
+	"api-server/initialization"
 	"os"
 )
 
 func main() {
-	// 1. Init config
-	logger := init_config.BuildConfig()
-	defer logger.Sync()
+	logger, router, _, _, _, _ := initialization.Start()
 
-	// 2. Init server
-	port := os.Getenv("HTTP_PORT")
-	httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
-	router, _, _, _, _ := init_config.BuildServer(httpOrigin, logger)
-
-	// 3. Start server
+	// Start server
 	var err error
+	port := os.Getenv("HTTP_PORT")
 	logger.Info("GIN - up and running with port: " + port)
 	if os.Getenv("HTTP_TLS") == "true" {
 		logger.Info("TLS enabled, running HTTPS server...")

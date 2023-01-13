@@ -1,7 +1,7 @@
 package integration_tests
 
 import (
-	"api-server/init_config"
+	"api-server/initialization"
 	"api-server/models"
 	"encoding/base64"
 	"encoding/json"
@@ -21,14 +21,8 @@ var _ = Describe("LoginGithub", func() {
 	var router *gin.Engine
 
 	BeforeEach(func() {
-		// 1. Init config
-		logger = init_config.BuildConfig()
+		logger, router, _, _, _, _ = initialization.Start()
 		defer logger.Sync()
-
-		// 2. Init server
-		port := os.Getenv("HTTP_PORT")
-		httpOrigin := os.Getenv("HTTP_SERVER") + ":" + port
-		router, _, _, _, _ = init_config.BuildServer(httpOrigin, logger)
 	})
 
 	Context("calling login api", func() {

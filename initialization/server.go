@@ -1,4 +1,4 @@
-package init_config
+package initialization
 
 import (
 	"api-server/api"
