@@ -160,7 +160,7 @@ var _ = Describe("Devices", func() {
 				Expect(devices).To(HaveLen(2))
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceController.ID.Hex()+"?homeId="+home.ID.Hex()+"&roomId="+home.Rooms[0].ID.Hex(), nil)
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceController.ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
