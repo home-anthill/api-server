@@ -8,7 +8,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"net/http"
@@ -103,11 +102,9 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 	handler.logger.Info("REST - DELETE - DeleteDevice called")
 
 	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	objectHomeId, errHome := primitive.ObjectIDFromHex(c.Query("homeId"))
-	objectRoomId, errRoom := primitive.ObjectIDFromHex(c.Query("roomId"))
-	if errId != nil || errHome != nil || errRoom != nil {
-		handler.logger.Error("REST - GET - DeleteDevice - wrong format of one of the path params")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the path params"})
+	if errId != nil {
+		handler.logger.Error("REST - GET - DeleteDevice - wrong format of device id")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of device id"})
 		return
 	}
 
@@ -139,21 +136,21 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 		return
 	}
 
-	// update rooms removing the device
-	filter := bson.D{primitive.E{Key: "_id", Value: objectHomeId}}
-	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": objectRoomId}}}
-	opts := options.UpdateOptions{
-		ArrayFilters: &arrayFilters,
+	// update all rooms of homes owned by the profile removing the deviceId
+	filter := bson.M{
+		// filter homes owned by the profile
+		"_id": bson.M{"$in": profile.Homes},
 	}
 	update := bson.M{
 		"$pull": bson.M{
-			"rooms.$[x].devices": objectId,
+			// using the `all positional operator` https://www.mongodb.com/docs/manual/reference/operator/update/positional-all/
+			"rooms.$[].devices": objectId,
 		},
 	}
-	_, err2 := handler.collectionHomes.UpdateOne(handler.ctx, filter, update, &opts)
+	_, err2 := handler.collectionHomes.UpdateMany(handler.ctx, filter, update)
 	if err2 != nil {
-		handler.logger.Error("REST - DELETE - DeleteDevices - cannot update room")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update room"})
+		handler.logger.Errorf("REST - DELETE - DeleteDevices - cannot update all rooms %#v", err2)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update rooms"})
 		return
 	}
 
