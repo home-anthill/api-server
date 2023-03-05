@@ -1,19 +1,19 @@
 package api
 
 import (
-  "api-server/models"
-  "api-server/utils"
-  "github.com/gin-contrib/sessions"
-  "github.com/gin-gonic/gin"
-  "github.com/go-playground/validator/v10"
-  "go.mongodb.org/mongo-driver/bson"
-  "go.mongodb.org/mongo-driver/bson/primitive"
-  "go.mongodb.org/mongo-driver/mongo"
-  "go.mongodb.org/mongo-driver/mongo/options"
-  "go.uber.org/zap"
-  "golang.org/x/net/context"
-  "net/http"
-  "time"
+	"api-server/models"
+	"api-server/utils"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.uber.org/zap"
+	"golang.org/x/net/context"
+	"net/http"
+	"time"
 )
 
 type HomeNewReq struct {
@@ -28,14 +28,15 @@ type HomeUpdateReq struct {
 }
 
 type RoomNewReq struct {
-	Name  string `json:"name" validate:"required,min=1,max=50"`
-	Floor int    `json:"floor" validate:"required,min=-50,max=300"`
+	Name string `json:"name" validate:"required,min=1,max=50"`
+	// cannot use 'required' because I should be able to set floor=0. It isn't a problem, because the default value is 0 :)
+	Floor int `json:"floor" validate:"min=-50,max=300"`
 }
 
 type RoomUpdateReq struct {
-	Name    string               `json:"name" validate:"required,min=1,max=50"`
-	Floor   int                  `json:"floor" validate:"required,min=-50,max=300"`
-	Devices []primitive.ObjectID `json:"devices" bson:"devices,omitempty"`
+	Name string `json:"name" validate:"required,min=1,max=50"`
+	// cannot use 'required' because I should be able to set floor=0. It isn't a problem, because the default value is 0 :)
+	Floor int `json:"floor" validate:"min=-50,max=300"`
 }
 
 type Homes struct {
@@ -473,8 +474,8 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 func (handler *Homes) PutRoom(c *gin.Context) {
 	handler.logger.Info("REST - PUT - PutRoom called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	objectRid, errRid := primitive.ObjectIDFromHex(c.Param("rid"))
+	homeId, errId := primitive.ObjectIDFromHex(c.Param("id"))
+	roomId, errRid := primitive.ObjectIDFromHex(c.Param("rid"))
 	if errId != nil || errRid != nil {
 		handler.logger.Error("REST - PUT - PutRoom - wrong format of one of the path params")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the path params"})
@@ -487,41 +488,16 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
-
-	err := handler.validate.Struct(updateRoom)
-	if err != nil {
+	if err := handler.validate.Struct(updateRoom); err != nil {
 		handler.logger.Errorf("REST - PUT - PutRoom - request body is not valid, err %#v", err)
 		var errFields = utils.GetErrorMessage(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
 		return
 	}
 
-	var home models.Home
-	err = handler.collection.FindOne(handler.ctx, bson.M{
-		"_id": objectId,
-	}).Decode(&home)
-	if err != nil {
-		handler.logger.Error("REST - PUT - PutRoom - Cannot find rooms of the home with that id")
-		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find rooms for that house"})
-		return
-	}
-
-	// search if room is in rooms array
-	var roomFound bool
-	for _, val := range home.Rooms {
-		if val.ID == objectRid {
-			roomFound = true
-		}
-	}
-	if !roomFound {
-		handler.logger.Errorf("REST - PUT - PutRoom - Cannot find room with id: %v", objectRid)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
-		return
-	}
-
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
-	isOwned := handler.isHomeOwnedBy(session, objectId)
+	isOwned := handler.isHomeOwnedBy(session, homeId)
 
 	if !isOwned {
 		handler.logger.Error("REST - PUT - PutRoom - Cannot update a room in an home that is not in session profile")
@@ -529,9 +505,33 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 		return
 	}
 
+	// get Home
+	var home models.Home
+	err := handler.collection.FindOne(handler.ctx, bson.M{
+		"_id": homeId,
+	}).Decode(&home)
+	if err != nil {
+		handler.logger.Error("REST - PUT - PutRoom - Cannot find rooms of the home with that id")
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find rooms for that house"})
+		return
+	}
+
+	// `roomID` must be a room of `home`
+	var roomFound bool
+	for _, val := range home.Rooms {
+		if val.ID == roomId {
+			roomFound = true
+		}
+	}
+	if !roomFound {
+		handler.logger.Errorf("REST - PUT - PutRoom - Cannot find room with id: %v", roomId)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
+		return
+	}
+
 	// update room
-	filter := bson.D{primitive.E{Key: "_id", Value: objectId}}
-	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": objectRid}}}
+	filter := bson.D{primitive.E{Key: "_id", Value: homeId}}
+	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomId}}}
 	upsert := true
 	opts := options.UpdateOptions{
 		ArrayFilters: &arrayFilters,
@@ -541,13 +541,12 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 		"$set": bson.M{
 			"rooms.$[x].name":       updateRoom.Name,
 			"rooms.$[x].floor":      updateRoom.Floor,
-			"rooms.$[x].devices":    updateRoom.Devices,
 			"rooms.$[x].modifiedAt": time.Now(),
 		},
 	}
-	_, err2 := handler.collection.UpdateOne(handler.ctx, filter, update, &opts)
-	if err2 != nil {
-		handler.logger.Error("REST - PUT - PutRoom - Cannot update a room in DB")
+	_, errUpdate := handler.collection.UpdateOne(handler.ctx, filter, update, &opts)
+	if errUpdate != nil {
+		handler.logger.Errorf("REST - PUT - PutRoom - Cannot update a room in DB, errUpdate = %#v", errUpdate)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update room"})
 		return
 	}

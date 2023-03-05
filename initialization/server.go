@@ -22,6 +22,7 @@ var OauthGithub *api.Github
 var auth *api.Auth
 var homes *api.Homes
 var devices *api.Devices
+var assignDevices *api.AssignDevice
 var devicesValues *api.DevicesValues
 var profiles *api.Profiles
 var register *api.Register
@@ -115,6 +116,7 @@ func RegisterRoutes(router *gin.Engine, ctx context.Context, logger *zap.Sugared
 	auth = api.NewAuth(ctx, logger, collProfiles)
 	homes = api.NewHomes(ctx, logger, collHomes, collProfiles, validate)
 	devices = api.NewDevices(ctx, logger, collDevices, collProfiles, collHomes)
+	assignDevices = api.NewAssignDevice(ctx, logger, collProfiles, collHomes, validate)
 	devicesValues = api.NewDevicesValues(ctx, logger, collDevices, collProfiles, collHomes, validate)
 	profiles = api.NewProfiles(ctx, logger, collProfiles)
 	register = api.NewRegister(ctx, logger, collDevices, collProfiles, validate)
@@ -149,6 +151,7 @@ func RegisterRoutes(router *gin.Engine, ctx context.Context, logger *zap.Sugared
 		private.POST("/profiles/:id/tokens", profiles.PostProfilesToken)
 
 		private.GET("/devices", devices.GetDevices)
+		private.PUT("/devices/:id", assignDevices.PutAssignDeviceToHomeRoom)
 		private.DELETE("/devices/:id", devices.DeleteDevice)
 
 		private.GET("/devices/:id/values", devicesValues.GetValuesDevice)

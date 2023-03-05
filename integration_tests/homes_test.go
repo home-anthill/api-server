@@ -307,9 +307,8 @@ var _ = Describe("Homes", func() {
 		When("profile owns an home", func() {
 			It("should update an existing room of the home", func() {
 				room1Upd := api.RoomUpdateReq{
-					Name:    "room1-upd",
-					Floor:   1,
-					Devices: []primitive.ObjectID{},
+					Name:  "room1-upd",
+					Floor: 0,
 				}
 				var roomBuf bytes.Buffer
 				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
