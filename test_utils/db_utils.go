@@ -68,6 +68,7 @@ func AssignDeviceToProfile(ctx context.Context, collectionProfiles *mongo.Collec
 }
 
 // AssignDeviceToHomeAndRoom roomId must be inside home with homeId
+// This is an unsafe method used only in testing environment bypassing many checks
 func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Collection, homeId primitive.ObjectID, roomId primitive.ObjectID, deviceId primitive.ObjectID) error {
 	var home models.Home
 	err := collectionHomes.FindOne(ctx, bson.M{
@@ -77,20 +78,20 @@ func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Colle
 		return err
 	}
 
-	// update room
-	filter := bson.D{primitive.E{Key: "_id", Value: homeId}}
-	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomId}}}
-	upsert := true
+	filterHome := bson.D{bson.E{Key: "_id", Value: homeId}}
+	arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomId}}}
 	opts := options.UpdateOptions{
-		ArrayFilters: &arrayFilters,
-		Upsert:       &upsert,
+		ArrayFilters: &arrayFiltersRoom,
 	}
 	update := bson.M{
+		"$push": bson.M{
+			"rooms.$[x].devices": deviceId,
+		},
 		"$set": bson.M{
-			"rooms.$[x].devices":    []primitive.ObjectID{deviceId},
 			"rooms.$[x].modifiedAt": time.Now(),
 		},
+		// TODO I should update `modifiedAt` of both `home` and `room` documents
 	}
-	_, err = collectionHomes.UpdateOne(ctx, filter, update, &opts)
+	_, err = collectionHomes.UpdateOne(ctx, filterHome, update, &opts)
 	return err
 }

@@ -1,0 +1,74 @@
+package integration_tests
+
+import (
+	"api-server/initialization"
+	"api-server/test_utils"
+	"github.com/gin-gonic/gin"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.uber.org/zap"
+	"golang.org/x/net/context"
+	"net/http"
+	"net/http/httptest"
+	"os"
+)
+
+var _ = Describe("LoginGithub", func() {
+	var ctx context.Context
+	var logger *zap.SugaredLogger
+	var router *gin.Engine
+	var collProfiles *mongo.Collection
+	var collHomes *mongo.Collection
+	var collDevices *mongo.Collection
+
+	BeforeEach(func() {
+		logger, router, ctx, collProfiles, collHomes, collDevices = initialization.Start()
+		defer logger.Sync()
+
+		err := os.Setenv("SINGLE_USER_LOGIN_EMAIL", "test@test.com")
+		Expect(err).ShouldNot(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+	})
+
+	Context("calling protected api", func() {
+		It("should return an error if Authorization header is an empty string", func() {
+			jwtToken, cookieSession := test_utils.GetJwt(router)
+			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"authorization header not found"}`))
+		})
+
+		It("should return an error if Bearer header is an empty string", func() {
+			jwtToken, cookieSession := test_utils.GetJwt(router)
+			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "Bearer ")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"bearer token not found"}`))
+		})
+
+		It("should return an error if token is not valid", func() {
+			jwtToken, cookieSession := test_utils.GetJwt(router)
+			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "Bearer bad.jwt.token")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"that's not even a token"}`))
+		})
+	})
+})

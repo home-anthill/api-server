@@ -162,5 +162,5 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Room has been updated"})
+	c.JSON(http.StatusOK, gin.H{"message": "device has been assigned to room"})
 }

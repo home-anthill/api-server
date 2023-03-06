@@ -2,11 +2,11 @@ package api
 
 import (
 	"api-server/models"
+	"api-server/utils"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"net/http"
 	"net/url"
@@ -15,17 +15,8 @@ import (
 )
 
 type Auth struct {
-	collection *mongo.Collection
-	ctx        context.Context
-	logger     *zap.SugaredLogger
-}
-
-// claims Creates a struct that will be encoded to a JWT.
-// We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
-type claims struct {
-	ID   int64  `json:"id"`
-	Name string `json:"name"`
-	jwt.RegisteredClaims
+	ctx    context.Context
+	logger *zap.SugaredLogger
 }
 
 // For HMAC signing method, the key can be any []byte. It is recommended to generate
@@ -33,52 +24,32 @@ type claims struct {
 // and validating.
 var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
 
-func NewAuth(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *Auth {
+func NewAuth(ctx context.Context, logger *zap.SugaredLogger) *Auth {
 	return &Auth{
-		collection: collection,
-		ctx:        ctx,
-		logger:     logger,
+		ctx:    ctx,
+		logger: logger,
 	}
 }
 
 func (handler *Auth) LoginCallback(c *gin.Context) {
 	handler.logger.Info("REST - GET - LoginCallback called")
 
-	var profile = c.Value("profile").(models.Profile)
-
+	profile := c.Value("profile").(models.Profile)
 	expirationTime := time.Now().Add(60 * time.Minute)
 
-	claimsObj := &claims{
-		ID:   profile.Github.ID,
-		Name: profile.Github.Name,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsObj)
-	tokenString, err := token.SignedString(jwtKey)
-
+	tokenString, err := utils.CreateJWT(profile, expirationTime, jwt.SigningMethodHS256, jwtKey)
 	if err != nil {
 		handler.logger.Error("REST - GET - LoginCallback - cannot generate JWT")
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Cannot generate JWT"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot generate JWT"})
 		return
 	}
 
-	// second solution
-	q := url.Values{}
-	q.Set("token", tokenString)
-	location := url.URL{Path: "/postlogin", RawQuery: q.Encode()}
+	queryParams := url.Values{}
+	queryParams.Set("token", tokenString)
+	location := url.URL{Path: "/postlogin", RawQuery: queryParams.Encode()}
+
 	c.Redirect(http.StatusFound, location.RequestURI())
-
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
-
-	//// Finally, we set the client cookie for "token" as the JWT we just generated
-	//// we also set an expiry time which is the same as the token itself
-	//http.SetCookie(w, &http.Cookie{
-	//	Name:    "token",
-	//	Value:   tokenString,
-	//	Expires: expirationTime,
-	//})
 }
 
 func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
@@ -89,7 +60,7 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 		if authHeader == "" {
 			handler.logger.Error("JWTMiddleware - authorization header not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "authorization header not found",
+				"error": "authorization header not found",
 			})
 			c.Abort()
 			return
@@ -100,13 +71,13 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 		if tokenString == "" {
 			handler.logger.Error("JWTMiddleware - bearer token not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
-				"message": "bearer token not found",
+				"error": "bearer token not found",
 			})
 			c.Abort()
 			return
 		}
 
-		claimsObj := &claims{}
+		claimsObj := &utils.JWTClaims{}
 
 		// Parse takes the token string and a function for looking up the key. The latter is especially
 		// useful if you use multiple keys for your application.  The standard is to use 'kid' in the
@@ -125,7 +96,7 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
 					handler.logger.Error("JWTMiddleware - that's not even a token")
 					c.JSON(http.StatusBadRequest, gin.H{
-						"message": "that's not even a token",
+						"error": "that's not even a token",
 					})
 					c.Abort()
 					return
@@ -133,14 +104,14 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 					// Token is either expired or not active yet
 					handler.logger.Error("JWTMiddleware - JWT token expired")
 					c.JSON(http.StatusUnauthorized, gin.H{
-						"message": "JWT token is expired",
+						"error": "JWT token is expired",
 					})
 					c.Abort()
 					return
 				}
 
 				handler.logger.Error("JWTMiddleware - not logged, token is not valid")
-				c.JSON(http.StatusForbidden, gin.H{"message": "not logged, token is not valid"})
+				c.JSON(http.StatusForbidden, gin.H{"error": "not logged, token is not valid"})
 				c.Abort()
 				return
 			}
@@ -149,12 +120,12 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 		if err != nil {
 			if err == jwt.ErrSignatureInvalid {
 				handler.logger.Error("JWTMiddleware - cannot login", err)
-				c.JSON(http.StatusUnauthorized, gin.H{"message": "cannot login"})
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot login"})
 				c.Abort()
 				return
 			}
 			handler.logger.Error("JWTMiddleware - bad request while login", err)
-			c.JSON(http.StatusBadRequest, gin.H{"message": "bad request while login"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad request while login"})
 			c.Abort()
 			return
 		}

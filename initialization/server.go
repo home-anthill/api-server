@@ -113,7 +113,7 @@ func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) *gin.Engine {
 
 func RegisterRoutes(router *gin.Engine, ctx context.Context, logger *zap.SugaredLogger, validate *validator.Validate, collProfiles, collHomes, collDevices *mongo.Collection) {
 	OauthGithub = api.NewGithub(ctx, logger, collProfiles, oauthCallbackURL, oauthScopes)
-	auth = api.NewAuth(ctx, logger, collProfiles)
+	auth = api.NewAuth(ctx, logger)
 	homes = api.NewHomes(ctx, logger, collHomes, collProfiles, validate)
 	devices = api.NewDevices(ctx, logger, collDevices, collProfiles, collHomes)
 	assignDevices = api.NewAssignDevice(ctx, logger, collProfiles, collHomes, validate)
