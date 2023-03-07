@@ -177,13 +177,3 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "device has been deleted"})
 }
-
-func (handler *Devices) getDevice(deviceId primitive.ObjectID) (models.Device, error) {
-	handler.logger.Info("gRPC - getDevice - searching device with objectId: ", deviceId)
-	var device models.Device
-	err := handler.collection.FindOne(handler.ctx, bson.M{
-		"_id": deviceId,
-	}).Decode(&device)
-	handler.logger.Info("Device found: ", device)
-	return device, err
-}

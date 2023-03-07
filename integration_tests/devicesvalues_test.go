@@ -234,6 +234,58 @@ var _ = Describe("Devices", func() {
 				Expect(deviceStates[1].Value).To(Equal(lightSensorValue))
 			})
 		})
+
+		When("you pass bad inputs", func() {
+			It("should return an error, because ...", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+
+				badDeviceId := "bad_device_id"
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+badDeviceId+"/values", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of the path param 'id'"}`))
+			})
+		})
+
+		When("profile don't own any device", func() {
+			It("should return an error, because you can get only devices owned by profile", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+deviceController.ID.Hex()+"/values", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"this device is not in your profile"}`))
+			})
+		})
+
+		When("profile owns a device not in 'devices' collection", func() {
+			It("should return an error, because device doesn't exist", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				unexistingDeviceId := primitive.NewObjectID()
+
+				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceId)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+unexistingDeviceId.Hex()+"/values", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find device"}`))
+			})
+		})
 	})
 
 	Context("calling devicesvalues api POST", func() {
@@ -268,6 +320,117 @@ var _ = Describe("Devices", func() {
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"message":"set value success"}`))
+			})
+		})
+
+		When("you pass bad inputs", func() {
+			It("should return an error, because ...", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+
+				badDeviceId := "bad_device_id"
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+badDeviceId+"/values", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of the path param 'id'"}`))
+			})
+
+			It("should return an error, because body is missing", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+			})
+
+			It("should return an error, because body is not valid", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				devState := models.DeviceState{
+					On:          true,
+					Temperature: 10, // invalid, because it must be >= 17 and <= 30
+					Mode:        0,  // invalid, because it must be >= 1 and <= 5
+					FanSpeed:    0,  // invalid, because it must be >= 1 and <= 5
+				}
+				var deviceState bytes.Buffer
+				err = json.NewEncoder(&deviceState).Encode(devState)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceState)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: temperature mode fanspeed"}`))
+			})
+		})
+
+		When("profile don't own any device", func() {
+			It("should return an error, because device is not owned by profile", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+
+				devState := models.DeviceState{
+					On:          true,
+					Temperature: 27,
+					Mode:        2,
+					FanSpeed:    2,
+				}
+				var deviceState bytes.Buffer
+				err := json.NewEncoder(&deviceState).Encode(devState)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceState)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"this device is not in your profile"}`))
+			})
+		})
+
+		When("profile owns a device not in 'devices' collection", func() {
+			It("should return an error, because device doesn't exist", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				unexistingDeviceId := primitive.NewObjectID()
+				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceId)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				devState := models.DeviceState{
+					On:          true,
+					Temperature: 27,
+					Mode:        2,
+					FanSpeed:    2,
+				}
+				var deviceState bytes.Buffer
+				err = json.NewEncoder(&deviceState).Encode(devState)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+unexistingDeviceId.Hex()+"/values", &deviceState)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find device"}`))
 			})
 		})
 	})

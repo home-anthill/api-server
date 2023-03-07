@@ -3,7 +3,9 @@ package integration_tests
 import (
 	"api-server/initialization"
 	"api-server/test_utils"
+	"api-server/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -12,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"time"
 )
 
 var _ = Describe("LoginGithub", func() {
@@ -69,6 +72,26 @@ var _ = Describe("LoginGithub", func() {
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"that's not even a token"}`))
+		})
+
+		It("should return an error if token is expired", func() {
+			jwtToken, cookieSession := test_utils.GetJwt(router)
+			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+			// create an expired JWY
+			jwtKey := []byte(os.Getenv("JWT_PASSWORD"))
+			expirationTime := time.Now().Add(-60 * time.Minute)
+			tokenString, err := utils.CreateJWT(profileRes, expirationTime, jwt.SigningMethodHS256, jwtKey)
+			Expect(err).ShouldNot(HaveOccurred())
+			logger.Infof("tokenString = %s", tokenString)
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "Bearer "+tokenString)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"JWT token is expired"}`))
 		})
 	})
 })

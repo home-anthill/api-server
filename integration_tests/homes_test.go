@@ -117,6 +117,56 @@ var _ = Describe("Homes", func() {
 				err = json.Unmarshal(recorder.Body.Bytes(), &homes)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(homes).To(HaveLen(1))
+				Expect(homes[0].ID).To(Equal(home1.ID))
+				Expect(homes[0].Name).To(Equal(home1.Name))
+				Expect(homes[0].Location).To(Equal(home1.Location))
+				Expect(homes[0].Rooms).To(HaveLen(len(home1.Rooms)))
+				Expect(homes[0].Rooms[0].ID).To(Equal(home1.Rooms[0].ID))
+				Expect(homes[0].Rooms[0].Name).To(Equal(home1.Rooms[0].Name))
+				Expect(homes[0].Rooms[0].Floor).To(Equal(home1.Rooms[0].Floor))
+				//Expect(homes[0].Rooms[0].CreatedAt).To(Equal(home1.Rooms[0].CreatedAt))
+				//Expect(homes[0].Rooms[0].ModifiedAt).To(Equal(home1.Rooms[0].ModifiedAt))
+				Expect(homes[0].Rooms[0].Devices).To(ContainElements(home1.Rooms[0].Devices))
+				Expect(homes[0].Rooms[1].ID).To(Equal(home1.Rooms[1].ID))
+				Expect(homes[0].Rooms[1].Name).To(Equal(home1.Rooms[1].Name))
+				Expect(homes[0].Rooms[1].Floor).To(Equal(home1.Rooms[1].Floor))
+				//Expect(homes[0].Rooms[1].CreatedAt).To(Equal(home1.Rooms[1].CreatedAt))
+				//Expect(homes[0].Rooms[1].ModifiedAt).To(Equal(home1.Rooms[1].ModifiedAt))
+				Expect(homes[0].Rooms[1].Devices).To(ContainElements(home1.Rooms[1].Devices))
+				//Expect(homes[0].CreatedAt).To(Equal(home1.CreatedAt))
+				//Expect(homes[0].ModifiedAt).To(Equal(home1.ModifiedAt))
+			})
+		})
+
+		When("profile owns more homes", func() {
+			It("should get a list of homes", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/homes", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				var homes []models.Home
+				err = json.Unmarshal(recorder.Body.Bytes(), &homes)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(homes).To(HaveLen(2))
+				Expect(homes[0].ID).To(Equal(home1.ID))
+				Expect(homes[0].Name).To(Equal(home1.Name))
+				Expect(homes[0].Location).To(Equal(home1.Location))
+				Expect(homes[0].Rooms).To(HaveLen(len(home1.Rooms)))
+				Expect(homes[1].ID).To(Equal(home2.ID))
+				Expect(homes[1].Name).To(Equal(home2.Name))
+				Expect(homes[1].Location).To(Equal(home2.Location))
+				Expect(homes[1].Rooms).To(HaveLen(len(home2.Rooms)))
 			})
 		})
 	})
@@ -152,6 +202,42 @@ var _ = Describe("Homes", func() {
 				Expect(homeResult.Rooms[0].Name).To(Equal(home3.Rooms[0].Name))
 				Expect(homeResult.Rooms[0].Floor).To(Equal(home3.Rooms[0].Floor))
 			})
+
+			It("should return an error, if body is missing", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/homes", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+			})
+
+			It("should return an error, if body is not valid", func() {
+				home3 := api.HomeNewReq{
+					Name:     "", // not valid, because length must be > 0
+					Location: "", // not valid, because length must be > 0
+					Rooms: []api.RoomNewReq{{
+						Name:  "",  // not valid, because length must be > 0
+						Floor: -55, // not valid, because must be >= -50 and <= 300
+					}},
+				}
+				var homeBuf bytes.Buffer
+				err := json.NewEncoder(&homeBuf).Encode(home3)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/homes", &homeBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: name location name floor"}`))
+			})
 		})
 	})
 
@@ -184,7 +270,7 @@ var _ = Describe("Homes", func() {
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`{"message":"Home has been updated"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"home has been updated"}`))
 
 				home1FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -192,6 +278,72 @@ var _ = Describe("Homes", func() {
 				Expect(home1FromDb.Location).To(Equal(updateHome1.Location))
 				Expect(home1FromDb.Rooms[0].Name).To(Equal(home1.Rooms[0].Name))
 				Expect(home1FromDb.Rooms[0].Floor).To(Equal(home1.Rooms[0].Floor))
+			})
+
+			It("should return an error, if homeId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				badHomeId := "bad_home_id"
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+badHomeId, nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of the path param 'id'"}`))
+			})
+
+			It("should return an error, if body is missing", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+			})
+
+			It("should return an error, if body is not valid", func() {
+				updateHome1 := api.HomeUpdateReq{
+					Name:     "", // not valid, because length must be > 0
+					Location: "", // not valid, because length must be > 0
+				}
+				var homeBuf bytes.Buffer
+				err := json.NewEncoder(&homeBuf).Encode(updateHome1)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex(), &homeBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: name location"}`))
+			})
+
+			It("should return an error, if profile is not the owner of this home", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+
+				updateHome1 := api.HomeUpdateReq{
+					Name:     "home3",
+					Location: "location3",
+				}
+				var homeBuf bytes.Buffer
+				err := json.NewEncoder(&homeBuf).Encode(updateHome1)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex(), &homeBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot update a home that is not in your profile"}`))
 			})
 		})
 	})
@@ -203,7 +355,7 @@ var _ = Describe("Homes", func() {
 		})
 
 		When("profile owns an home", func() {
-			It("should get a list of homes", func() {
+			It("should delete a home", func() {
 				jwtToken, cookieSession := test_utils.GetJwt(router)
 				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -217,10 +369,66 @@ var _ = Describe("Homes", func() {
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`{"message":"Home has been deleted"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"home has been deleted"}`))
 
 				_, err = test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).Should(HaveOccurred())
+			})
+
+			It("should return an error, if homeId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				badHomeId := "bad_home_id"
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+badHomeId, nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of the path param 'id'"}`))
+			})
+
+			It("should return an error, if profile is not the owner of this home", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot delete a home that is not in your profile"}`))
+			})
+		})
+
+		When("profile owns more home", func() {
+			It("should delete a home", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := test_utils.InsertOne(ctx, collHomes, home2)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"home has been deleted"}`))
+
+				// `home1` should be removed via delete api
+				_, err = test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
+				Expect(err).Should(HaveOccurred())
+				// `home2` should be still in db
+				homeFound, err := test_utils.FindOneById[models.Home](ctx, collHomes, home2.ID)
+				Expect(err).Should(Not(HaveOccurred()))
+				Expect(homeFound.ID).To(Equal(home2.ID))
 			})
 		})
 	})
@@ -255,6 +463,50 @@ var _ = Describe("Homes", func() {
 				Expect(rooms[1].Name).To(Equal(home1.Rooms[1].Name))
 				Expect(rooms[1].Floor).To(Equal(home1.Rooms[1].Floor))
 			})
+
+			It("should return an error, if homeId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				badHomeId := "bad_home_id"
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+badHomeId+"/rooms", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of the path param 'id'"}`))
+			})
+
+			It("should return an error, if profile is not the owner of this home", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+home1.ID.Hex()+"/rooms", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot get rooms of an home that is not in your profile"}`))
+			})
+
+			It("should return an error, if homeId is not in db", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				missingHomeId := primitive.NewObjectID()
+
+				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+missingHomeId.Hex()+"/rooms", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusNotFound))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find rooms for that home"}`))
+			})
 		})
 	})
 
@@ -287,13 +539,107 @@ var _ = Describe("Homes", func() {
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`{"message":"Room added to the home"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"room added to the home"}`))
 
 				home2FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home2.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(home2FromDb.Rooms).To(HaveLen(1))
 				Expect(home2FromDb.Rooms[0].Name).To(Equal(room1.Name))
 				Expect(home2FromDb.Rooms[0].Floor).To(Equal(room1.Floor))
+			})
+		})
+
+		When("receive bad inputs", func() {
+			It("should return an error, because homeId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				badHomeId := "bad_home_id"
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+badHomeId+"/rooms", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of the path param 'id'"}`))
+			})
+
+			It("should return an error, because body is missing", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+home1.ID.Hex()+"/rooms", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+			})
+
+			It("should return an error, because body is not valid", func() {
+				room1 := api.RoomNewReq{
+					Name:  "",  // not valid, because length must be > 0
+					Floor: -55, // not valid, because it must be >= -50 and <= 300
+				}
+				var roomBuf bytes.Buffer
+				err := json.NewEncoder(&roomBuf).Encode(room1)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+home1.ID.Hex()+"/rooms", &roomBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: name floor"}`))
+			})
+
+			It("should return an error, because room of home is not owned by profile", func() {
+				room1 := api.RoomNewReq{
+					Name:  "room1",
+					Floor: 2,
+				}
+				var roomBuf bytes.Buffer
+				err := json.NewEncoder(&roomBuf).Encode(room1)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				// profile doesn't have `home2` assigned to it
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+home2.ID.Hex()+"/rooms", &roomBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot create a room in an home that is not in your profile"}`))
+			})
+
+			It("should return an error, because homeId is not in db", func() {
+				room1 := api.RoomNewReq{
+					Name:  "room1",
+					Floor: 2,
+				}
+				var roomBuf bytes.Buffer
+				err := json.NewEncoder(&roomBuf).Encode(room1)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingHomeId := primitive.NewObjectID()
+
+				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+missingHomeId.Hex()+"/rooms", &roomBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusNotFound))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find home"}`))
 			})
 		})
 	})
@@ -327,13 +673,150 @@ var _ = Describe("Homes", func() {
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`{"message":"Room has been updated"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"room has been updated"}`))
 
 				home1FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(home1FromDb.Rooms).To(HaveLen(len(home1.Rooms)))
 				Expect(home1FromDb.Rooms[0].Name).To(Equal(room1Upd.Name))
 				Expect(home1FromDb.Rooms[0].Floor).To(Equal(room1Upd.Floor))
+			})
+		})
+
+		When("receive bad inputs", func() {
+			It("should return an error, because homeId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				badHomeId := "bad_home_id"
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+badHomeId+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of one of the path params"}`))
+			})
+
+			It("should return an error, because roomId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				badRoomId := "bad_room_id"
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+badRoomId, nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of one of the path params"}`))
+			})
+
+			It("should return an error, because body is missing", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+			})
+
+			It("should return an error, because body is not valid", func() {
+				room1Upd := api.RoomUpdateReq{
+					Name:  "",  // not valid, because length must be > 0
+					Floor: -55, // not valid, because it must be >= -50 and <= 300
+				}
+				var roomBuf bytes.Buffer
+				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				//profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				//
+				//err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				//Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), &roomBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: name floor"}`))
+			})
+
+			It("should return an error, because room of home is not owned by profile", func() {
+				room1Upd := api.RoomUpdateReq{
+					Name:  "room1-upd",
+					Floor: 0,
+				}
+				var roomBuf bytes.Buffer
+				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), &roomBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot update a room in an home that is not in your profile"}`))
+			})
+
+			It("should return an error, because homeId is not in db", func() {
+				room1Upd := api.RoomUpdateReq{
+					Name:  "room1-upd",
+					Floor: 0,
+				}
+				var roomBuf bytes.Buffer
+				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingHomeId := primitive.NewObjectID()
+
+				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+missingHomeId.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), &roomBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusNotFound))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find rooms for that home"}`))
+			})
+
+			It("should return an error, because roomId is not a room of home1 in db", func() {
+				room1Upd := api.RoomUpdateReq{
+					Name:  "room1-upd",
+					Floor: 0,
+				}
+				var roomBuf bytes.Buffer
+				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingRoomId := primitive.NewObjectID()
+
+				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+missingRoomId.Hex(), &roomBuf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusNotFound))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"room not found"}`))
 			})
 		})
 	})
@@ -359,7 +842,7 @@ var _ = Describe("Homes", func() {
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`{"message":"Room has been deleted"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"room has been deleted"}`))
 
 				home1FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -368,6 +851,81 @@ var _ = Describe("Homes", func() {
 				Expect(home1FromDb.Rooms[0].Floor).To(Equal(home1.Rooms[1].Floor))
 			})
 		})
-	})
 
+		When("receive bad inputs", func() {
+			It("should return an error, because homeId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				badHomeId := "bad_home_id"
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+badHomeId+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of one of the path params"}`))
+			})
+
+			It("should return an error, because roomId is wrong", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				badRoomId := "bad_room_id"
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+badRoomId, nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of one of the path params"}`))
+			})
+
+			It("should return an error, because home is not owned by profile", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot delete a room in an home that is not in your profile"}`))
+			})
+
+			It("should return an error, because homeId is not in db", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				missingHomeId := primitive.NewObjectID()
+				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+missingHomeId.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusNotFound))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"home not found"}`))
+			})
+
+			It("should return an error, because roomId is not a room of home1 in db", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingRoomId := primitive.NewObjectID()
+
+				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+missingRoomId.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusNotFound))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"room not found"}`))
+			})
+		})
+	})
 })

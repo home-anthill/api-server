@@ -140,7 +140,7 @@ var _ = Describe("Devices", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		When("profile owns a 2 devices", func() {
+		When("profile owns 2 devices", func() {
 			It("should remove the first one successfully", func() {
 				jwtToken, cookieSession := test_utils.GetJwt(router)
 				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
@@ -177,6 +177,35 @@ var _ = Describe("Devices", func() {
 				Expect(devices[0].Mac).To(Equal(deviceSensor.Mac))
 				Expect(devices[0].UUID).To(Equal(deviceSensor.UUID))
 				Expect(devices[0].Features).To(Equal(deviceSensor.Features))
+			})
+		})
+
+		When("you pass bad inputs", func() {
+			It("should return an error, because of bad deviceId", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+				badDeviceId := "bad_device_id"
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+badDeviceId, nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of device id"}`))
+			})
+
+			It("should return an error, because device is not owned by profile", func() {
+				jwtToken, cookieSession := test_utils.GetJwt(router)
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceController.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot delete device, because it is not in your profile"}`))
 			})
 		})
 	})

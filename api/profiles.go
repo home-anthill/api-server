@@ -90,7 +90,7 @@ func (handler *Profiles) PostProfilesToken(c *gin.Context) {
 	// check if the profile you are trying to update (path param) is your profile (session profile)
 	if profileSession.ID != profileId {
 		handler.logger.Error("REST - POST - ProfilesToken - Current profileId is different than profileId in session")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot re-generate ApiToken for a different profile then yours"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot re-generate ApiToken for a different profile then yours"})
 		return
 	}
 
@@ -106,7 +106,7 @@ func (handler *Profiles) PostProfilesToken(c *gin.Context) {
 	})
 	if err != nil {
 		handler.logger.Error("REST - POST - PostProfilesToken - Cannot update profile with the new apiToken")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"apiToken": apiToken})

@@ -346,5 +346,79 @@ var _ = Describe("Register", func() {
 				Expect(recorder.Body.String()).To(Equal(`{"message":"Already registered"}`))
 			})
 		})
+
+		When("you pass bad inputs", func() {
+			It("should return an error, if body is missing", func() {
+				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				Expect(err).ShouldNot(HaveOccurred())
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/register", nil)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+			})
+
+			It("should return an error, if body is not valid", func() {
+				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				feature := api.FeatureReq{
+					Type:   "unknowntype", // not valid, because must be either 'controller' or 'sensor'
+					Name:   "",            // not valid, because 2 <= length <= 20
+					Enable: true,
+					Order:  0,  // not valid, because must be >= 1
+					Unit:   "", // not valid, because 1 <= length <= 10
+				}
+				deviceRegisterReq := api.DeviceRegisterReq{
+					Mac:          "1234", // not valid, because must be a MAC
+					Manufacturer: "",     // not valid, because 3 <= length <= 50
+					Model:        "",     // not valid, because 3 <= length <= 20
+					ApiToken:     "1234", // not valid, because must be an UUIDv4
+					Features:     []api.FeatureReq{feature},
+				}
+				var buf bytes.Buffer
+				err = json.NewEncoder(&buf).Encode(deviceRegisterReq)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/register", &buf)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: mac manufacturer model apitoken type name order unit"}`))
+			})
+
+			It("should return an error, if apiToken doesn't exist", func() {
+				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				unknownApiToken := uuid.NewString()
+				feature := api.FeatureReq{
+					Type:   "controller",
+					Name:   "test",
+					Enable: true,
+					Order:  1,
+					Unit:   "-",
+				}
+				deviceRegisterReq := api.DeviceRegisterReq{
+					Mac:          "11:22:33:44:55:66",
+					Manufacturer: "test",
+					Model:        "test-model",
+					ApiToken:     unknownApiToken,
+					Features:     []api.FeatureReq{feature},
+				}
+				var buf bytes.Buffer
+				err = json.NewEncoder(&buf).Encode(deviceRegisterReq)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/register", &buf)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cnnot register, profile token missing or not valid"}`))
+			})
+		})
 	})
 })

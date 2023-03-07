@@ -99,7 +99,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 	var registerBody DeviceRegisterReq
 	if err := c.ShouldBindJSON(&registerBody); err != nil {
 		handler.logger.Errorf("REST - PostRegister - Cannot bind request body. Err = %v\n", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 
@@ -118,7 +118,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 	}).Decode(&profileFound)
 	if errProfile != nil {
 		handler.logger.Errorf("REST - PostRegister - Cannot find profile with that apiToken. Err = %v\n", errProfile)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Cannot register, profile token missing or not valid"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cnnot register, profile token missing or not valid"})
 		return
 	}
 

@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -57,7 +58,7 @@ var _ = Describe("Profiles", func() {
 			profileId := profileRes.ID.Hex()
 
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/api/profiles/"+profileId+"/tokens", nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileId+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
 			req.Header.Add("Authorization", "Bearer "+jwtToken)
 			req.Header.Add("Content-Type", `application/json`)
@@ -69,6 +70,32 @@ var _ = Describe("Profiles", func() {
 			Expect(newTokenRes.ApiToken).To(Not(BeNil()))
 			// apiToken is an UUIDv4 token of 36 bytes
 			Expect([]byte(newTokenRes.ApiToken)).To(HaveLen(36))
+		})
+
+		It("should return an error, if profileId is wrong", func() {
+			jwtToken, cookieSession := test_utils.GetJwt(router)
+			profileId := "bad_profile_id"
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileId+"/tokens", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "Bearer "+jwtToken)
+			req.Header.Add("Content-Type", `application/json`)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"wrong format of the path param 'id'"}`))
+		})
+
+		It("should return an error, if profileId is not the one in session", func() {
+			jwtToken, cookieSession := test_utils.GetJwt(router)
+			profileId := primitive.NewObjectID()
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileId.Hex()+"/tokens", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "Bearer "+jwtToken)
+			req.Header.Add("Content-Type", `application/json`)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"cannot re-generate ApiToken for a different profile then yours"}`))
 		})
 	})
 })
