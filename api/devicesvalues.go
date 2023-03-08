@@ -118,6 +118,8 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 			Temperature: int(response.Temperature),
 			Mode:        int(response.Mode),
 			FanSpeed:    int(response.FanSpeed),
+			CreatedAt:   response.CreatedAt,
+			ModifiedAt:  response.ModifiedAt,
 		}
 		c.JSON(http.StatusOK, &deviceState)
 	} else {

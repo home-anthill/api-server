@@ -24,11 +24,23 @@ import (
 	"time"
 )
 
+var currentDate = time.Now()
+
 var sensorUuid = uuid.NewString()
+
+// mocked GET sensor API values
 var temperatureFeatureUuid = uuid.NewString()
 var lightFeatureUuid = uuid.NewString()
-var temperatureSensorValue float64 = 22
-var lightSensorValue float64 = 17
+var humidityFeatureUuid = uuid.NewString()
+var airpressureFeatureUuid = uuid.NewString()
+var motionFeatureUuid = uuid.NewString()
+var airqualityFeatureUuid = uuid.NewString()
+var temperatureSensorValue float64 = 22.12
+var lightSensorValue float64 = 17.1
+var humiditySensorValue float64 = 55.12
+var airpressureSensorValue float64 = 100.71
+var motionSensorValue float64 = 1.0
+var airqualitySensorValue float64 = 2.0
 
 type deviceGrpcStub struct {
 	device.UnimplementedDeviceServer
@@ -50,6 +62,8 @@ func (handler *deviceGrpcStub) GetStatus(ctx context.Context, in *device.StatusR
 		Temperature: 22,
 		Mode:        1,
 		FanSpeed:    2,
+		CreatedAt:   currentDate.UnixMilli(),
+		ModifiedAt:  currentDate.UnixMilli(),
 	}, nil
 }
 
@@ -71,7 +85,6 @@ var _ = Describe("Devices", func() {
 	var grpcMockServer *grpc.Server
 	var httpMockServer *httptest.Server
 
-	var currentDate = time.Now()
 	var deviceController = models.Device{
 		ID:           primitive.NewObjectID(),
 		Mac:          "11:22:33:44:55:66",
@@ -107,8 +120,36 @@ var _ = Describe("Devices", func() {
 			Type:   "sensor",
 			Name:   "light",
 			Enable: true,
-			Order:  1,
+			Order:  2,
 			Unit:   "lux",
+		}, {
+			UUID:   humidityFeatureUuid,
+			Type:   "sensor",
+			Name:   "humidity",
+			Enable: true,
+			Order:  3,
+			Unit:   "%",
+		}, {
+			UUID:   airpressureFeatureUuid,
+			Type:   "sensor",
+			Name:   "airpressure",
+			Enable: true,
+			Order:  4,
+			Unit:   "lux",
+		}, {
+			UUID:   motionFeatureUuid,
+			Type:   "sensor",
+			Name:   "motion",
+			Enable: true,
+			Order:  5,
+			Unit:   "-",
+		}, {
+			UUID:   airqualityFeatureUuid,
+			Type:   "sensor",
+			Name:   "airquality",
+			Enable: true,
+			Order:  6,
+			Unit:   "-",
 		}},
 		CreatedAt:  currentDate,
 		ModifiedAt: currentDate,
@@ -120,13 +161,27 @@ var _ = Describe("Devices", func() {
 	})
 	getSensorTemperatureHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		value := fmt.Sprintf("%f", temperatureSensorValue)
-		_, _ = w.Write([]byte(`{"value": ` + value + `}`))
+		_, _ = w.Write([]byte(getSensorJSONResponse(temperatureSensorValue, currentDate, currentDate)))
 	})
 	getSensorLightHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		value := fmt.Sprintf("%f", lightSensorValue)
-		_, _ = w.Write([]byte(`{"value": ` + value + `}`))
+		_, _ = w.Write([]byte(getSensorJSONResponse(lightSensorValue, currentDate, currentDate)))
+	})
+	getSensorHumidityHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(humiditySensorValue, currentDate, currentDate)))
+	})
+	getSensorAirpressureHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(airpressureSensorValue, currentDate, currentDate)))
+	})
+	getSensorMotionHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(motionSensorValue, currentDate, currentDate)))
+	})
+	getSensorAirqualityHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(airqualitySensorValue, currentDate, currentDate)))
 	})
 
 	BeforeEach(func() {
@@ -154,6 +209,10 @@ var _ = Describe("Devices", func() {
 		mux.HandleFunc("/keepalive", keepAliveHandler)
 		mux.HandleFunc("/sensors/"+sensorUuid+"/temperature", getSensorTemperatureHandler)
 		mux.HandleFunc("/sensors/"+sensorUuid+"/light", getSensorLightHandler)
+		mux.HandleFunc("/sensors/"+sensorUuid+"/humidity", getSensorHumidityHandler)
+		mux.HandleFunc("/sensors/"+sensorUuid+"/airpressure", getSensorAirpressureHandler)
+		mux.HandleFunc("/sensors/"+sensorUuid+"/motion", getSensorMotionHandler)
+		mux.HandleFunc("/sensors/"+sensorUuid+"/airquality", getSensorAirqualityHandler)
 		httpListener, errHttp := net.Listen("tcp", "localhost:8000")
 		logger.Infof("register_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHttp).ShouldNot(HaveOccurred())
@@ -205,6 +264,8 @@ var _ = Describe("Devices", func() {
 				Expect(deviceState.Temperature).To(Equal(22))
 				Expect(deviceState.Mode).To(Equal(1))
 				Expect(deviceState.FanSpeed).To(Equal(2))
+				Expect(deviceState.CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceState.ModifiedAt).To(Equal(currentDate.UnixMilli()))
 			})
 		})
 
@@ -228,13 +289,34 @@ var _ = Describe("Devices", func() {
 				var deviceStates []models.SensorValue
 				err = json.Unmarshal(recorder.Body.Bytes(), &deviceStates)
 				Expect(err).ShouldNot(HaveOccurred())
+				// order is the same of deviceSensor.Features
 				Expect(deviceStates[0].UUID).To(Equal(temperatureFeatureUuid))
 				Expect(deviceStates[0].Value).To(Equal(temperatureSensorValue))
+				Expect(deviceStates[0].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[0].ModifiedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[1].UUID).To(Equal(lightFeatureUuid))
 				Expect(deviceStates[1].Value).To(Equal(lightSensorValue))
+				Expect(deviceStates[1].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[1].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[2].UUID).To(Equal(humidityFeatureUuid))
+				Expect(deviceStates[2].Value).To(Equal(humiditySensorValue))
+				Expect(deviceStates[2].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[2].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[3].UUID).To(Equal(airpressureFeatureUuid))
+				Expect(deviceStates[3].Value).To(Equal(airpressureSensorValue))
+				Expect(deviceStates[3].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[3].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[4].UUID).To(Equal(motionFeatureUuid))
+				Expect(deviceStates[4].Value).To(Equal(motionSensorValue))
+				Expect(deviceStates[4].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[4].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[5].UUID).To(Equal(airqualityFeatureUuid))
+				Expect(deviceStates[5].Value).To(Equal(airqualitySensorValue))
+				Expect(deviceStates[5].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[5].ModifiedAt).To(Equal(currentDate.UnixMilli()))
 			})
 		})
-
+		//
 		When("you pass bad inputs", func() {
 			It("should return an error, because ...", func() {
 				jwtToken, cookieSession := test_utils.GetJwt(router)
@@ -435,3 +517,7 @@ var _ = Describe("Devices", func() {
 		})
 	})
 })
+
+func getSensorJSONResponse(value float64, currDate time.Time, modDate time.Time) string {
+	return `{"value": ` + fmt.Sprintf("%f", value) + `, "createdAt": ` + fmt.Sprintf("%v", currDate.UnixMilli()) + `, "modifiedAt": ` + fmt.Sprintf("%v", modDate.UnixMilli()) + `}`
+}

@@ -21,6 +21,8 @@ message StatusResponse {
   int32 temperature = 2;
   int32 mode = 3;
   int32 fan_speed = 4;
+  int64 created_at = 5;
+  int64 modified_at = 6;
 }
 
 message ValuesRequest {

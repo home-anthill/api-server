@@ -35,13 +35,17 @@ type Device struct {
 
 type DeviceState struct {
 	// For 'On' you cannot use required for boolean, otherwise you cannot set as false
-	On          bool `json:"on" validate:"boolean"`
-	Temperature int  `json:"temperature" validate:"required,min=17,max=30"`
-	Mode        int  `json:"mode" validate:"required,min=1,max=5"`
-	FanSpeed    int  `json:"fanSpeed" validate:"required,min=1,max=5"`
+	On          bool  `json:"on" validate:"boolean"`
+	Temperature int   `json:"temperature" validate:"required,min=17,max=30"`
+	Mode        int   `json:"mode" validate:"required,min=1,max=5"`
+	FanSpeed    int   `json:"fanSpeed" validate:"required,min=1,max=5"`
+	CreatedAt   int64 `json:"createdAt"`  // as unix epoch in milliseconds
+	ModifiedAt  int64 `json:"modifiedAt"` // as unix epoch in milliseconds
 }
 
 type SensorValue struct {
-	UUID  string  `json:"uuid"` // feature uuid
-	Value float64 `json:"value"`
+	UUID       string  `json:"uuid"` // feature uuid
+	Value      float64 `json:"value"`
+	CreatedAt  int64   `json:"createdAt"`  // as unix epoch in milliseconds
+	ModifiedAt int64   `json:"modifiedAt"` // as unix epoch in milliseconds
 }
