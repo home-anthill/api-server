@@ -208,11 +208,6 @@ func getSecureOptions(httpOrigin string) secure.Options {
 		ReferrerPolicy: "no-referrer",
 		// PermissionsPolicy allows the Permissions-Policy header with the value to be set with a custom value. Default is "".
 		PermissionsPolicy: "",
-		// Expect-CT header lets sites opt in to reporting and/or enforcement of Certificate Transparency requirements,
-		// to prevent the use of misissued certificates for that site from going unnoticed. (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Expect-CT)
-		// "max-age" is the number of seconds after reception of the Expect-CT header field during which the user agent should regard the host of the received message as a known Expect-CT host.
-		// "enforce" and "report-uri" are optional.
-		ExpectCTHeader: "enforce, max-age=30",
 		// This will cause the AllowedHosts, SSLRedirect, and STSSeconds/STSIncludeSubdomains options to be ignored during development. When deploying to production, be sure to set this to false.
 		IsDevelopment: os.Getenv("ENV") != "prod",
 	}
