@@ -4,9 +4,10 @@ import (
 	"api-server/models"
 	"api-server/utils"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 	"go.uber.org/zap"
 	"net/http"
 	"net/url"
@@ -91,43 +92,28 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 			return jwtKey, nil
 		})
 
-		if token == nil || !token.Valid {
-			if ve, ok := err.(*jwt.ValidationError); ok {
-				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-					handler.logger.Error("JWTMiddleware - that's not even a token")
-					c.JSON(http.StatusBadRequest, gin.H{
-						"error": "that's not even a token",
-					})
-					c.Abort()
-					return
-				} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
-					// Token is either expired or not active yet
-					handler.logger.Error("JWTMiddleware - JWT token expired")
-					c.JSON(http.StatusUnauthorized, gin.H{
-						"error": "JWT token is expired",
-					})
-					c.Abort()
-					return
-				}
-
+		if token == nil || !token.Valid || err != nil {
+			if errors.Is(err, jwt.ErrTokenMalformed) {
+				handler.logger.Error("JWTMiddleware - " + err.Error())
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "that's not even a token",
+				})
+				c.Abort()
+				return
+			} else if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet) {
+				// Token is either expired or not active yet
+				handler.logger.Error("JWTMiddleware - " + err.Error())
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "token is expired",
+				})
+				c.Abort()
+				return
+			} else {
 				handler.logger.Error("JWTMiddleware - not logged, token is not valid")
-				c.JSON(http.StatusForbidden, gin.H{"error": "not logged, token is not valid"})
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "not logged, token is not valid"})
 				c.Abort()
 				return
 			}
-		}
-
-		if err != nil {
-			if err == jwt.ErrSignatureInvalid {
-				handler.logger.Error("JWTMiddleware - cannot login", err)
-				c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot login"})
-				c.Abort()
-				return
-			}
-			handler.logger.Error("JWTMiddleware - bad request while login", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": "bad request while login"})
-			c.Abort()
-			return
 		}
 
 		c.Next()
