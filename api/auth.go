@@ -20,11 +20,6 @@ type Auth struct {
 	logger *zap.SugaredLogger
 }
 
-// For HMAC signing method, the key can be any []byte. It is recommended to generate
-// a key using crypto/rand or something equivalent. You need the same key for signing
-// and validating.
-var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
-
 func NewAuth(ctx context.Context, logger *zap.SugaredLogger) *Auth {
 	return &Auth{
 		ctx:    ctx,
@@ -34,6 +29,8 @@ func NewAuth(ctx context.Context, logger *zap.SugaredLogger) *Auth {
 
 func (handler *Auth) LoginCallback(c *gin.Context) {
 	handler.logger.Info("REST - GET - LoginCallback called")
+	// jwtKey is a []byte containing your secret, e.g. []byte("my_secret_key")
+	var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
 
 	profile := c.Value("profile").(models.Profile)
 	expirationTime := time.Now().Add(60 * time.Minute)
@@ -71,10 +68,9 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 
 		if tokenString == "" {
 			handler.logger.Error("JWTMiddleware - bearer token not found")
-			c.JSON(http.StatusUnauthorized, gin.H{
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "bearer token not found",
 			})
-			c.Abort()
 			return
 		}
 
@@ -89,6 +85,8 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
+			// jwtKey is a []byte containing your secret, e.g. []byte("my_secret_key")
+			var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
 			return jwtKey, nil
 		})
 

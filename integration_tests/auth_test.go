@@ -92,7 +92,7 @@ var _ = Describe("LoginGithub", func() {
 			req.Header.Add("Authorization", "Bearer "+tokenString)
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
-			Expect(recorder.Body.String()).To(Equal(`{"error":"token is expired"}`))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"not logged, token is not valid"}`))
 		})
 	})
 })

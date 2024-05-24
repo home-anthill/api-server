@@ -5,9 +5,9 @@ import (
 	"api-server/utils"
 	"context"
 	"encoding/gob"
+	"errors"
 	"fmt"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/github"
 	"github.com/google/uuid"
@@ -28,7 +28,6 @@ type Github struct {
 	ctx                context.Context
 	logger             *zap.SugaredLogger
 	oauthConfig        *oauth2.Config
-	cookieStore        cookie.Store
 }
 
 var DbGithubUserTestmock = models.Github{
@@ -41,8 +40,6 @@ var DbGithubUserTestmock = models.Github{
 
 func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, redirectURL string, scopes []string) *Github {
 	gob.Register(models.Profile{})
-
-	cookieStore := cookie.NewStore([]byte(os.Getenv("COOKIE_SECRET")))
 	// init global configuration with received params
 	oauthConfig := &oauth2.Config{
 		ClientID:     os.Getenv("OAUTH2_CLIENTID"),
@@ -56,12 +53,7 @@ func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfile
 		ctx:                ctx,
 		logger:             logger,
 		oauthConfig:        oauthConfig,
-		cookieStore:        cookieStore,
 	}
-}
-
-func (handler *Github) Session(name string) gin.HandlerFunc {
-	return sessions.Sessions(name, handler.cookieStore)
 }
 
 func (handler *Github) GetLoginURL(c *gin.Context) {
@@ -169,7 +161,7 @@ func (handler *Github) OauthAuth() gin.HandlerFunc {
 			}
 		} else {
 			// there is an error
-			if err == mongo.ErrNoDocuments {
+			if errors.Is(err, mongo.ErrNoDocuments) {
 				handler.logger.Debug("OauthAuth - profile not found, creating a new one")
 				currentDate := time.Now()
 				// profile not found, so create a new profile

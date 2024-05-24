@@ -4,6 +4,8 @@ import (
 	"api-server/api"
 	"api-server/utils"
 	"github.com/gin-contrib/cors"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
@@ -31,12 +33,16 @@ var keepAlive *api.KeepAlive
 var oauthCallbackURL string
 var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scopes
 
-func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) *gin.Engine {
+func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
 	// init oauthCallbackURL based on httpOrigin
 	oauthCallbackURL = httpOrigin + "/api/callback/"
 
 	// init GIN
 	router := gin.Default()
+	// init session
+	cookieStore := cookie.NewStore([]byte("secret"))
+	router.Use(sessions.Sessions("session", cookieStore))
+	// apply compression
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// apply security config to GIN
@@ -108,10 +114,10 @@ func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) *gin.Engine {
 	} else {
 		logger.Info("SetupRouter - Skipping NoRoute config, because it's running in production mode")
 	}
-	return router
+	return router, cookieStore
 }
 
-func RegisterRoutes(router *gin.Engine, ctx context.Context, logger *zap.SugaredLogger, validate *validator.Validate, collProfiles, collHomes, collDevices *mongo.Collection) {
+func RegisterRoutes(router *gin.Engine, cookieStore *cookie.Store, ctx context.Context, logger *zap.SugaredLogger, validate *validator.Validate, collProfiles, collHomes, collDevices *mongo.Collection) {
 	OauthGithub = api.NewGithub(ctx, logger, collProfiles, oauthCallbackURL, oauthScopes)
 	auth = api.NewAuth(ctx, logger)
 	homes = api.NewHomes(ctx, logger, collHomes, collProfiles, validate)
@@ -123,7 +129,7 @@ func RegisterRoutes(router *gin.Engine, ctx context.Context, logger *zap.Sugared
 	keepAlive = api.NewKeepAlive(ctx, logger)
 
 	// 12. Configure oAuth2 authentication
-	router.Use(OauthGithub.Session("session")) // session called "session"
+	router.Use(sessions.Sessions("session", *cookieStore)) // session called "session"
 	// public API to get Login URL
 	router.GET("/api/login", OauthGithub.GetLoginURL)
 	// public APIs

@@ -42,8 +42,8 @@ func BuildServer(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, con
 
 	// Instantiate GIN and apply some middlewares
 	logger.Info("BuildServer - GIN - Initializing...")
-	router := SetupRouter(httpOrigin, logger)
-	RegisterRoutes(router, ctx, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
+	router, cookieStore := SetupRouter(httpOrigin, logger)
+	RegisterRoutes(router, &cookieStore, ctx, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
 	return router, ctx, collectionProfiles, collectionHomes, collectionDevices
 }
 
