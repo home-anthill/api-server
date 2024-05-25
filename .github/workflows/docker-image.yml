@@ -43,7 +43,7 @@ jobs:
       - name: Install and start MongoDB
         uses: supercharge/mongodb-github-action@1.10.0
         with:
-          mongodb-version: 6.0
+          mongodb-version: 7.0
           mongodb-replica-set: test-rs
           mongodb-port: 27017
       - name: Run tests
@@ -54,6 +54,10 @@ jobs:
           cp .env_template .env
           echo "Installing dependencies"
           make deps
+          echo "Running vet"
+          make vet
+          echo "Running lint"
+          make lint
           echo "Running tests"
           make test
 
