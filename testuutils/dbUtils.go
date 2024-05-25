@@ -3,7 +3,7 @@ package testuutils
 import (
 	"api-server/models"
 	"context"
-	gomega "github.com/onsi/gomega"
+	"github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
