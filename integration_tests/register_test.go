@@ -5,7 +5,7 @@ import (
 	"api-server/api/grpc/register"
 	"api-server/initialization"
 	"api-server/models"
-	"api-server/test_utils"
+	"api-server/testuutils"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-var dbGithubUserTestmock = models.Github{
+var dbGithubUserTestmock = models.GitHub{
 	ID:        123456,
 	Login:     "Test",
 	Name:      "Test Test",
@@ -66,7 +66,7 @@ var _ = Describe("Register", func() {
 	profile := models.Profile{
 		ID:         primitive.NewObjectID(),
 		Github:     dbGithubUserTestmock,
-		ApiToken:   uuid.NewString(),
+		APIToken:   uuid.NewString(),
 		Homes:      []primitive.ObjectID{}, // empty slice of ObjectIDs
 		Devices:    []primitive.ObjectID{}, // empty slice of ObjectIDs
 		CreatedAt:  currentDate,
@@ -110,9 +110,9 @@ var _ = Describe("Register", func() {
 		mux.HandleFunc("/sensors/register/motion", registerHandler)
 		mux.HandleFunc("/sensors/register/airquality", registerHandler)
 		mux.HandleFunc("/sensors/register/airpressure", registerHandler)
-		httpListener, errHttp := net.Listen("tcp", "localhost:8000")
+		httpListener, errHTTP := net.Listen("tcp", "localhost:8000")
 		logger.Infof("register_test - HTTP client listening at %s", httpListener.Addr().String())
-		Expect(errHttp).ShouldNot(HaveOccurred())
+		Expect(errHTTP).ShouldNot(HaveOccurred())
 		httpMockServer = httptest.NewUnstartedServer(mux)
 		// NewUnstartedServer creates a httpListener, so we need to Close that
 		// httpListener and replace it with the one we created.
@@ -126,7 +126,7 @@ var _ = Describe("Register", func() {
 	AfterEach(func() {
 		grpcMockServer.Stop()
 		httpMockServer.Close()
-		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
 	Describe("calling register api", func() {
@@ -134,7 +134,7 @@ var _ = Describe("Register", func() {
 
 			It("should return a success", func() {
 				By("with an existing profile with a valid apiToken")
-				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				err := testuutils.InsertOne(ctx, collProfiles, profile)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				feature := api.FeatureReq{
@@ -148,7 +148,7 @@ var _ = Describe("Register", func() {
 					Mac:          "11:22:33:44:55:66",
 					Manufacturer: "test",
 					Model:        "test-model",
-					ApiToken:     profile.ApiToken,
+					APIToken:     profile.APIToken,
 					Features:     []api.FeatureReq{feature},
 				}
 				var buf bytes.Buffer
@@ -182,7 +182,7 @@ var _ = Describe("Register", func() {
 
 			It("should return a 409 if the device is already registered", func() {
 				By("with an existing profile with a valid apiToken")
-				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				err := testuutils.InsertOne(ctx, collProfiles, profile)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				feature := api.FeatureReq{
@@ -196,7 +196,7 @@ var _ = Describe("Register", func() {
 					Mac:          "11:22:33:44:55:66",
 					Manufacturer: "test",
 					Model:        "test-model",
-					ApiToken:     profile.ApiToken,
+					APIToken:     profile.APIToken,
 					Features:     []api.FeatureReq{feature},
 				}
 				var buf bytes.Buffer
@@ -242,7 +242,7 @@ var _ = Describe("Register", func() {
 		When("registering a new sensor", func() {
 			It("should return a success", func() {
 				By("with an existing profile with a valid apiToken")
-				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				err := testuutils.InsertOne(ctx, collProfiles, profile)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				feature := api.FeatureReq{
@@ -256,7 +256,7 @@ var _ = Describe("Register", func() {
 					Mac:          "11:22:33:44:55:66",
 					Manufacturer: "test",
 					Model:        "test-model",
-					ApiToken:     profile.ApiToken,
+					APIToken:     profile.APIToken,
 					Features:     []api.FeatureReq{feature},
 				}
 				var buf bytes.Buffer
@@ -290,7 +290,7 @@ var _ = Describe("Register", func() {
 
 			It("should return a 409 if the sensor is already registered", func() {
 				By("with an existing profile with a valid apiToken")
-				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				err := testuutils.InsertOne(ctx, collProfiles, profile)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				feature := api.FeatureReq{
@@ -304,7 +304,7 @@ var _ = Describe("Register", func() {
 					Mac:          "11:22:33:44:55:66",
 					Manufacturer: "test",
 					Model:        "test-model",
-					ApiToken:     profile.ApiToken,
+					APIToken:     profile.APIToken,
 					Features:     []api.FeatureReq{feature},
 				}
 				var buf bytes.Buffer
@@ -349,7 +349,7 @@ var _ = Describe("Register", func() {
 
 		When("you pass bad inputs", func() {
 			It("should return an error, if body is missing", func() {
-				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				err := testuutils.InsertOne(ctx, collProfiles, profile)
 				Expect(err).ShouldNot(HaveOccurred())
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/register", nil)
@@ -360,7 +360,7 @@ var _ = Describe("Register", func() {
 			})
 
 			It("should return an error, if body is not valid", func() {
-				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				err := testuutils.InsertOne(ctx, collProfiles, profile)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				feature := api.FeatureReq{
@@ -374,7 +374,7 @@ var _ = Describe("Register", func() {
 					Mac:          "1234", // not valid, because must be a MAC
 					Manufacturer: "",     // not valid, because 3 <= length <= 50
 					Model:        "",     // not valid, because 3 <= length <= 20
-					ApiToken:     "1234", // not valid, because must be an UUIDv4
+					APIToken:     "1234", // not valid, because must be an UUIDv4
 					Features:     []api.FeatureReq{feature},
 				}
 				var buf bytes.Buffer
@@ -390,10 +390,10 @@ var _ = Describe("Register", func() {
 			})
 
 			It("should return an error, if apiToken doesn't exist", func() {
-				err := test_utils.InsertOne(ctx, collProfiles, profile)
+				err := testuutils.InsertOne(ctx, collProfiles, profile)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				unknownApiToken := uuid.NewString()
+				unknownAPIToken := uuid.NewString()
 				feature := api.FeatureReq{
 					Type:   "controller",
 					Name:   "test",
@@ -405,7 +405,7 @@ var _ = Describe("Register", func() {
 					Mac:          "11:22:33:44:55:66",
 					Manufacturer: "test",
 					Model:        "test-model",
-					ApiToken:     unknownApiToken,
+					APIToken:     unknownAPIToken,
 					Features:     []api.FeatureReq{feature},
 				}
 				var buf bytes.Buffer

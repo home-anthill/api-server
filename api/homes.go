@@ -16,29 +16,34 @@ import (
 	"time"
 )
 
+// HomeNewReq struct
 type HomeNewReq struct {
 	Name     string       `json:"name" validate:"required,min=1,max=50"`
 	Location string       `json:"location" validate:"required,min=1,max=50"`
 	Rooms    []RoomNewReq `json:"rooms" validate:"required,dive"`
 }
 
+// HomeUpdateReq struct
 type HomeUpdateReq struct {
 	Name     string `json:"name" validate:"required,min=1,max=50"`
 	Location string `json:"location" validate:"required,min=1,max=50"`
 }
 
+// RoomNewReq struct
 type RoomNewReq struct {
 	Name string `json:"name" validate:"required,min=1,max=50"`
 	// cannot use 'required' because I should be able to set floor=0. It isn't a problem, because the default value is 0 :)
 	Floor int `json:"floor" validate:"min=-50,max=300"`
 }
 
+// RoomUpdateReq struct
 type RoomUpdateReq struct {
 	Name string `json:"name" validate:"required,min=1,max=50"`
 	// cannot use 'required' because I should be able to set floor=0. It isn't a problem, because the default value is 0 :)
 	Floor int `json:"floor" validate:"min=-50,max=300"`
 }
 
+// Homes struct
 type Homes struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
@@ -47,6 +52,7 @@ type Homes struct {
 	validate           *validator.Validate
 }
 
+// NewHomes function
 func NewHomes(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, validate *validator.Validate) *Homes {
 	return &Homes{
 		collection:         collection,
@@ -57,15 +63,7 @@ func NewHomes(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.
 	}
 }
 
-// swagger:operation GET /homes homes getHomes
-// Returns list of homes
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
+// GetHomes function
 func (handler *Homes) GetHomes(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetHomes called")
 
@@ -93,6 +91,7 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 	cur, err := handler.collection.Find(handler.ctx, bson.M{
 		"_id": bson.M{"$in": profile.Homes},
 	})
+	//lint:ignore SA5001 no need to check this error on close
 	defer cur.Close(handler.ctx)
 	if err != nil {
 		handler.logger.Error("REST - GET - GetHomes - Cannot get homes of profile in session", err)
@@ -110,17 +109,7 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 	c.JSON(http.StatusOK, homes)
 }
 
-// swagger:operation POST /homes homes postHome
-// Create a new home
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'400':
-//	    description: Invalid input
+// PostHome function
 func (handler *Homes) PostHome(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostHome called")
 
@@ -189,28 +178,12 @@ func (handler *Homes) PostHome(c *gin.Context) {
 	c.JSON(http.StatusOK, home)
 }
 
-// swagger:operation PUT /homes/{id} homes putHome
-// Update an existing home. You cannot pass rooms.
-// ---
-// parameters:
-//   - name: name
-//     location: plain string
-//
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'400':
-//	    description: Invalid input
-//	'404':
-//	    description: Invalid home ID
+// PutHome function
 func (handler *Homes) PutHome(c *gin.Context) {
 	handler.logger.Info("REST - PUT - PutHome called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - PUT - PutHome - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
@@ -233,7 +206,7 @@ func (handler *Homes) PutHome(c *gin.Context) {
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
-	isOwned := handler.isHomeOwnedBy(session, objectId)
+	isOwned := handler.isHomeOwnedBy(session, objectID)
 	if !isOwned {
 		handler.logger.Error("REST - PUT - PutHome - Request payload cannot contain Rooms. This API is made to change only the home object.")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot update a home that is not in your profile"})
@@ -241,7 +214,7 @@ func (handler *Homes) PutHome(c *gin.Context) {
 	}
 
 	_, errUpd := handler.collection.UpdateOne(handler.ctx, bson.M{
-		"_id": objectId,
+		"_id": objectID,
 	}, bson.M{
 		"$set": bson.M{
 			"name":       home.Name,
@@ -258,22 +231,12 @@ func (handler *Homes) PutHome(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "home has been updated"})
 }
 
-// swagger:operation DELETE /homes/{id} homes deleteHome
-// Delete an existing home
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'404':
-//	    description: Invalid home ID
+// DeleteHome function
 func (handler *Homes) DeleteHome(c *gin.Context) {
 	handler.logger.Info("REST - DELETE - DeleteHome called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - DELETE - DeleteHome - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
@@ -281,7 +244,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
-	isOwned := handler.isHomeOwnedBy(session, objectId)
+	isOwned := handler.isHomeOwnedBy(session, objectID)
 
 	if !isOwned {
 		handler.logger.Error("REST - DELETE - DeleteHome - Cannot delete a home that is not in your profile")
@@ -297,9 +260,9 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 		return
 	}
 	var newHomes []primitive.ObjectID
-	for _, homeId := range profile.Homes {
-		if homeId != objectId {
-			newHomes = append(newHomes, homeId)
+	for _, homeID := range profile.Homes {
+		if homeID != objectID {
+			newHomes = append(newHomes, homeID)
 		}
 	}
 
@@ -317,7 +280,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 	}
 
 	_, errDel := handler.collection.DeleteOne(handler.ctx, bson.M{
-		"_id": objectId,
+		"_id": objectID,
 	})
 	if errDel != nil {
 		handler.logger.Error("REST - DELETE - DeleteHome - Cannot remove home from DB")
@@ -327,20 +290,12 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "home has been deleted"})
 }
 
-// swagger:operation GET /homes/{id}/rooms rooms getRooms
-// Returns list of rooms of a home
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
+// GetRooms function
 func (handler *Homes) GetRooms(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetRooms called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - GET - GetRooms - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
@@ -348,7 +303,7 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
-	isOwned := handler.isHomeOwnedBy(session, objectId)
+	isOwned := handler.isHomeOwnedBy(session, objectID)
 
 	if !isOwned {
 		handler.logger.Error("REST - GET - GetRooms - Cannot get rooms, because you aren't the owner of that house")
@@ -358,7 +313,7 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 
 	var home models.Home
 	err := handler.collection.FindOne(handler.ctx, bson.M{
-		"_id": objectId,
+		"_id": objectID,
 	}).Decode(&home)
 	if err != nil {
 		handler.logger.Error("REST - GET - GetRooms - Cannot find rooms of the home with that id")
@@ -368,22 +323,12 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 	c.JSON(http.StatusOK, home.Rooms)
 }
 
-// swagger:operation POST /homes/{id}/rooms rooms postRoom
-// Create a new room in a home
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'400':
-//	    description: Invalid input
+// PostRoom function
 func (handler *Homes) PostRoom(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostRoom called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - POST - PostRoom - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
@@ -406,7 +351,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
-	isOwned := handler.isHomeOwnedBy(session, objectId)
+	isOwned := handler.isHomeOwnedBy(session, objectID)
 
 	if !isOwned {
 		handler.logger.Error("REST - POST - PostRoom - Cannot create a room in an home that is not in session profile")
@@ -416,7 +361,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 
 	var home models.Home
 	err = handler.collection.FindOne(handler.ctx, bson.M{
-		"_id": objectId,
+		"_id": objectID,
 	}).Decode(&home)
 	if err != nil {
 		handler.logger.Error("REST - POST - PostRoom - Cannot find rooms of the home with that id")
@@ -438,7 +383,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 	home.Rooms = append(home.Rooms, room)
 
 	_, errUpd := handler.collection.UpdateOne(handler.ctx, bson.M{
-		"_id": objectId,
+		"_id": objectID,
 	}, bson.M{
 		"$set": bson.M{
 			"rooms":      home.Rooms,
@@ -454,29 +399,13 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "room added to the home"})
 }
 
-// swagger:operation PUT /homes/{id}/rooms/{rid} rooms putRoom
-// Update an existing room of a home
-// ---
-// parameters:
-//   - name: name
-//     floor: number
-//
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'400':
-//	    description: Invalid input
-//	'404':
-//	    description: Invalid home ID
+// PutRoom function
 func (handler *Homes) PutRoom(c *gin.Context) {
 	handler.logger.Info("REST - PUT - PutRoom called")
 
-	homeId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	roomId, errRid := primitive.ObjectIDFromHex(c.Param("rid"))
-	if errId != nil || errRid != nil {
+	homeID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	roomID, errRid := primitive.ObjectIDFromHex(c.Param("rid"))
+	if errID != nil || errRid != nil {
 		handler.logger.Error("REST - PUT - PutRoom - wrong format of one of the path params")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the path params"})
 		return
@@ -497,7 +426,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
-	isOwned := handler.isHomeOwnedBy(session, homeId)
+	isOwned := handler.isHomeOwnedBy(session, homeID)
 
 	if !isOwned {
 		handler.logger.Error("REST - PUT - PutRoom - Cannot update a room in an home that is not in session profile")
@@ -508,7 +437,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 	// get Home
 	var home models.Home
 	err := handler.collection.FindOne(handler.ctx, bson.M{
-		"_id": homeId,
+		"_id": homeID,
 	}).Decode(&home)
 	if err != nil {
 		handler.logger.Error("REST - PUT - PutRoom - Cannot find rooms of the home with that id")
@@ -519,19 +448,19 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 	// `roomID` must be a room of `home`
 	var roomFound bool
 	for _, val := range home.Rooms {
-		if val.ID == roomId {
+		if val.ID == roomID {
 			roomFound = true
 		}
 	}
 	if !roomFound {
-		handler.logger.Errorf("REST - PUT - PutRoom - Cannot find room with id: %v", roomId)
+		handler.logger.Errorf("REST - PUT - PutRoom - Cannot find room with id: %v", roomID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "room not found"})
 		return
 	}
 
 	// update room
-	filter := bson.D{primitive.E{Key: "_id", Value: homeId}}
-	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomId}}}
+	filter := bson.D{primitive.E{Key: "_id", Value: homeID}}
+	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomID}}}
 	upsert := true
 	opts := options.UpdateOptions{
 		ArrayFilters: &arrayFilters,
@@ -554,23 +483,13 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "room has been updated"})
 }
 
-// swagger:operation DELETE /homes/{id}/rooms/{rid} rooms deleteRoom
-// Delete an existing room for a home
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'404':
-//	    description: Invalid room ID
+// DeleteRoom function
 func (handler *Homes) DeleteRoom(c *gin.Context) {
 	handler.logger.Info("REST - DELETE - DeleteRoom called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
 	objectRid, errRid := primitive.ObjectIDFromHex(c.Param("rid"))
-	if errId != nil || errRid != nil {
+	if errID != nil || errRid != nil {
 		handler.logger.Error("REST - PUT - PutRoom - wrong format of one of the path params")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the path params"})
 		return
@@ -578,7 +497,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 
 	// you can update a home only if you are the owner of that home
 	session := sessions.Default(c)
-	isOwned := handler.isHomeOwnedBy(session, objectId)
+	isOwned := handler.isHomeOwnedBy(session, objectID)
 
 	if !isOwned {
 		handler.logger.Error("REST - DELETE - DeleteRoom - Cannot delete a room in an home that is not in session profile")
@@ -588,7 +507,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 
 	var home models.Home
 	err := handler.collection.FindOne(handler.ctx, bson.M{
-		"_id": objectId,
+		"_id": objectID,
 	}).Decode(&home)
 	if err != nil {
 		handler.logger.Error("REST - DELETE - DeleteRoom - Cannot find home")
@@ -610,7 +529,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 	}
 
 	// delete room by id
-	filter := bson.D{primitive.E{Key: "_id", Value: objectId}}
+	filter := bson.D{primitive.E{Key: "_id", Value: objectID}}
 	update := bson.M{
 		"$pull": bson.M{
 			"rooms": bson.D{primitive.E{Key: "_id", Value: objectRid}},
@@ -626,7 +545,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "room has been deleted"})
 }
 
-func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectId primitive.ObjectID) bool {
+func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectID primitive.ObjectID) bool {
 	// you can update a home only if you are the owner of that home
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 
@@ -636,7 +555,7 @@ func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectId primitive
 		return false
 	}
 
-	found := utils.Contains(profile.Homes, objectId)
+	found := utils.Contains(profile.Homes, objectID)
 	if !found {
 		handler.logger.Error("isHomeOwnedBy - cannot update a home that is not in your profile")
 		return false

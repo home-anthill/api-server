@@ -1,5 +1,6 @@
 package models
 
-type LoginUrl struct {
+// LoginURL struct
+type LoginURL struct {
 	LoginURL string `json:"loginURL"`
 }

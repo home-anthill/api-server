@@ -8,17 +8,21 @@ import (
 	"net/http"
 )
 
+// KeepAlive struct
 type KeepAlive struct {
 	ctx    context.Context
 	logger *zap.SugaredLogger
 }
 
+// NewKeepAlive function
 func NewKeepAlive(ctx context.Context, logger *zap.SugaredLogger) *KeepAlive {
 	return &KeepAlive{
 		ctx:    ctx,
 		logger: logger,
 	}
 }
+
+// GetKeepAlive function
 func (handler *KeepAlive) GetKeepAlive(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetKeepAlive called")
 	response := models.KeepAlive{}

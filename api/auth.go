@@ -15,11 +15,13 @@ import (
 	"time"
 )
 
+// Auth struct
 type Auth struct {
 	ctx    context.Context
 	logger *zap.SugaredLogger
 }
 
+// NewAuth function
 func NewAuth(ctx context.Context, logger *zap.SugaredLogger) *Auth {
 	return &Auth{
 		ctx:    ctx,
@@ -27,6 +29,7 @@ func NewAuth(ctx context.Context, logger *zap.SugaredLogger) *Auth {
 	}
 }
 
+// LoginCallback function
 func (handler *Auth) LoginCallback(c *gin.Context) {
 	handler.logger.Info("REST - GET - LoginCallback called")
 	// jwtKey is a []byte containing your secret, e.g. []byte("my_secret_key")
@@ -50,6 +53,7 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
 }
 
+// JWTMiddleware function
 func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		const BearerSchema = "Bearer"

@@ -4,7 +4,7 @@ import (
 	"api-server/api/grpc/device"
 	"api-server/initialization"
 	"api-server/models"
-	"api-server/test_utils"
+	"api-server/testuutils"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -26,15 +26,15 @@ import (
 
 var currentDate = time.Now()
 
-var sensorUuid = uuid.NewString()
+var sensorUUID = uuid.NewString()
 
 // mocked GET sensor API values
-var temperatureFeatureUuid = uuid.NewString()
-var lightFeatureUuid = uuid.NewString()
-var humidityFeatureUuid = uuid.NewString()
-var airpressureFeatureUuid = uuid.NewString()
-var motionFeatureUuid = uuid.NewString()
-var airqualityFeatureUuid = uuid.NewString()
+var temperatureFeatureUUID = uuid.NewString()
+var lightFeatureUUID = uuid.NewString()
+var humidityFeatureUUID = uuid.NewString()
+var airpressureFeatureUUID = uuid.NewString()
+var motionFeatureUUID = uuid.NewString()
+var airqualityFeatureUUID = uuid.NewString()
 var temperatureSensorValue float64 = 22.12
 var lightSensorValue float64 = 17.1
 var humiditySensorValue float64 = 55.12
@@ -107,44 +107,44 @@ var _ = Describe("Devices", func() {
 		Mac:          "AA:22:33:44:55:BB",
 		Manufacturer: "test2",
 		Model:        "test2",
-		UUID:         sensorUuid,
+		UUID:         sensorUUID,
 		Features: []models.Feature{{
-			UUID:   temperatureFeatureUuid,
+			UUID:   temperatureFeatureUUID,
 			Type:   "sensor",
 			Name:   "temperature",
 			Enable: true,
 			Order:  1,
 			Unit:   "°C",
 		}, {
-			UUID:   lightFeatureUuid,
+			UUID:   lightFeatureUUID,
 			Type:   "sensor",
 			Name:   "light",
 			Enable: true,
 			Order:  2,
 			Unit:   "lux",
 		}, {
-			UUID:   humidityFeatureUuid,
+			UUID:   humidityFeatureUUID,
 			Type:   "sensor",
 			Name:   "humidity",
 			Enable: true,
 			Order:  3,
 			Unit:   "%",
 		}, {
-			UUID:   airpressureFeatureUuid,
+			UUID:   airpressureFeatureUUID,
 			Type:   "sensor",
 			Name:   "airpressure",
 			Enable: true,
 			Order:  4,
 			Unit:   "lux",
 		}, {
-			UUID:   motionFeatureUuid,
+			UUID:   motionFeatureUUID,
 			Type:   "sensor",
 			Name:   "motion",
 			Enable: true,
 			Order:  5,
 			Unit:   "-",
 		}, {
-			UUID:   airqualityFeatureUuid,
+			UUID:   airqualityFeatureUUID,
 			Type:   "sensor",
 			Name:   "airquality",
 			Enable: true,
@@ -207,15 +207,15 @@ var _ = Describe("Devices", func() {
 		//registerResponse := `[{"id": 123412341234123412341234, "code": 200}]`
 		mux := http.NewServeMux()
 		mux.HandleFunc("/keepalive", keepAliveHandler)
-		mux.HandleFunc("/sensors/"+sensorUuid+"/temperature", getSensorTemperatureHandler)
-		mux.HandleFunc("/sensors/"+sensorUuid+"/light", getSensorLightHandler)
-		mux.HandleFunc("/sensors/"+sensorUuid+"/humidity", getSensorHumidityHandler)
-		mux.HandleFunc("/sensors/"+sensorUuid+"/airpressure", getSensorAirpressureHandler)
-		mux.HandleFunc("/sensors/"+sensorUuid+"/motion", getSensorMotionHandler)
-		mux.HandleFunc("/sensors/"+sensorUuid+"/airquality", getSensorAirqualityHandler)
-		httpListener, errHttp := net.Listen("tcp", "localhost:8000")
+		mux.HandleFunc("/sensors/"+sensorUUID+"/temperature", getSensorTemperatureHandler)
+		mux.HandleFunc("/sensors/"+sensorUUID+"/light", getSensorLightHandler)
+		mux.HandleFunc("/sensors/"+sensorUUID+"/humidity", getSensorHumidityHandler)
+		mux.HandleFunc("/sensors/"+sensorUUID+"/airpressure", getSensorAirpressureHandler)
+		mux.HandleFunc("/sensors/"+sensorUUID+"/motion", getSensorMotionHandler)
+		mux.HandleFunc("/sensors/"+sensorUUID+"/airquality", getSensorAirqualityHandler)
+		httpListener, errHTTP := net.Listen("tcp", "localhost:8000")
 		logger.Infof("register_test - HTTP client listening at %s", httpListener.Addr().String())
-		Expect(errHttp).ShouldNot(HaveOccurred())
+		Expect(errHTTP).ShouldNot(HaveOccurred())
 		httpMockServer = httptest.NewUnstartedServer(mux)
 		// NewUnstartedServer creates a httpListener, so we need to Close that
 		// httpListener and replace it with the one we created.
@@ -229,25 +229,25 @@ var _ = Describe("Devices", func() {
 	AfterEach(func() {
 		grpcMockServer.Stop()
 		httpMockServer.Close()
-		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
 	Context("calling devicesvalues api GET", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collDevices, deviceController)
+			err := testuutils.InsertOne(ctx, collDevices, deviceController)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = test_utils.InsertOne(ctx, collDevices, deviceSensor)
+			err = testuutils.InsertOne(ctx, collDevices, deviceSensor)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns a controller device", func() {
 			It("should get a list of devices", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -271,12 +271,12 @@ var _ = Describe("Devices", func() {
 
 		When("profile owns a sensor", func() {
 			It("should get a list of devices", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -290,27 +290,27 @@ var _ = Describe("Devices", func() {
 				err = json.Unmarshal(recorder.Body.Bytes(), &deviceStates)
 				Expect(err).ShouldNot(HaveOccurred())
 				// order is the same of deviceSensor.Features
-				Expect(deviceStates[0].UUID).To(Equal(temperatureFeatureUuid))
+				Expect(deviceStates[0].UUID).To(Equal(temperatureFeatureUUID))
 				Expect(deviceStates[0].Value).To(Equal(temperatureSensorValue))
 				Expect(deviceStates[0].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[0].ModifiedAt).To(Equal(currentDate.UnixMilli()))
-				Expect(deviceStates[1].UUID).To(Equal(lightFeatureUuid))
+				Expect(deviceStates[1].UUID).To(Equal(lightFeatureUUID))
 				Expect(deviceStates[1].Value).To(Equal(lightSensorValue))
 				Expect(deviceStates[1].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[1].ModifiedAt).To(Equal(currentDate.UnixMilli()))
-				Expect(deviceStates[2].UUID).To(Equal(humidityFeatureUuid))
+				Expect(deviceStates[2].UUID).To(Equal(humidityFeatureUUID))
 				Expect(deviceStates[2].Value).To(Equal(humiditySensorValue))
 				Expect(deviceStates[2].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[2].ModifiedAt).To(Equal(currentDate.UnixMilli()))
-				Expect(deviceStates[3].UUID).To(Equal(airpressureFeatureUuid))
+				Expect(deviceStates[3].UUID).To(Equal(airpressureFeatureUUID))
 				Expect(deviceStates[3].Value).To(Equal(airpressureSensorValue))
 				Expect(deviceStates[3].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[3].ModifiedAt).To(Equal(currentDate.UnixMilli()))
-				Expect(deviceStates[4].UUID).To(Equal(motionFeatureUuid))
+				Expect(deviceStates[4].UUID).To(Equal(motionFeatureUUID))
 				Expect(deviceStates[4].Value).To(Equal(motionSensorValue))
 				Expect(deviceStates[4].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[4].ModifiedAt).To(Equal(currentDate.UnixMilli()))
-				Expect(deviceStates[5].UUID).To(Equal(airqualityFeatureUuid))
+				Expect(deviceStates[5].UUID).To(Equal(airqualityFeatureUUID))
 				Expect(deviceStates[5].Value).To(Equal(airqualitySensorValue))
 				Expect(deviceStates[5].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[5].ModifiedAt).To(Equal(currentDate.UnixMilli()))
@@ -319,12 +319,12 @@ var _ = Describe("Devices", func() {
 		//
 		When("you pass bad inputs", func() {
 			It("should return an error, because ...", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 
-				badDeviceId := "bad_device_id"
+				badDeviceID := "bad_device_id"
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+badDeviceId+"/values", nil)
+				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+badDeviceID+"/values", nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -336,7 +336,7 @@ var _ = Describe("Devices", func() {
 
 		When("profile don't own any device", func() {
 			It("should return an error, because you can get only devices owned by profile", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+deviceController.ID.Hex()+"/values", nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -350,16 +350,16 @@ var _ = Describe("Devices", func() {
 
 		When("profile owns a device not in 'devices' collection", func() {
 			It("should return an error, because device doesn't exist", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				unexistingDeviceId := primitive.NewObjectID()
+				unexistingDeviceID := primitive.NewObjectID()
 
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceId)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+unexistingDeviceId.Hex()+"/values", nil)
+				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+unexistingDeviceID.Hex()+"/values", nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -372,16 +372,16 @@ var _ = Describe("Devices", func() {
 
 	Context("calling devicesvalues api POST", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collDevices, deviceController)
+			err := testuutils.InsertOne(ctx, collDevices, deviceController)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns a controller device", func() {
 			It("should set a new value of that device", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				devState := models.DeviceState{
@@ -407,12 +407,12 @@ var _ = Describe("Devices", func() {
 
 		When("you pass bad inputs", func() {
 			It("should return an error, because ...", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 
-				badDeviceId := "bad_device_id"
+				badDeviceID := "bad_device_id"
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+badDeviceId+"/values", nil)
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+badDeviceID+"/values", nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -422,7 +422,7 @@ var _ = Describe("Devices", func() {
 			})
 
 			It("should return an error, because body is missing", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -434,10 +434,10 @@ var _ = Describe("Devices", func() {
 			})
 
 			It("should return an error, because body is not valid", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				devState := models.DeviceState{
@@ -463,7 +463,7 @@ var _ = Describe("Devices", func() {
 
 		When("profile don't own any device", func() {
 			It("should return an error, because device is not owned by profile", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 
 				devState := models.DeviceState{
 					On:          true,
@@ -488,11 +488,11 @@ var _ = Describe("Devices", func() {
 
 		When("profile owns a device not in 'devices' collection", func() {
 			It("should return an error, because device doesn't exist", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				unexistingDeviceId := primitive.NewObjectID()
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceId)
+				unexistingDeviceID := primitive.NewObjectID()
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				devState := models.DeviceState{
@@ -506,7 +506,7 @@ var _ = Describe("Devices", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+unexistingDeviceId.Hex()+"/values", &deviceState)
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+unexistingDeviceID.Hex()+"/values", &deviceState)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)

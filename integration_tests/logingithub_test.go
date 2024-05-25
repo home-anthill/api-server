@@ -32,7 +32,7 @@ var _ = Describe("LoginGithub", func() {
 			router.ServeHTTP(w, req)
 			Expect(http.StatusOK).To(Equal(w.Code))
 
-			response := models.LoginUrl{}
+			response := models.LoginURL{}
 			err := json.Unmarshal(w.Body.Bytes(), &response)
 			Expect(err).ShouldNot(HaveOccurred())
 

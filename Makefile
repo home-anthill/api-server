@@ -7,7 +7,8 @@
 #.PHONY:fmt
 
 lint:
-	golint ./...
+	# use staticcheck, because golint has been deprecated
+	staticcheck ./...
 .PHONY:lint
 
 vet:
@@ -42,6 +43,7 @@ test:
 
 deps:
 	go install golang.org/x/tools/go/analysis/passes/shadow/cmd/shadow@latest
+	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go get -u
 	go mod tidy
 	go install github.com/nikolaydubina/go-cover-treemap@latest

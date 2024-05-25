@@ -20,7 +20,7 @@ import (
 	"strings"
 )
 
-var OauthGithub *api.Github
+var oauthGithub *api.GitHub
 var auth *api.Auth
 var homes *api.Homes
 var devices *api.Devices
@@ -33,6 +33,7 @@ var keepAlive *api.KeepAlive
 var oauthCallbackURL string
 var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scopes
 
+// SetupRouter function
 func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
 	// init oauthCallbackURL based on httpOrigin
 	oauthCallbackURL = httpOrigin + "/api/callback/"
@@ -117,8 +118,9 @@ func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, coo
 	return router, cookieStore
 }
 
-func RegisterRoutes(router *gin.Engine, cookieStore *cookie.Store, ctx context.Context, logger *zap.SugaredLogger, validate *validator.Validate, collProfiles, collHomes, collDevices *mongo.Collection) {
-	OauthGithub = api.NewGithub(ctx, logger, collProfiles, oauthCallbackURL, oauthScopes)
+// RegisterRoutes function
+func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie.Store, logger *zap.SugaredLogger, validate *validator.Validate, collProfiles, collHomes, collDevices *mongo.Collection) {
+	oauthGithub = api.NewGithub(ctx, logger, collProfiles, oauthCallbackURL, oauthScopes)
 	auth = api.NewAuth(ctx, logger)
 	homes = api.NewHomes(ctx, logger, collHomes, collProfiles, validate)
 	devices = api.NewDevices(ctx, logger, collDevices, collProfiles, collHomes)
@@ -131,13 +133,13 @@ func RegisterRoutes(router *gin.Engine, cookieStore *cookie.Store, ctx context.C
 	// 12. Configure oAuth2 authentication
 	router.Use(sessions.Sessions("session", *cookieStore)) // session called "session"
 	// public API to get Login URL
-	router.GET("/api/login", OauthGithub.GetLoginURL)
+	router.GET("/api/login", oauthGithub.GetLoginURL)
 	// public APIs
 	router.POST("/api/register", register.PostRegister)
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
 	// oAuth2 config to register the oauth callback API
 	authorized := router.Group("/api/callback")
-	authorized.Use(OauthGithub.OauthAuth())
+	authorized.Use(oauthGithub.OauthAuth())
 	authorized.GET("", auth.LoginCallback)
 
 	// 13. Define /api group protected via JWTMiddleware
@@ -293,7 +295,7 @@ func getCsp() string {
 	// base-uri directive restricts the URLs which can be used in a document's <base> element
 	// self = Refers to the origin from which the protected document is being served, including the same URL scheme and port number.
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/base-uri
-	baseUri := "base-uri 'self'"
+	baseURI := "base-uri 'self'"
 
 	csp := childSrc + "; " +
 		connectSrc + "; " +
@@ -310,7 +312,7 @@ func getCsp() string {
 		scriptSrc + "; " +
 		styleSrc + "; " +
 		workerSrc + "; " +
-		baseUri + ";"
+		baseURI + ";"
 
 	return csp
 }

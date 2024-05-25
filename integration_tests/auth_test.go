@@ -2,7 +2,7 @@ package integration_tests
 
 import (
 	"api-server/initialization"
-	"api-server/test_utils"
+	"api-server/testuutils"
 	"api-server/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -36,13 +36,13 @@ var _ = Describe("LoginGithub", func() {
 	})
 
 	AfterEach(func() {
-		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
 	Context("calling protected api", func() {
 		It("should return an error if Authorization header is an empty string", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 			recorder := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
@@ -53,8 +53,8 @@ var _ = Describe("LoginGithub", func() {
 		})
 
 		It("should return an error if Bearer header is an empty string", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 			recorder := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
@@ -65,8 +65,8 @@ var _ = Describe("LoginGithub", func() {
 		})
 
 		It("should return an error if token is not valid", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 			recorder := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
@@ -77,8 +77,8 @@ var _ = Describe("LoginGithub", func() {
 		})
 
 		It("should return an error if token is expired", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
 			// create an expired JWY
 			expirationTime := time.Now().Add(-60 * time.Minute)

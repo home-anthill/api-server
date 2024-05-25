@@ -5,13 +5,16 @@ import (
 	"time"
 )
 
+// Type string
 type Type string
 
+// Controller and Sensor types
 const (
 	Controller Type = "controller"
 	Sensor     Type = "sensor"
 )
 
+// Feature struct
 type Feature struct {
 	UUID   string `json:"uuid" bson:"uuid"`
 	Type   Type   `json:"type" bson:"type"`
@@ -21,6 +24,7 @@ type Feature struct {
 	Unit   string `json:"unit" bson:"unit"`
 }
 
+// Device struct
 type Device struct {
 	//swagger:ignore
 	ID           primitive.ObjectID `json:"id" bson:"_id"`
@@ -33,6 +37,7 @@ type Device struct {
 	ModifiedAt   time.Time          `json:"modifiedAt" bson:"modifiedAt"`
 }
 
+// DeviceState struct
 type DeviceState struct {
 	// For 'On' you cannot use required for boolean, otherwise you cannot set as false
 	On          bool  `json:"on" validate:"boolean"`
@@ -43,6 +48,7 @@ type DeviceState struct {
 	ModifiedAt  int64 `json:"modifiedAt"` // as unix epoch in milliseconds
 }
 
+// SensorValue struct
 type SensorValue struct {
 	UUID       string  `json:"uuid"` // feature uuid
 	Value      float64 `json:"value"`

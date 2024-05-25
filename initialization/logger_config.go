@@ -7,6 +7,7 @@ import (
 	"os"
 )
 
+// InitLogger function
 func InitLogger() *zap.SugaredLogger {
 	// Init logger
 	logger := getLogger()

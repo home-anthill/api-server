@@ -3,7 +3,7 @@ package integration_tests
 import (
 	"api-server/initialization"
 	"api-server/models"
-	"api-server/test_utils"
+	"api-server/testuutils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -94,25 +94,25 @@ var _ = Describe("Devices", func() {
 	})
 
 	AfterEach(func() {
-		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
 	Context("calling devices api GET", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collDevices, deviceController)
+			err := testuutils.InsertOne(ctx, collDevices, deviceController)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = test_utils.InsertOne(ctx, collDevices, deviceSensor)
+			err = testuutils.InsertOne(ctx, collDevices, deviceSensor)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns a device", func() {
 			It("should get a list of devices", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -132,30 +132,30 @@ var _ = Describe("Devices", func() {
 
 	Context("calling devices api DELETE", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collDevices, deviceController)
+			err := testuutils.InsertOne(ctx, collDevices, deviceController)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = test_utils.InsertOne(ctx, collDevices, deviceSensor)
+			err = testuutils.InsertOne(ctx, collDevices, deviceSensor)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = test_utils.InsertOne(ctx, collHomes, home)
+			err = testuutils.InsertOne(ctx, collHomes, home)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns 2 devices", func() {
 			It("should remove the first one successfully", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				err = test_utils.AssignDeviceToHomeAndRoom(ctx, collHomes, home.ID, home.Rooms[0].ID, deviceController.ID)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				devices, err := test_utils.FindAll[models.Device](ctx, collDevices)
+				err = testuutils.AssignDeviceToHomeAndRoom(ctx, collHomes, home.ID, home.Rooms[0].ID, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				devices, err := testuutils.FindAll[models.Device](ctx, collDevices)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(devices).To(HaveLen(2))
 
@@ -168,7 +168,7 @@ var _ = Describe("Devices", func() {
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"message":"device has been deleted"}`))
 
-				devices, err = test_utils.FindAll[models.Device](ctx, collDevices)
+				devices, err = testuutils.FindAll[models.Device](ctx, collDevices)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(devices).To(HaveLen(1))
 				Expect(devices[0].ID).To(Equal(deviceSensor.ID))
@@ -182,11 +182,11 @@ var _ = Describe("Devices", func() {
 
 		When("you pass bad inputs", func() {
 			It("should return an error, because of bad deviceId", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				badDeviceId := "bad_device_id"
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				badDeviceID := "bad_device_id"
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+badDeviceId, nil)
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+badDeviceID, nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -196,7 +196,7 @@ var _ = Describe("Devices", func() {
 			})
 
 			It("should return an error, because device is not owned by profile", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceController.ID.Hex(), nil)

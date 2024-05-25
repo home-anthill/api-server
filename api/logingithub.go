@@ -23,14 +23,16 @@ import (
 	"time"
 )
 
-type Github struct {
+// GitHub struct
+type GitHub struct {
 	collectionProfiles *mongo.Collection
 	ctx                context.Context
 	logger             *zap.SugaredLogger
 	oauthConfig        *oauth2.Config
 }
 
-var DbGithubUserTestmock = models.Github{
+// DbGithubUserTestmock mock object
+var DbGithubUserTestmock = models.GitHub{
 	ID:        123456,
 	Login:     "Test",
 	Name:      "Test Test",
@@ -38,7 +40,8 @@ var DbGithubUserTestmock = models.Github{
 	AvatarURL: "https://avatars.githubusercontent.com/u/123456?v=4",
 }
 
-func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, redirectURL string, scopes []string) *Github {
+// NewGithub function
+func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, redirectURL string, scopes []string) *GitHub {
 	gob.Register(models.Profile{})
 	// init global configuration with received params
 	oauthConfig := &oauth2.Config{
@@ -48,7 +51,7 @@ func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfile
 		Scopes:       scopes,
 		Endpoint:     oauth2gh.Endpoint,
 	}
-	return &Github{
+	return &GitHub{
 		collectionProfiles: collectionProfiles,
 		ctx:                ctx,
 		logger:             logger,
@@ -56,7 +59,8 @@ func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfile
 	}
 }
 
-func (handler *Github) GetLoginURL(c *gin.Context) {
+// GetLoginURL function
+func (handler *GitHub) GetLoginURL(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetLoginURL called")
 
 	state, err := utils.RandToken()
@@ -79,12 +83,13 @@ func (handler *Github) GetLoginURL(c *gin.Context) {
 	noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
 	handler.logger.Info("REST - GET - GetLoginURL - result noUnicodeString: ", noUnicodeString)
 
-	loginUrlRes := models.LoginUrl{}
-	loginUrlRes.LoginURL = noUnicodeString
-	c.JSON(http.StatusOK, &loginUrlRes)
+	loginURLRes := models.LoginURL{}
+	loginURLRes.LoginURL = noUnicodeString
+	c.JSON(http.StatusOK, &loginURLRes)
 }
 
-func (handler *Github) OauthAuth() gin.HandlerFunc {
+// OauthAuth function
+func (handler *GitHub) OauthAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// read current profile from session.
 		// if available save it in the context
@@ -104,7 +109,7 @@ func (handler *Github) OauthAuth() gin.HandlerFunc {
 			return
 		}
 
-		var dbGithubUser models.Github
+		var dbGithubUser models.GitHub
 		if os.Getenv("ENV") != "testing" {
 			// read the "code"
 			tok, err := handler.oauthConfig.Exchange(context.TODO(), c.Query("code"))
@@ -123,7 +128,7 @@ func (handler *Github) OauthAuth() gin.HandlerFunc {
 				return
 			}
 
-			dbGithubUser = models.Github{
+			dbGithubUser = models.GitHub{
 				ID:        *githubClientUser.ID,
 				Login:     *githubClientUser.Login,
 				Name:      *githubClientUser.Name,
@@ -168,7 +173,7 @@ func (handler *Github) OauthAuth() gin.HandlerFunc {
 				var newProfile models.Profile
 				newProfile.ID = primitive.NewObjectID()
 				newProfile.Github = dbGithubUser
-				newProfile.ApiToken = uuid.NewString()
+				newProfile.APIToken = uuid.NewString()
 				newProfile.Homes = []primitive.ObjectID{}   // empty slice of ObjectIDs
 				newProfile.Devices = []primitive.ObjectID{} // empty slice of ObjectIDs
 				newProfile.CreatedAt = currentDate

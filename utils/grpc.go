@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"api-server/custom_errors"
+	"api-server/customerrors"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -17,7 +17,7 @@ func BuildSecurityDialOption() (grpc.DialOption, bool, error) {
 	if os.Getenv("GRPC_TLS") == "true" {
 		tlsCredentials, errTLS := LoadTLSCredentials()
 		if errTLS != nil {
-			return nil, false, custom_errors.Wrap(http.StatusInternalServerError, errTLS, "loadTLSCredentials cannot read certificates")
+			return nil, false, customerrors.Wrap(http.StatusInternalServerError, errTLS, "loadTLSCredentials cannot read certificates")
 		}
 		securityDialOption = grpc.WithTransportCredentials(tlsCredentials)
 		return securityDialOption, true, nil

@@ -10,6 +10,7 @@ import (
 	"os"
 )
 
+// Start function
 func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Collection, *mongo.Collection, *mongo.Collection) {
 	// 1. Init logger
 	logger := InitLogger()
@@ -43,19 +44,16 @@ func BuildServer(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, con
 	// Instantiate GIN and apply some middlewares
 	logger.Info("BuildServer - GIN - Initializing...")
 	router, cookieStore := SetupRouter(httpOrigin, logger)
-	RegisterRoutes(router, &cookieStore, ctx, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
+	RegisterRoutes(ctx, router, &cookieStore, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
 	return router, ctx, collectionProfiles, collectionHomes, collectionDevices
 }
 
 func setGinMode() {
-	switch os.Getenv("ENV") {
-	case "prod":
+	if os.Getenv("ENV") == "prod" {
 		gin.SetMode(gin.ReleaseMode)
-		break
-	case "testing":
+	} else if os.Getenv("ENV") == "testing" {
 		gin.SetMode(gin.TestMode)
-		break
-	default:
+	} else {
 		gin.SetMode(gin.DebugMode)
 	}
 }

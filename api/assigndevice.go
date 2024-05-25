@@ -16,11 +16,13 @@ import (
 	"time"
 )
 
+// AssignDeviceReq struct
 type AssignDeviceReq struct {
-	HomeId string `json:"homeId" validate:"required"`
-	RoomId string `json:"roomId" validate:"required"`
+	HomeID string `json:"homeId" validate:"required"`
+	RoomID string `json:"roomId" validate:"required"`
 }
 
+// AssignDevice struct
 type AssignDevice struct {
 	collectionProfiles *mongo.Collection
 	collectionHomes    *mongo.Collection
@@ -29,6 +31,7 @@ type AssignDevice struct {
 	validate           *validator.Validate
 }
 
+// NewAssignDevice function
 func NewAssignDevice(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, collectionHomes *mongo.Collection, validate *validator.Validate) *AssignDevice {
 	return &AssignDevice{
 		collectionProfiles: collectionProfiles,
@@ -39,11 +42,12 @@ func NewAssignDevice(ctx context.Context, logger *zap.SugaredLogger, collectionP
 	}
 }
 
+// PutAssignDeviceToHomeRoom function
 func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 	handler.logger.Info("REST - PUT - PutAssignDeviceToHomeRoom called")
 
-	deviceId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	deviceID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of device 'id' path param")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of device 'id' path param"})
 		return
@@ -61,9 +65,9 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
 		return
 	}
-	homeObjId, errHomeObjId := primitive.ObjectIDFromHex(assignDeviceReq.HomeId)
-	roomObjId, errRoomObjId := primitive.ObjectIDFromHex(assignDeviceReq.RoomId)
-	if errHomeObjId != nil || errRoomObjId != nil {
+	homeObjID, errHomeObjID := primitive.ObjectIDFromHex(assignDeviceReq.HomeID)
+	roomObjID, errRoomObjID := primitive.ObjectIDFromHex(assignDeviceReq.RoomID)
+	if errHomeObjID != nil || errRoomObjID != nil {
 		handler.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of one of the values in body")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the values in body"})
 		return
@@ -88,49 +92,49 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		return
 	}
 
-	// 1. profile must be the owner of device with id = `deviceId`
-	if _, found := utils.Find(profile.Devices, deviceId); !found {
-		handler.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of device with id = '%s'", deviceId)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "you are not the owner of this device id = " + deviceId.Hex()})
+	// 1. profile must be the owner of device with id = `deviceID`
+	if _, found := utils.Find(profile.Devices, deviceID); !found {
+		handler.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of device with id = '%s'", deviceID)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "you are not the owner of this device id = " + deviceID.Hex()})
 		return
 	}
 
-	// 2. profile must be the owner of home with id = `assignDeviceReq.HomeId`
-	if _, found := utils.Find(profile.Homes, homeObjId); !found {
-		handler.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of home with id = '%s'", assignDeviceReq.HomeId)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "you are not the owner of home id = " + assignDeviceReq.HomeId})
+	// 2. profile must be the owner of home with id = `assignDeviceReq.HomeID`
+	if _, found := utils.Find(profile.Homes, homeObjID); !found {
+		handler.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of home with id = '%s'", assignDeviceReq.HomeID)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "you are not the owner of home id = " + assignDeviceReq.HomeID})
 		return
 	}
 
-	// 3. `assignDeviceReq.RoomId` must be a room of home with id = `assignDeviceReq.HomeId`
+	// 3. `assignDeviceReq.RoomID` must be a room of home with id = `assignDeviceReq.HomeID`
 	var home models.Home
 	err = handler.collectionHomes.FindOne(handler.ctx, bson.M{
-		"_id": homeObjId,
+		"_id": homeObjID,
 	}).Decode(&home)
 	if err != nil {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find home with id = '%s'", assignDeviceReq.HomeId)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find home id = " + assignDeviceReq.HomeId})
+		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find home with id = '%s'", assignDeviceReq.HomeID)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find home id = " + assignDeviceReq.HomeID})
 		return
 	}
 	// `roomID` must be a room of `home`
 	var roomFound bool
 	for _, val := range home.Rooms {
-		if val.ID == roomObjId {
+		if val.ID == roomObjID {
 			roomFound = true
 		}
 	}
 	if !roomFound {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find room with id = '%s'", assignDeviceReq.RoomId)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find room id = " + assignDeviceReq.RoomId})
+		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find room with id = '%s'", assignDeviceReq.RoomID)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find room id = " + assignDeviceReq.RoomID})
 		return
 	}
 
-	// 4. remove device with id = `deviceId` from all rooms of profile's homes
+	// 4. remove device with id = `deviceID` from all rooms of profile's homes
 	filterProfileHomes := bson.M{"_id": bson.M{"$in": profile.Homes}} // filter homes owned by the profile
 	updateClean := bson.M{
 		"$pull": bson.M{
 			// using the `all positional operator` https://www.mongodb.com/docs/manual/reference/operator/update/positional-all/
-			"rooms.$[].devices": deviceId,
+			"rooms.$[].devices": deviceID,
 		},
 	}
 	_, errClean := handler.collectionHomes.UpdateMany(handler.ctx, filterProfileHomes, updateClean)
@@ -140,15 +144,15 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		return
 	}
 
-	// 5. assign device with id = `deviceId` to room with id = `assignDeviceReq.RoomId` of home with id = `assignDeviceReq.HomeId`
-	filterHome := bson.D{bson.E{Key: "_id", Value: homeObjId}}
-	arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomObjId}}}
+	// 5. assign device with id = `deviceID` to room with id = `assignDeviceReq.RoomID` of home with id = `assignDeviceReq.HomeID`
+	filterHome := bson.D{bson.E{Key: "_id", Value: homeObjID}}
+	arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomObjID}}}
 	opts := options.UpdateOptions{
 		ArrayFilters: &arrayFiltersRoom,
 	}
 	update := bson.M{
 		"$push": bson.M{
-			"rooms.$[x].devices": deviceId,
+			"rooms.$[x].devices": deviceID,
 		},
 		"$set": bson.M{
 			"rooms.$[x].modifiedAt": time.Now(),

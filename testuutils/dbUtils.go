@@ -1,9 +1,9 @@
-package test_utils
+package testuutils
 
 import (
 	"api-server/models"
 	"context"
-	. "github.com/onsi/gomega"
+	gomega "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -14,11 +14,11 @@ import (
 func DropAllCollections(ctx context.Context, collProfiles, collHomes, collDevices *mongo.Collection) {
 	var err error
 	err = collProfiles.Drop(ctx)
-	Expect(err).ShouldNot(HaveOccurred())
+	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	err = collHomes.Drop(ctx)
-	Expect(err).ShouldNot(HaveOccurred())
+	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	err = collDevices.Drop(ctx)
-	Expect(err).ShouldNot(HaveOccurred())
+	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 }
 
 func FindAll[T interface{}](ctx context.Context, collection *mongo.Collection) ([]T, error) {

@@ -4,7 +4,7 @@ import (
 	"api-server/api"
 	"api-server/initialization"
 	"api-server/models"
-	"api-server/test_utils"
+	"api-server/testuutils"
 	"bytes"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
@@ -70,20 +70,20 @@ var _ = Describe("Homes", func() {
 	})
 
 	AfterEach(func() {
-		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
 	Context("calling homes api GET", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collHomes, home1)
+			err := testuutils.InsertOne(ctx, collHomes, home1)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = test_utils.InsertOne(ctx, collHomes, home2)
+			err = testuutils.InsertOne(ctx, collHomes, home2)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile doesn't own any homes", func() {
 			It("should get a list of empty homes", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodGet, "/api/homes", nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -100,10 +100,10 @@ var _ = Describe("Homes", func() {
 
 		When("profile owns an home", func() {
 			It("should get a list of homes", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -140,12 +140,12 @@ var _ = Describe("Homes", func() {
 
 		When("profile owns more homes", func() {
 			It("should get a list of homes", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -186,7 +186,7 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&homeBuf).Encode(home3)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/homes", &homeBuf)
 				req.Header.Add("Cookie", cookieSession)
@@ -204,7 +204,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if body is missing", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/homes", nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -228,7 +228,7 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&homeBuf).Encode(home3)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/homes", &homeBuf)
 				req.Header.Add("Cookie", cookieSession)
@@ -243,16 +243,16 @@ var _ = Describe("Homes", func() {
 
 	Context("calling homes api PUT", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collHomes, home1)
+			err := testuutils.InsertOne(ctx, collHomes, home1)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns a single home", func() {
 			It("should update an existing home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				updateHome1 := api.HomeUpdateReq{
@@ -272,7 +272,7 @@ var _ = Describe("Homes", func() {
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"message":"home has been updated"}`))
 
-				home1FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
+				home1FromDb, err := testuutils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(home1FromDb.Name).To(Equal(updateHome1.Name))
 				Expect(home1FromDb.Location).To(Equal(updateHome1.Location))
@@ -281,10 +281,10 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if homeId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
-				badHomeId := "bad_home_id"
-				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+badHomeId, nil)
+				badHomeID := "bad_home_id"
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+badHomeID, nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -294,7 +294,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if body is missing", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -314,7 +314,7 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&homeBuf).Encode(updateHome1)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex(), &homeBuf)
 				req.Header.Add("Cookie", cookieSession)
@@ -326,7 +326,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if profile is not the owner of this home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 
 				updateHome1 := api.HomeUpdateReq{
 					Name:     "home3",
@@ -350,16 +350,16 @@ var _ = Describe("Homes", func() {
 
 	Context("calling homes api DELETE", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collHomes, home1)
+			err := testuutils.InsertOne(ctx, collHomes, home1)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns an home", func() {
 			It("should delete a home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -371,15 +371,15 @@ var _ = Describe("Homes", func() {
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"message":"home has been deleted"}`))
 
-				_, err = test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
+				_, err = testuutils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).Should(HaveOccurred())
 			})
 
 			It("should return an error, if homeId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
-				badHomeId := "bad_home_id"
-				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+badHomeId, nil)
+				badHomeID := "bad_home_id"
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+badHomeID, nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -389,7 +389,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if profile is not the owner of this home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -403,14 +403,14 @@ var _ = Describe("Homes", func() {
 
 		When("profile owns more home", func() {
 			It("should delete a home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.InsertOne(ctx, collHomes, home2)
+				err := testuutils.InsertOne(ctx, collHomes, home2)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -423,10 +423,10 @@ var _ = Describe("Homes", func() {
 				Expect(recorder.Body.String()).To(Equal(`{"message":"home has been deleted"}`))
 
 				// `home1` should be removed via delete api
-				_, err = test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
+				_, err = testuutils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).Should(HaveOccurred())
 				// `home2` should be still in db
-				homeFound, err := test_utils.FindOneById[models.Home](ctx, collHomes, home2.ID)
+				homeFound, err := testuutils.FindOneById[models.Home](ctx, collHomes, home2.ID)
 				Expect(err).Should(Not(HaveOccurred()))
 				Expect(homeFound.ID).To(Equal(home2.ID))
 			})
@@ -435,16 +435,16 @@ var _ = Describe("Homes", func() {
 
 	Context("calling rooms api GET", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collHomes, home1)
+			err := testuutils.InsertOne(ctx, collHomes, home1)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns an home with rooms", func() {
 			It("should get the list of rooms of an home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -465,10 +465,10 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if homeId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				badHomeId := "bad_home_id"
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				badHomeID := "bad_home_id"
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+badHomeId+"/rooms", nil)
+				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+badHomeID+"/rooms", nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -478,7 +478,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if profile is not the owner of this home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+home1.ID.Hex()+"/rooms", nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -490,16 +490,16 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, if homeId is not in db", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				missingHomeId := primitive.NewObjectID()
+				missingHomeID := primitive.NewObjectID()
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+missingHomeId.Hex()+"/rooms", nil)
+				req := httptest.NewRequest(http.MethodGet, "/api/homes/"+missingHomeID.Hex()+"/rooms", nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -512,7 +512,7 @@ var _ = Describe("Homes", func() {
 
 	Context("calling rooms api POST", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collHomes, home2)
+			err := testuutils.InsertOne(ctx, collHomes, home2)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -526,10 +526,10 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home2.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -541,7 +541,7 @@ var _ = Describe("Homes", func() {
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"message":"room added to the home"}`))
 
-				home2FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home2.ID)
+				home2FromDb, err := testuutils.FindOneById[models.Home](ctx, collHomes, home2.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(home2FromDb.Rooms).To(HaveLen(1))
 				Expect(home2FromDb.Rooms[0].Name).To(Equal(room1.Name))
@@ -551,10 +551,10 @@ var _ = Describe("Homes", func() {
 
 		When("receive bad inputs", func() {
 			It("should return an error, because homeId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				badHomeId := "bad_home_id"
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				badHomeID := "bad_home_id"
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+badHomeId+"/rooms", nil)
+				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+badHomeID+"/rooms", nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -564,7 +564,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, because body is missing", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+home1.ID.Hex()+"/rooms", nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -584,7 +584,7 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+home1.ID.Hex()+"/rooms", &roomBuf)
 				req.Header.Add("Cookie", cookieSession)
@@ -604,7 +604,7 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				// profile doesn't have `home2` assigned to it
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+home2.ID.Hex()+"/rooms", &roomBuf)
@@ -625,15 +625,15 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingHomeId := primitive.NewObjectID()
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingHomeID := primitive.NewObjectID()
 
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+missingHomeId.Hex()+"/rooms", &roomBuf)
+				req := httptest.NewRequest(http.MethodPost, "/api/homes/"+missingHomeID.Hex()+"/rooms", &roomBuf)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -646,7 +646,7 @@ var _ = Describe("Homes", func() {
 
 	Context("calling rooms api PUT", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collHomes, home1)
+			err := testuutils.InsertOne(ctx, collHomes, home1)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
@@ -660,10 +660,10 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -675,7 +675,7 @@ var _ = Describe("Homes", func() {
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"message":"room has been updated"}`))
 
-				home1FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
+				home1FromDb, err := testuutils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(home1FromDb.Rooms).To(HaveLen(len(home1.Rooms)))
 				Expect(home1FromDb.Rooms[0].Name).To(Equal(room1Upd.Name))
@@ -685,10 +685,10 @@ var _ = Describe("Homes", func() {
 
 		When("receive bad inputs", func() {
 			It("should return an error, because homeId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				badHomeId := "bad_home_id"
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				badHomeID := "bad_home_id"
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+badHomeId+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+badHomeID+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -698,10 +698,10 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, because roomId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				badRoomId := "bad_room_id"
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				badRoomID := "bad_room_id"
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+badRoomId, nil)
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+badRoomID, nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -711,7 +711,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, because body is missing", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -731,7 +731,7 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				//profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
 				//
 				//err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
@@ -756,7 +756,7 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), &roomBuf)
 				req.Header.Add("Cookie", cookieSession)
@@ -776,15 +776,15 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingHomeId := primitive.NewObjectID()
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingHomeID := primitive.NewObjectID()
 
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+missingHomeId.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), &roomBuf)
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+missingHomeID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), &roomBuf)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -802,15 +802,15 @@ var _ = Describe("Homes", func() {
 				err := json.NewEncoder(&roomBuf).Encode(room1Upd)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingRoomId := primitive.NewObjectID()
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingRoomID := primitive.NewObjectID()
 
-				err = test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+missingRoomId.Hex(), &roomBuf)
+				req := httptest.NewRequest(http.MethodPut, "/api/homes/"+home1.ID.Hex()+"/rooms/"+missingRoomID.Hex(), &roomBuf)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -823,16 +823,16 @@ var _ = Describe("Homes", func() {
 
 	Context("calling rooms api DELETE", func() {
 		BeforeEach(func() {
-			err := test_utils.InsertOne(ctx, collHomes, home1)
+			err := testuutils.InsertOne(ctx, collHomes, home1)
 			Expect(err).ShouldNot(HaveOccurred())
 		})
 
 		When("profile owns an home", func() {
 			It("should delete a room of that home", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
@@ -844,7 +844,7 @@ var _ = Describe("Homes", func() {
 				Expect(recorder.Code).To(Equal(http.StatusOK))
 				Expect(recorder.Body.String()).To(Equal(`{"message":"room has been deleted"}`))
 
-				home1FromDb, err := test_utils.FindOneById[models.Home](ctx, collHomes, home1.ID)
+				home1FromDb, err := testuutils.FindOneById[models.Home](ctx, collHomes, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(home1FromDb.Rooms).To(HaveLen(len(home1.Rooms) - 1))
 				Expect(home1FromDb.Rooms[0].Name).To(Equal(home1.Rooms[1].Name))
@@ -854,10 +854,10 @@ var _ = Describe("Homes", func() {
 
 		When("receive bad inputs", func() {
 			It("should return an error, because homeId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				badHomeId := "bad_home_id"
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				badHomeID := "bad_home_id"
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+badHomeId+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+badHomeID+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -867,10 +867,10 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, because roomId is wrong", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				badRoomId := "bad_room_id"
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				badRoomID := "bad_room_id"
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+badRoomId, nil)
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+badRoomID, nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -880,7 +880,7 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, because home is not owned by profile", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
@@ -892,15 +892,15 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, because homeId is not in db", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				missingHomeId := primitive.NewObjectID()
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeId)
+				missingHomeID := primitive.NewObjectID()
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+missingHomeId.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+missingHomeID.Hex()+"/rooms/"+home1.Rooms[0].ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -910,15 +910,15 @@ var _ = Describe("Homes", func() {
 			})
 
 			It("should return an error, because roomId is not a room of home1 in db", func() {
-				jwtToken, cookieSession := test_utils.GetJwt(router)
-				profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingRoomId := primitive.NewObjectID()
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingRoomID := primitive.NewObjectID()
 
-				err := test_utils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
+				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+missingRoomId.Hex(), nil)
+				req := httptest.NewRequest(http.MethodDelete, "/api/homes/"+home1.ID.Hex()+"/rooms/"+missingRoomID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)

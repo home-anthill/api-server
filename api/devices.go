@@ -14,6 +14,7 @@ import (
 	"os"
 )
 
+// Devices struct
 type Devices struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
@@ -23,27 +24,20 @@ type Devices struct {
 	grpcTarget         string
 }
 
+// NewDevices function
 func NewDevices(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, collectionHomes *mongo.Collection) *Devices {
-	grpcUrl := os.Getenv("GRPC_URL")
+	grpcURL := os.Getenv("GRPC_URL")
 	return &Devices{
 		collection:         collection,
 		collectionProfiles: collectionProfiles,
 		collectionHomes:    collectionHomes,
 		ctx:                ctx,
 		logger:             logger,
-		grpcTarget:         grpcUrl,
+		grpcTarget:         grpcURL,
 	}
 }
 
-// swagger:operation GET /devices devices getDevices
-// Returns list of devices
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
+// GetDevices function
 func (handler *Devices) GetDevices(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetDevices called")
 
@@ -87,22 +81,12 @@ func (handler *Devices) GetDevices(c *gin.Context) {
 	c.JSON(http.StatusOK, devices)
 }
 
-// swagger:operation DELETE /devices/{id} devices deleteDevice
-// Delete an existing device
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'404':
-//	    description: Invalid home ID
+// DeleteDevice function
 func (handler *Devices) DeleteDevice(c *gin.Context) {
 	handler.logger.Info("REST - DELETE - DeleteDevice called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - GET - DeleteDevice - wrong format of device id")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of device id"})
 		return
@@ -129,7 +113,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 		return
 	}
 	// check if the profile contains that device -> if profile is the owner of that device
-	found := utils.Contains(profile.Devices, objectId)
+	found := utils.Contains(profile.Devices, objectID)
 	if !found {
 		handler.logger.Error("REST - DELETE - DeleteDevices - cannot delete device, because it is not in your profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete device, because it is not in your profile"})
@@ -144,7 +128,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 	update := bson.M{
 		"$pull": bson.M{
 			// using the `all positional operator` https://www.mongodb.com/docs/manual/reference/operator/update/positional-all/
-			"rooms.$[].devices": objectId,
+			"rooms.$[].devices": objectID,
 		},
 	}
 	_, err2 := handler.collectionHomes.UpdateMany(handler.ctx, filter, update)
@@ -158,7 +142,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 	_, errUpd := handler.collectionProfiles.UpdateOne(
 		handler.ctx,
 		bson.M{"_id": profileSession.ID},
-		bson.M{"$pull": bson.M{"devices": objectId}},
+		bson.M{"$pull": bson.M{"devices": objectID}},
 	)
 	if errUpd != nil {
 		handler.logger.Error("REST - DELETE - DeleteDevices - cannot remove device from profile")
@@ -168,7 +152,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 
 	// remove device
 	_, errDel := handler.collection.DeleteOne(handler.ctx, bson.M{
-		"_id": objectId,
+		"_id": objectID,
 	})
 	if errDel != nil {
 		handler.logger.Error("REST - DELETE - DeleteDevices - cannot remove device")

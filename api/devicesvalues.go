@@ -2,7 +2,7 @@ package api
 
 import (
 	device3 "api-server/api/grpc/device"
-	"api-server/custom_errors"
+	"api-server/customerrors"
 	"api-server/models"
 	"api-server/utils"
 	"encoding/json"
@@ -23,6 +23,7 @@ import (
 	"time"
 )
 
+// DevicesValues struct
 type DevicesValues struct {
 	collection         *mongo.Collection
 	collectionProfiles *mongo.Collection
@@ -30,14 +31,15 @@ type DevicesValues struct {
 	ctx                context.Context
 	logger             *zap.SugaredLogger
 	grpcTarget         string
-	sensorGetValueUrl  string
+	sensorGetValueURL  string
 	validate           *validator.Validate
 }
 
+// NewDevicesValues function
 func NewDevicesValues(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, collectionHomes *mongo.Collection, validate *validator.Validate) *DevicesValues {
-	grpcUrl := os.Getenv("GRPC_URL")
-	sensorServerUrl := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
-	sensorGetValueUrl := sensorServerUrl + os.Getenv("HTTP_SENSOR_GETVALUE_API")
+	grpcURL := os.Getenv("GRPC_URL")
+	sensorServerURL := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
+	sensorGetValueURL := sensorServerURL + os.Getenv("HTTP_SENSOR_GETVALUE_API")
 
 	return &DevicesValues{
 		collection:         collection,
@@ -45,19 +47,20 @@ func NewDevicesValues(ctx context.Context, logger *zap.SugaredLogger, collection
 		collectionHomes:    collectionHomes,
 		ctx:                ctx,
 		logger:             logger,
-		grpcTarget:         grpcUrl,
-		sensorGetValueUrl:  sensorGetValueUrl,
+		grpcTarget:         grpcURL,
+		sensorGetValueURL:  sensorGetValueURL,
 		validate:           validate,
 	}
 }
 
 // ------------------------------ Public methods ------------------------------
 
+// GetValuesDevice function
 func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetValuesDevice called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - GET - GetValuesDevice - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
@@ -73,13 +76,13 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 	}
 
 	// check if device is in profile (device owned by profile)
-	if !isDeviceInProfile(&profile, objectId) {
+	if !isDeviceInProfile(&profile, objectID) {
 		handler.logger.Error("REST - GET - GetValuesDevice - this device is not in your profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
-	device, err := handler.getDevice(objectId)
+	device, err := handler.getDevice(objectID)
 	if err != nil {
 		handler.logger.Error("REST - GET - GetValuesDevice - cannot find device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
@@ -90,7 +93,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 
 	if isController {
 		// Set up a connection to the server.
-		conn, err := grpc.Dial(handler.grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+		conn, err := grpc.NewClient(handler.grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			handler.logger.Error("REST - GET - GetValuesDevice - cannot establish gRPC connection")
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values - connection error"})
@@ -104,7 +107,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 		response, errSend := client.GetStatus(ctx, &device3.StatusRequest{
 			Id:       device.ID.Hex(),
 			Mac:      device.Mac,
-			ApiToken: profile.ApiToken,
+			ApiToken: profile.APIToken,
 		})
 
 		if errSend != nil {
@@ -125,9 +128,10 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 	} else {
 		deviceValues := make([]models.SensorValue, 0)
 		for _, feature := range device.Features {
-			path := handler.sensorGetValueUrl + device.UUID + "/" + feature.Name
+			path := handler.sensorGetValueURL + device.UUID + "/" + feature.Name
 			_, result, err := handler.getSensorValue(path)
 			if err != nil {
+				handler.logger.Errorf("REST - GetValuesDevice - cannot get sensor value from remote service = %#v", err)
 				// TODO manage errors
 				// return custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot register sensor device feature "+feature.Name)
 			}
@@ -135,7 +139,8 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 			sensorFeatureValue := models.SensorValue{}
 			err = json.Unmarshal([]byte(result), &sensorFeatureValue)
 			if err != nil {
-				// TODO
+				handler.logger.Errorf("REST - GetValuesDevice - cannot unmarshal JSON response from sensor value remote service = %#v", err)
+				// TODO manage errors
 			}
 			// add to the object with the value also other information
 			// to associate the value to the specific feature
@@ -150,12 +155,13 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 	}
 }
 
+// PostValueDevice function
 func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostValueDevice called")
 
-	objectId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
-		handler.logger.Errorf("REST - GET - PostValueDevice - wrong format of the path param 'id', err %#v", errId)
+	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
+		handler.logger.Errorf("REST - GET - PostValueDevice - wrong format of the path param 'id', err %#v", errID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
 	}
@@ -187,20 +193,20 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 	}
 
 	// check if device is in profile (device owned by profile)
-	if !isDeviceInProfile(&profile, objectId) {
+	if !isDeviceInProfile(&profile, objectID) {
 		handler.logger.Error("REST - POST - PostValueDevice - this is not your device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
 	}
 	// get device from db
-	device, err := handler.getDevice(objectId)
+	device, err := handler.getDevice(objectID)
 	if err != nil {
 		handler.logger.Errorf("REST - POST - PostValueDevice - cannot find device, err %#v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
 	// send via gRPC
-	err = handler.sendViaGrpc(&device, &value, profile.ApiToken)
+	err = handler.sendViaGrpc(&device, &value, profile.APIToken)
 	if err != nil {
 		handler.logger.Errorf("REST - POST - PostValueDevice - cannot set value via gRPC, err %#v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
@@ -215,7 +221,7 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 func (handler *DevicesValues) getSensorValue(url string) (int, string, error) {
 	response, err := http.Get(url)
 	if err != nil {
-		return -1, "", custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot get sensor value via HTTP")
+		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot get sensor value via HTTP")
 	}
 	defer response.Body.Close()
 	body, _ := io.ReadAll(response.Body)
@@ -229,7 +235,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 	securityDialOption, isSecure, err := utils.BuildSecurityDialOption()
 	if err != nil {
 		handler.logger.Errorf("gRPC - sendViaGrpc - Cannot build security dial option object!, err %#v", err)
-		return custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot create securityDialOption to prepare the gRPC connection")
+		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create securityDialOption to prepare the gRPC connection")
 	}
 	if isSecure {
 		handler.logger.Info("gRPC - sendViaGrpc - GRPC secure enabled!")
@@ -242,8 +248,8 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 	conn, err := grpc.DialContext(contextBg, handler.grpcTarget, securityDialOption, grpc.WithBlock())
 	if err != nil {
 		handler.logger.Errorf("gRPC - sendViaGrpc - cannot connect via gRPC, err %#v", err)
-		return custom_errors.GrpcSendError{
-			Status:  custom_errors.ConnectionError,
+		return customerrors.GrpcSendError{
+			Status:  customerrors.ConnectionError,
 			Message: "Cannot connect to api-devices",
 		}
 	}
@@ -275,25 +281,25 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 	return errSend
 }
 
-func (handler *DevicesValues) getDevice(deviceId primitive.ObjectID) (models.Device, error) {
-	handler.logger.Info("gRPC - getDevice - searching device with objectId: ", deviceId)
+func (handler *DevicesValues) getDevice(deviceID primitive.ObjectID) (models.Device, error) {
+	handler.logger.Info("gRPC - getDevice - searching device with objectId: ", deviceID)
 	var device models.Device
 	err := handler.collection.FindOne(handler.ctx, bson.M{
-		"_id": deviceId,
+		"_id": deviceID,
 	}).Decode(&device)
 	handler.logger.Info("Device found: ", device)
 	return device, err
 }
 
 // check if the profile contains that device -> if profile is the owner of that device
-func isDeviceInProfile(profile *models.Profile, deviceId primitive.ObjectID) bool {
-	return utils.Contains(profile.Devices, deviceId)
+func isDeviceInProfile(profile *models.Profile, deviceID primitive.ObjectID) bool {
+	return utils.Contains(profile.Devices, deviceID)
 }
 
 func getType(value interface{}) string {
-	if t := reflect.TypeOf(value); t.Kind() == reflect.Ptr {
+	t := reflect.TypeOf(value)
+	if t.Kind() == reflect.Ptr {
 		return "*" + t.Elem().Name()
-	} else {
-		return t.Name()
 	}
+	return t.Name()
 }

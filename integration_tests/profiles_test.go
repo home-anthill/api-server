@@ -3,7 +3,7 @@ package integration_tests
 import (
 	"api-server/api"
 	"api-server/initialization"
-	"api-server/test_utils"
+	"api-server/testuutils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo/v2"
@@ -18,7 +18,7 @@ import (
 )
 
 type newTokenResponse struct {
-	ApiToken string `json:"apiToken"`
+	APIToken string `json:"apiToken"`
 }
 
 var _ = Describe("Profiles", func() {
@@ -38,13 +38,13 @@ var _ = Describe("Profiles", func() {
 	})
 
 	AfterEach(func() {
-		test_utils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
 	Context("calling profiles api", func() {
 		It("should return logged profile", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
 			Expect(profileRes.Homes).To(HaveLen(0))
 			Expect(profileRes.Devices).To(HaveLen(0))
@@ -52,13 +52,13 @@ var _ = Describe("Profiles", func() {
 		})
 
 		It("should generate a new profile api token", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileRes := test_utils.GetLoggedProfile(router, jwtToken, cookieSession)
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-			profileId := profileRes.ID.Hex()
+			profileID := profileRes.ID.Hex()
 
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileId+"/tokens", nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileID+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
 			req.Header.Add("Authorization", "Bearer "+jwtToken)
 			req.Header.Add("Content-Type", `application/json`)
@@ -67,16 +67,16 @@ var _ = Describe("Profiles", func() {
 			var newTokenRes newTokenResponse
 			err := json.Unmarshal(recorder.Body.Bytes(), &newTokenRes)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(newTokenRes.ApiToken).To(Not(BeNil()))
+			Expect(newTokenRes.APIToken).To(Not(BeNil()))
 			// apiToken is an UUIDv4 token of 36 bytes
-			Expect([]byte(newTokenRes.ApiToken)).To(HaveLen(36))
+			Expect([]byte(newTokenRes.APIToken)).To(HaveLen(36))
 		})
 
 		It("should return an error, if profileId is wrong", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileId := "bad_profile_id"
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileID := "bad_profile_id"
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileId+"/tokens", nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileID+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
 			req.Header.Add("Authorization", "Bearer "+jwtToken)
 			req.Header.Add("Content-Type", `application/json`)
@@ -86,16 +86,16 @@ var _ = Describe("Profiles", func() {
 		})
 
 		It("should return an error, if profileId is not the one in session", func() {
-			jwtToken, cookieSession := test_utils.GetJwt(router)
-			profileId := primitive.NewObjectID()
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileID := primitive.NewObjectID()
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileId.Hex()+"/tokens", nil)
+			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileID.Hex()+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
 			req.Header.Add("Authorization", "Bearer "+jwtToken)
 			req.Header.Add("Content-Type", `application/json`)
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
-			Expect(recorder.Body.String()).To(Equal(`{"error":"cannot re-generate ApiToken for a different profile then yours"}`))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"cannot re-generate APIToken for a different profile then yours"}`))
 		})
 	})
 })

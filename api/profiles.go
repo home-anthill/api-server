@@ -15,6 +15,7 @@ import (
 	"time"
 )
 
+// GithubResponse struct
 type GithubResponse struct {
 	Login     string `json:"login"`
 	Name      string `json:"name"`
@@ -22,12 +23,14 @@ type GithubResponse struct {
 	AvatarURL string `json:"avatarURL"`
 }
 
+// Profiles struct
 type Profiles struct {
 	collection *mongo.Collection
 	ctx        context.Context
 	logger     *zap.SugaredLogger
 }
 
+// NewProfiles function
 func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *Profiles {
 	return &Profiles{
 		collection: collection,
@@ -36,6 +39,7 @@ func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, collection *mon
 	}
 }
 
+// GetProfile function
 func (handler *Profiles) GetProfile(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetProfile called")
 
@@ -56,23 +60,13 @@ func (handler *Profiles) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, &profileRes)
 }
 
-// swagger:operation POST /profiles/:id/token
-// Generate/update profile token to register new devices
-// ---
-// produces:
-// - application/json
-// responses:
-//
-//	'200':
-//	    description: Successful operation
-//	'400':
-//	    description: Invalid input
+// PostProfilesToken function
 func (handler *Profiles) PostProfilesToken(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostProfilesToken called")
 
-	// get profileId from path params
-	profileId, errId := primitive.ObjectIDFromHex(c.Param("id"))
-	if errId != nil {
+	// get profileID from path params
+	profileID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	if errID != nil {
 		handler.logger.Error("REST - POST - PostProfilesToken - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
@@ -88,9 +82,9 @@ func (handler *Profiles) PostProfilesToken(c *gin.Context) {
 	}
 
 	// check if the profile you are trying to update (path param) is your profile (session profile)
-	if profileSession.ID != profileId {
-		handler.logger.Error("REST - POST - ProfilesToken - Current profileId is different than profileId in session")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot re-generate ApiToken for a different profile then yours"})
+	if profileSession.ID != profileID {
+		handler.logger.Error("REST - POST - ProfilesToken - Current profileID is different than profileID in session")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot re-generate APIToken for a different profile then yours"})
 		return
 	}
 
