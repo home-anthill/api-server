@@ -255,9 +255,7 @@ func (handler *Register) registerControllerViaGRPC(device *models.Device, profil
 
 	handler.logger.Debugf("gRPC - registerControllerViaGRPC - handler.grpcTarget = %s", handler.grpcTarget)
 
-	contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelBg()
-	conn, err := grpc.DialContext(contextBg, handler.grpcTarget, securityDialOption, grpc.WithBlock())
+	conn, err := grpc.NewClient(handler.grpcTarget, securityDialOption)
 	if err != nil {
 		handler.logger.Error("gRPC - registerControllerViaGRPC - cannot connect via gRPC", err)
 		return "", "", customerrors.GrpcSendError{

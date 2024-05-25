@@ -243,9 +243,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 		handler.logger.Info("gRPC - sendViaGrpc - GRPC secure NOT enabled!")
 	}
 
-	contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancelBg()
-	conn, err := grpc.DialContext(contextBg, handler.grpcTarget, securityDialOption, grpc.WithBlock())
+	conn, err := grpc.NewClient(handler.grpcTarget, securityDialOption)
 	if err != nil {
 		handler.logger.Errorf("gRPC - sendViaGrpc - cannot connect via gRPC, err %#v", err)
 		return customerrors.GrpcSendError{
@@ -262,6 +260,8 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 	handler.logger.Info("gRPC - sendViaGrpc - gRPC server connected")
 
 	clientDeadline := time.Now().Add(time.Duration(200) * time.Millisecond)
+	contextBg, cancelBg := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelBg()
 	ctx, cancel := context.WithDeadline(contextBg, clientDeadline)
 	defer cancel()
 	handler.logger.Infof("gRPC - sendViaGrpc - getType(value) %s", getType(value))
