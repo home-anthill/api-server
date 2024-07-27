@@ -10,14 +10,12 @@ import (
 	"github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/unrolled/secure"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 )
 
 var oauthGithub *api.GitHub
@@ -45,24 +43,6 @@ func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, coo
 	router.Use(sessions.Sessions("session", cookieStore))
 	// apply compression
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
-
-	// apply security config to GIN
-	logger.Info("SetupRouter - starting SECURE middleware...")
-	secureMiddleware := secure.New(getSecureOptions(httpOrigin))
-	router.Use(func() gin.HandlerFunc {
-		return func(c *gin.Context) {
-			errSecure := secureMiddleware.Process(c.Writer, c.Request)
-			// If there was an error, do not continue.
-			if errSecure != nil {
-				c.Abort()
-				return
-			}
-			// Avoid header rewrite if response is a redirection.
-			if status := c.Writer.Status(); status > 300 && status < 399 {
-				c.Abort()
-			}
-		}
-	}())
 
 	// fix a max POST payload size
 	logger.Info("SetupRouter - set mac POST payload size")
@@ -165,154 +145,4 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 		private.GET("/devices/:id/values", devicesValues.GetValuesDevice)
 		private.POST("/devices/:id/values", devicesValues.PostValueDevice)
 	}
-}
-
-func getSecureOptions(httpOrigin string) secure.Options {
-	return secure.Options{
-		// AllowedHosts is a list of fully qualified domain names that are allowed. Default is empty list, which allows any and all host names.
-		//AllowedHosts: []string{
-		//  // TODO find a way to use this feature without breaking everything with docker-compose
-		//  // It requires a little bit of investigation
-		//  httpOrigin,
-		//},
-		//// AllowedHostsAreRegex determines, if the provided AllowedHosts slice contains valid regular expressions. Default is false.
-		//AllowedHostsAreRegex: false,
-		//// HostsProxyHeaders is a set of header keys that may hold a proxied hostname value for the request.
-		//HostsProxyHeaders: []string{"X-Forwarded-Hosts"},
-		//// If SSLRedirect is set to true, then only allow HTTPS requests. Default is false.
-		//SSLRedirect: true,
-		//// If SSLTemporaryRedirect is true, the a 302 will be used while redirecting. Default is false (301).
-		//SSLTemporaryRedirect: false,
-		//// SSLHost is the host name that is used to redirect HTTP requests to HTTPS. Default is "", which indicates to use the same host.
-		//SSLHost: "ssl.example.com",
-		//// SSLHostFunc is a function pointer, the return value of the function is the host name that has same functionality as `SSHost`. Default is nil. If SSLHostFunc is nil, the `SSLHost` option will be used.
-		//SSLHostFunc: nil,
-		//// SSLProxyHeaders is set of header keys with associated values that would indicate a valid HTTPS request. Useful when using Nginx: `map[string]string{"X-Forwarded-Proto": "https"}`. Default is blank map.
-		//SSLProxyHeaders: map[string]string{"X-Forwarded-Proto": "https"},
-		//// STSSeconds is the max-age of the Strict-Transport-Security header. Default is 0, which would NOT include the header.
-		//STSSeconds: 31536000,
-		//// If STSIncludeSubdomains is set to true, the `includeSubdomains` will be appended to the Strict-Transport-Security header. Default is false.
-		//STSIncludeSubdomains: true,
-		//// If STSPreload is set to true, the `preload` flag will be appended to the Strict-Transport-Security header. Default is false.
-		//STSPreload: true,
-		//// STS header is only included when the connection is HTTPS. If you want to force it to always be added, set to true. `IsDevelopment` still overrides this. Default is false.
-		//ForceSTSHeader: false,
-		// If FrameDeny is set to true, adds the X-Frame-Options header with the value of `DENY`. Default is false.
-		// forbids a page from being displayed in a frame
-		FrameDeny: true,
-		// If ContentTypeNosniff is true, adds the X-Content-Type-Options header with the value `nosniff`. Default is false.
-		// used to indicate that the MIME types in the Content-Type headers should be followed and not be changed
-		ContentTypeNosniff: true,
-		//// If BrowserXssFilter is true, adds the X-XSS-Protection header with the value `1; mode=block`. Default is false.
-		//// The HTTP X-XSS-Protection response header is a feature of Internet Explorer, Chrome and Safari that stops pages
-		//// from loading when they detect reflected cross-site scripting (XSS) attacks.
-		//// These protections are largely unnecessary in modern browsers when sites implement a strong Content-Security-Policy
-		//// that disables the use of inline JavaScript ('unsafe-inline'). (https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-XSS-Protection)
-		// BrowserXssFilter: true,
-		// ContentSecurityPolicy allows the Content-Security-Policy header value to be set with a custom value.
-		// Default is "". Passing a template string will replace `$NONCE` with a dynamic nonce value of 16 bytes for each request which can be later retrieved using the Nonce function.
-		ContentSecurityPolicy: getCsp(),
-		// ReferrerPolicy allows the Referrer-Policy header with the value to be set with a custom value. Default is "".
-		ReferrerPolicy: "no-referrer",
-		// PermissionsPolicy allows the Permissions-Policy header with the value to be set with a custom value. Default is "".
-		PermissionsPolicy: "",
-		// This will cause the AllowedHosts, SSLRedirect, and STSSeconds/STSIncludeSubdomains options to be ignored during development. When deploying to production, be sure to set this to false.
-		IsDevelopment: os.Getenv("ENV") != "prod",
-	}
-}
-
-func getCsp() string {
-	styles := []string{
-		"https://*.googleapis.com/",
-	}
-	fonts := []string{
-		"https://*.gstatic.com/",
-	}
-	images := []string{
-		"data:",
-		"https://*.google.com/",
-		"https://*.googleusercontent.com/",
-		"https://*.fbsbx.com/",
-		"https://*.gstatic.com/",
-		"https://*.githubusercontent.com/",
-	}
-	connect := []string{
-		"https://*.google.com/",
-		"https://*.googleusercontent.com/",
-		"https://*.fbsbx.com/",
-		"https://*.googleapis.com/",
-		"https://*.gstatic.com/",
-	}
-	// allow-popups is required to open urls in other tabs with target _black via javascript
-	sandboxes := []string{
-		"allow-forms",
-		"allow-scripts",
-		"allow-same-origin",
-		"allow-popups",
-	}
-	workers := []string{
-		"https://*.google.com/",
-		"https://*.googleusercontent.com/",
-		"https://*.fbsbx.com/",
-		"https://*.googleapis.com/",
-		"https://*.gstatic.com/",
-	}
-	// deprecated but still used in older browsers, defines the valid sources
-	// for web workers and nested browsing contexts loaded using elements such as <frame> and <iframe>
-	childSrc := "child-src 'none'"
-	// restricts the URLs which can be loaded using script interfaces. The APIs that are restricted are:
-	// <a> ping, Fetch, XMLHttpRequest, WebSocket, EventSource
-	connectSrc := "connect-src 'self' " + strings.Join(connect[:], " ")
-	// serves as a fallback for the other CSP fetch directives. For more info check:
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/default-src
-	defaultSrc := "default-src 'self'"
-	// valid sources for fonts loaded using @font-face
-	fontSrc := "font-src 'self' " + strings.Join(fonts[:], " ")
-	// restricts the URLs which can be used as the target of a form submissions from a given context
-	formAction := "form-action 'self'"
-	// specifies valid parents that may embed a page using <frame>, <iframe>, <object>, <embed>, or <applet>
-	frameAncestors := "frame-ancestors 'none'"
-	// specifies valid sources for nested browsing contexts loading using elements such as <frame> and <iframe>
-	frameSrc := "frame-src 'none'"
-	// specifies valid sources of images and favicons
-	imgSrc := "img-src 'self' " + strings.Join(images[:], " ")
-	// specifies which manifest can be applied to the resource.
-	manifestSrc := "manifest-src 'self'"
-	// specifies valid sources for loading media using the <audio> and <video> elements
-	mediaSrc := "media-src 'none'"
-	// specifies valid sources for the <object>, <embed>, and <applet> elements
-	objectSrc := "object-src 'none'"
-	// enables a sandbox for the requested resource similar to the <iframe> sandbox attribute.
-	// It applies restrictions to a page's actions including preventing popups, preventing the execution
-	// of plugins and scripts, and enforcing a same-origin policy.
-	sandbox := "sandbox " + strings.Join(sandboxes[:], " ")
-	// specifies valid sources for JavaScript. This includes not only URLs loaded directly into <script>
-	scriptSrc := "script-src 'self' 'unsafe-inline'"
-	// specifies valid sources for sources for stylesheets.
-	styleSrc := "style-src 'self' 'unsafe-inline' " + strings.Join(styles[:], " ")
-	// specifies valid sources for Worker, SharedWorker, or ServiceWorker scripts
-	workerSrc := "worker-src 'self' " + strings.Join(workers[:], " ")
-	// base-uri directive restricts the URLs which can be used in a document's <base> element
-	// self = Refers to the origin from which the protected document is being served, including the same URL scheme and port number.
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/base-uri
-	baseURI := "base-uri 'self'"
-
-	csp := childSrc + "; " +
-		connectSrc + "; " +
-		defaultSrc + "; " +
-		fontSrc + "; " +
-		formAction + "; " +
-		frameAncestors + "; " +
-		frameSrc + "; " +
-		imgSrc + "; " +
-		manifestSrc + "; " +
-		mediaSrc + "; " +
-		objectSrc + "; " +
-		sandbox + "; " +
-		scriptSrc + "; " +
-		styleSrc + "; " +
-		workerSrc + "; " +
-		baseURI + ";"
-
-	return csp
 }
