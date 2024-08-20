@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM golang:1.23-alpine as builder
+FROM golang:1.23-alpine AS builder
 RUN apk update && apk add --no-cache \
     protoc \
     make gcc musl-dev

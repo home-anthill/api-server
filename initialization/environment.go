@@ -41,6 +41,7 @@ func printEnv(logger *zap.SugaredLogger) {
 	logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
 	logger.Info("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
 	logger.Info("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
+	logger.Info("OAUTH_CALLBACK = " + os.Getenv("OAUTH_CALLBACK"))
 	logger.Info("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
 	logger.Info("HTTP_SENSOR_SERVER = " + os.Getenv("HTTP_SENSOR_SERVER"))
 	logger.Info("HTTP_SENSOR_PORT = " + os.Getenv("HTTP_SENSOR_PORT"))
