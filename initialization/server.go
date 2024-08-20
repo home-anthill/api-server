@@ -32,9 +32,13 @@ var oauthCallbackURL string
 var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scopes
 
 // SetupRouter function
-func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
+func SetupRouter(httpServer string, port string, oauthCallback string, logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
 	// init oauthCallbackURL based on httpOrigin
-	oauthCallbackURL = httpOrigin + "/api/callback"
+	oauthCallbackURL = oauthCallback
+	logger.Info("SetupRouter - oauthCallbackURL is = " + oauthCallbackURL)
+
+	httpOrigin := httpServer + ":" + port
+	logger.Info("SetupRouter - httpOrigin is = " + httpOrigin)
 
 	// init GIN
 	router := gin.Default()
