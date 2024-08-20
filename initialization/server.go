@@ -9,7 +9,6 @@ import (
 	limits "github.com/gin-contrib/size"
 	"github.com/gin-gonic/contrib/gzip"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -34,7 +33,7 @@ var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scop
 // SetupRouter function
 func SetupRouter(httpOrigin string, logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
 	// init oauthCallbackURL based on httpOrigin
-	oauthCallbackURL = httpOrigin + "/api/callback/"
+	oauthCallbackURL = httpOrigin + "/api/callback"
 
 	// init GIN
 	router := gin.Default()
