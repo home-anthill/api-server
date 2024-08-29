@@ -161,7 +161,7 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 			return nil, errClean
 		}
 
-		// 5. assign device with id = `deviceID` to room with id = `assignDeviceReq.RoomID` of home with id = `assignDeviceReq.HomeID`
+		// 5. assign device with id = `deviceID` to room with id = `roomObjID` of home with id = `homeObjID`
 		filterHome := bson.D{bson.E{Key: "_id", Value: homeObjID}}
 		arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomObjID}}}
 		opts := options.UpdateOptions{
@@ -173,8 +173,8 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 			},
 			"$set": bson.M{
 				"rooms.$[x].modifiedAt": time.Now(),
+				"modifiedAt":            time.Now(),
 			},
-			// TODO I should update `modifiedAt` of both `home` and `room` documents
 		}
 		_, errUpdate := handler.collHomes.UpdateOne(sessionCtx, filterHome, update, &opts)
 		if errUpdate != nil {

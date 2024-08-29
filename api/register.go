@@ -344,7 +344,7 @@ func (handler *Register) insertDevice(device *models.Device, profile *models.Pro
 		_, errUpd := handler.collProfiles.UpdateOne(
 			sessionCtx,
 			bson.M{"_id": profile.ID},
-			bson.M{"$push": bson.M{"devices": device.ID}},
+			bson.M{"$addToSet": bson.M{"devices": device.ID}},
 		)
 		if errUpd != nil {
 			return nil, customerrors.Wrap(http.StatusInternalServerError, errUpd, "Cannot update profile with the new device")

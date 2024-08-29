@@ -90,7 +90,6 @@ func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Colle
 		"$set": bson.M{
 			"rooms.$[x].modifiedAt": time.Now(),
 		},
-		// TODO I should update `modifiedAt` of both `home` and `room` documents
 	}
 	_, err = collectionHomes.UpdateOne(ctx, filterHome, update, &opts)
 	return err
