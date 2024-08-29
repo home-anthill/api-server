@@ -1,6 +1,7 @@
 package api
 
 import (
+	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
 	"context"
@@ -25,10 +26,11 @@ import (
 
 // GitHub struct
 type GitHub struct {
-	collectionProfiles *mongo.Collection
-	ctx                context.Context
-	logger             *zap.SugaredLogger
-	oauthConfig        *oauth2.Config
+	client       *mongo.Client
+	collProfiles *mongo.Collection
+	ctx          context.Context
+	logger       *zap.SugaredLogger
+	oauthConfig  *oauth2.Config
 }
 
 // DbGithubUserTestmock mock object
@@ -41,7 +43,7 @@ var DbGithubUserTestmock = models.GitHub{
 }
 
 // NewGithub function
-func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, redirectURL string, scopes []string) *GitHub {
+func NewGithub(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, redirectURL string, scopes []string) *GitHub {
 	gob.Register(models.Profile{})
 	// init global configuration with received params
 	oauthConfig := &oauth2.Config{
@@ -52,10 +54,11 @@ func NewGithub(ctx context.Context, logger *zap.SugaredLogger, collectionProfile
 		Endpoint:     oauth2gh.Endpoint,
 	}
 	return &GitHub{
-		collectionProfiles: collectionProfiles,
-		ctx:                ctx,
-		logger:             logger,
-		oauthConfig:        oauthConfig,
+		client:       client,
+		collProfiles: db.GetCollections(client).Profiles,
+		ctx:          ctx,
+		logger:       logger,
+		oauthConfig:  oauthConfig,
 	}
 }
 
@@ -151,7 +154,7 @@ func (handler *GitHub) OauthAuth() gin.HandlerFunc {
 
 		// find profile searching by github.id == githubClientUser.ID
 		var profileFound models.Profile
-		err := handler.collectionProfiles.FindOne(c, bson.M{
+		err := handler.collProfiles.FindOne(c, bson.M{
 			"github.id": dbGithubUser.ID,
 		}).Decode(&profileFound)
 
@@ -190,7 +193,7 @@ func (handler *GitHub) OauthAuth() gin.HandlerFunc {
 				}
 
 				// ad profile to db
-				_, errInsProfile := handler.collectionProfiles.InsertOne(c, newProfile)
+				_, errInsProfile := handler.collProfiles.InsertOne(c, newProfile)
 				if errInsProfile != nil {
 					handler.logger.Errorf("OauthAuth - cannot save new profile on db: %v", errInsProfile)
 					c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("cannot save new profile on db: %v", errInsProfile))

@@ -103,15 +103,16 @@ func SetupRouter(httpServer string, port string, oauthCallback string, logger *z
 }
 
 // RegisterRoutes function
-func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie.Store, logger *zap.SugaredLogger, validate *validator.Validate, collProfiles, collHomes, collDevices *mongo.Collection) {
-	oauthGithub = api.NewGithub(ctx, logger, collProfiles, oauthCallbackURL, oauthScopes)
+func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie.Store, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
+	oauthGithub = api.NewGithub(ctx, logger, client, oauthCallbackURL, oauthScopes)
 	auth = api.NewAuth(ctx, logger)
-	homes = api.NewHomes(ctx, logger, collHomes, collProfiles, validate)
-	devices = api.NewDevices(ctx, logger, collDevices, collProfiles, collHomes)
-	assignDevices = api.NewAssignDevice(ctx, logger, collProfiles, collHomes, validate)
-	devicesValues = api.NewDevicesValues(ctx, logger, collDevices, collProfiles, collHomes, validate)
-	profiles = api.NewProfiles(ctx, logger, collProfiles)
-	register = api.NewRegister(ctx, logger, collDevices, collProfiles, validate)
+
+	homes = api.NewHomes(ctx, logger, client, validate)
+	devices = api.NewDevices(ctx, logger, client)
+	assignDevices = api.NewAssignDevice(ctx, logger, client, validate)
+	devicesValues = api.NewDevicesValues(ctx, logger, client, validate)
+	profiles = api.NewProfiles(ctx, logger, client)
+	register = api.NewRegister(ctx, logger, client, validate)
 	keepAlive = api.NewKeepAlive(ctx, logger)
 
 	// 12. Configure oAuth2 authentication

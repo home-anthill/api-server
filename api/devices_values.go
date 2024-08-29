@@ -3,6 +3,7 @@ package api
 import (
 	device3 "api-server/api/grpc/device"
 	"api-server/customerrors"
+	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
 	"encoding/json"
@@ -25,31 +26,33 @@ import (
 
 // DevicesValues struct
 type DevicesValues struct {
-	collection         *mongo.Collection
-	collectionProfiles *mongo.Collection
-	collectionHomes    *mongo.Collection
-	ctx                context.Context
-	logger             *zap.SugaredLogger
-	grpcTarget         string
-	sensorGetValueURL  string
-	validate           *validator.Validate
+	client            *mongo.Client
+	collDevices       *mongo.Collection
+	collProfiles      *mongo.Collection
+	collHomes         *mongo.Collection
+	ctx               context.Context
+	logger            *zap.SugaredLogger
+	grpcTarget        string
+	sensorGetValueURL string
+	validate          *validator.Validate
 }
 
 // NewDevicesValues function
-func NewDevicesValues(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, collectionHomes *mongo.Collection, validate *validator.Validate) *DevicesValues {
+func NewDevicesValues(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *DevicesValues {
 	grpcURL := os.Getenv("GRPC_URL")
 	sensorServerURL := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
 	sensorGetValueURL := sensorServerURL + os.Getenv("HTTP_SENSOR_GETVALUE_API")
 
 	return &DevicesValues{
-		collection:         collection,
-		collectionProfiles: collectionProfiles,
-		collectionHomes:    collectionHomes,
-		ctx:                ctx,
-		logger:             logger,
-		grpcTarget:         grpcURL,
-		sensorGetValueURL:  sensorGetValueURL,
-		validate:           validate,
+		client:            client,
+		collDevices:       db.GetCollections(client).Devices,
+		collProfiles:      db.GetCollections(client).Profiles,
+		collHomes:         db.GetCollections(client).Homes,
+		ctx:               ctx,
+		logger:            logger,
+		grpcTarget:        grpcURL,
+		sensorGetValueURL: sensorGetValueURL,
+		validate:          validate,
 	}
 }
 
@@ -68,7 +71,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
+	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collProfiles)
 	if err != nil {
 		handler.logger.Error("REST - GET - GetValuesDevice - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -185,7 +188,7 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
+	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collProfiles)
 	if err != nil {
 		handler.logger.Errorf("REST - GET - PostValueDevice - cannot find profile in session, err %#v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -284,7 +287,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 func (handler *DevicesValues) getDevice(deviceID primitive.ObjectID) (models.Device, error) {
 	handler.logger.Info("gRPC - getDevice - searching device with objectId: ", deviceID)
 	var device models.Device
-	err := handler.collection.FindOne(handler.ctx, bson.M{
+	err := handler.collDevices.FindOne(handler.ctx, bson.M{
 		"_id": deviceID,
 	}).Decode(&device)
 	handler.logger.Info("Device found: ", device)

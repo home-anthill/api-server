@@ -1,6 +1,7 @@
 package api
 
 import (
+	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
 	"github.com/gin-contrib/sessions"
@@ -25,17 +26,19 @@ type GithubResponse struct {
 
 // Profiles struct
 type Profiles struct {
-	collection *mongo.Collection
-	ctx        context.Context
-	logger     *zap.SugaredLogger
+	client       *mongo.Client
+	collProfiles *mongo.Collection
+	ctx          context.Context
+	logger       *zap.SugaredLogger
 }
 
 // NewProfiles function
-func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection) *Profiles {
+func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client) *Profiles {
 	return &Profiles{
-		collection: collection,
-		ctx:        ctx,
-		logger:     logger,
+		client:       client,
+		collProfiles: db.GetCollections(client).Profiles,
+		ctx:          ctx,
+		logger:       logger,
 	}
 }
 
@@ -90,7 +93,7 @@ func (handler *Profiles) PostProfilesToken(c *gin.Context) {
 
 	apiToken := uuid.NewString()
 
-	_, err = handler.collection.UpdateOne(handler.ctx, bson.M{
+	_, err = handler.collProfiles.UpdateOne(handler.ctx, bson.M{
 		"_id": profileSession.ID,
 	}, bson.M{
 		"$set": bson.M{

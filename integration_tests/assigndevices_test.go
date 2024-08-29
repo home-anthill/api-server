@@ -2,6 +2,7 @@ package integration_tests
 
 import (
 	"api-server/api"
+	"api-server/db"
 	"api-server/initialization"
 	"api-server/models"
 	"api-server/testuutils"
@@ -25,6 +26,7 @@ var _ = Describe("AssignDevices", func() {
 	var ctx context.Context
 	var logger *zap.SugaredLogger
 	var router *gin.Engine
+	var client *mongo.Client
 	var collProfiles *mongo.Collection
 	var collHomes *mongo.Collection
 	var collDevices *mongo.Collection
@@ -110,8 +112,12 @@ var _ = Describe("AssignDevices", func() {
 	}
 
 	BeforeEach(func() {
-		logger, router, ctx, collProfiles, collHomes, collDevices = initialization.Start()
+		logger, router, ctx, client = initialization.Start()
 		defer logger.Sync()
+
+		collProfiles = db.GetCollections(client).Profiles
+		collHomes = db.GetCollections(client).Homes
+		collDevices = db.GetCollections(client).Devices
 
 		err := os.Setenv("SINGLE_USER_LOGIN_EMAIL", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
 	"github.com/gin-contrib/sessions"
@@ -10,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"net/http"
@@ -45,21 +47,23 @@ type RoomUpdateReq struct {
 
 // Homes struct
 type Homes struct {
-	collection         *mongo.Collection
-	collectionProfiles *mongo.Collection
-	ctx                context.Context
-	logger             *zap.SugaredLogger
-	validate           *validator.Validate
+	client       *mongo.Client
+	collProfiles *mongo.Collection
+	collHomes    *mongo.Collection
+	ctx          context.Context
+	logger       *zap.SugaredLogger
+	validate     *validator.Validate
 }
 
 // NewHomes function
-func NewHomes(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, validate *validator.Validate) *Homes {
+func NewHomes(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Homes {
 	return &Homes{
-		collection:         collection,
-		collectionProfiles: collectionProfiles,
-		ctx:                ctx,
-		logger:             logger,
-		validate:           validate,
+		client:       client,
+		collProfiles: db.GetCollections(client).Profiles,
+		collHomes:    db.GetCollections(client).Homes,
+		ctx:          ctx,
+		logger:       logger,
+		validate:     validate,
 	}
 }
 
@@ -78,7 +82,7 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 	var profile models.Profile
-	err = handler.collectionProfiles.FindOne(handler.ctx, bson.M{
+	err = handler.collProfiles.FindOne(handler.ctx, bson.M{
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	if err != nil {
@@ -88,7 +92,7 @@ func (handler *Homes) GetHomes(c *gin.Context) {
 	}
 
 	// extract Homes of that profile from db
-	cur, err := handler.collection.Find(handler.ctx, bson.M{
+	cur, err := handler.collHomes.Find(handler.ctx, bson.M{
 		"_id": bson.M{"$in": profile.Homes},
 	})
 	//lint:ignore SA5001 no need to check this error on close
@@ -156,22 +160,38 @@ func (handler *Homes) PostHome(c *gin.Context) {
 		home.Rooms = append(home.Rooms, room)
 	}
 
-	_, err = handler.collection.InsertOne(handler.ctx, home)
+	// start-session
+	dbSession, err := handler.client.StartSession()
 	if err != nil {
-		handler.logger.Error("REST - POST - PostHome - Cannot insert new home in DB", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot add the new home"})
+		handler.logger.Errorf("REST - POST - PostHome - cannot start a db session, err = %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "unknown error while trying to add a new home"})
 		return
 	}
+	// Defers ending the session after the transaction is committed or ended
+	defer dbSession.EndSession(context.TODO())
 
-	// assign the new home to the user profile
-	_, errUpd := handler.collectionProfiles.UpdateOne(
-		handler.ctx,
-		bson.M{"_id": profileSession.ID},
-		bson.M{"$push": bson.M{"homes": home.ID}},
-	)
-	if errUpd != nil {
-		handler.logger.Error("REST - POST - PostHome - Cannot add new home to profile in DB", err)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot add the new home to profile"})
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+		// Official `mongo-driver` documentation state: "callback may be run
+		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
+		_, err1 := handler.collHomes.InsertOne(sessionCtx, home)
+		if err1 != nil {
+			handler.logger.Errorf("REST - POST - PostHome - Cannot insert new home in DB, err1 = %#v", err1)
+			return nil, err1
+		}
+		// assign the new home to the user profile
+		_, errUpd := handler.collProfiles.UpdateOne(
+			sessionCtx,
+			bson.M{"_id": profileSession.ID},
+			bson.M{"$addToSet": bson.M{"homes": home.ID}},
+		)
+		if errUpd != nil {
+			handler.logger.Errorf("REST - POST - PostHome - Cannot add new home to profile in DB, errUpd = %#v", errUpd)
+		}
+		return nil, errUpd
+	}, options.Transaction().SetWriteConcern(writeconcern.Majority()))
+	if errTrans != nil {
+		handler.logger.Errorf("REST - POST - PostHome - Cannot add new home to profile in transaction, errTrans = %#v", errTrans)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot add a new home to profile"})
 		return
 	}
 
@@ -213,7 +233,7 @@ func (handler *Homes) PutHome(c *gin.Context) {
 		return
 	}
 
-	_, errUpd := handler.collection.UpdateOne(handler.ctx, bson.M{
+	_, errUpd := handler.collHomes.UpdateOne(handler.ctx, bson.M{
 		"_id": objectID,
 	}, bson.M{
 		"$set": bson.M{
@@ -253,7 +273,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 	}
 
 	// retrieve current profile object from session
-	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
+	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collProfiles)
 	if err != nil {
 		handler.logger.Error("REST - DELETE - DeleteHome - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -266,25 +286,42 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 		}
 	}
 
-	_, errUpd := handler.collectionProfiles.UpdateOne(handler.ctx, bson.M{
-		"_id": profile.ID,
-	}, bson.M{
-		"$set": bson.M{
-			"homes": newHomes,
-		},
-	})
-	if errUpd != nil {
-		handler.logger.Error("REST - DELETE - DeleteHome - Cannot remove home from profile in DB")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot remove home from profile"})
+	// start-session
+	dbSession, err := handler.client.StartSession()
+	if err != nil {
+		handler.logger.Errorf("REST - DELETE - DeleteHome - cannot start a db session, err = %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "unknown error while trying to remove an home"})
 		return
 	}
+	// Defers ending the session after the transaction is committed or ended
+	defer dbSession.EndSession(context.TODO())
 
-	_, errDel := handler.collection.DeleteOne(handler.ctx, bson.M{
-		"_id": objectID,
-	})
-	if errDel != nil {
-		handler.logger.Error("REST - DELETE - DeleteHome - Cannot remove home from DB")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot delete home"})
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+		// Official `mongo-driver` documentation state: "callback may be run
+		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
+		_, errUpd := handler.collProfiles.UpdateOne(sessionCtx, bson.M{
+			"_id": profile.ID,
+		}, bson.M{
+			"$set": bson.M{
+				"homes": newHomes,
+			},
+		})
+		if errUpd != nil {
+			handler.logger.Errorf("REST - DELETE - DeleteHome - Cannot remove home from profile in DB, errUpd = %#v", errUpd)
+			return nil, errUpd
+		}
+
+		_, errDel := handler.collHomes.DeleteOne(sessionCtx, bson.M{
+			"_id": objectID,
+		})
+		if errDel != nil {
+			handler.logger.Errorf("REST - DELETE - DeleteHome - Cannot remove home from DB, errDel = %#v", errDel)
+		}
+		return nil, errDel
+	}, options.Transaction().SetWriteConcern(writeconcern.Majority()))
+	if errTrans != nil {
+		handler.logger.Errorf("REST - DELETE - DeleteHome - Cannot delete home in transaction, errTrans = %#v", errTrans)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot delete home from profile"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "home has been deleted"})
@@ -312,7 +349,7 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 	}
 
 	var home models.Home
-	err := handler.collection.FindOne(handler.ctx, bson.M{
+	err := handler.collHomes.FindOne(handler.ctx, bson.M{
 		"_id": objectID,
 	}).Decode(&home)
 	if err != nil {
@@ -360,7 +397,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 	}
 
 	var home models.Home
-	err = handler.collection.FindOne(handler.ctx, bson.M{
+	err = handler.collHomes.FindOne(handler.ctx, bson.M{
 		"_id": objectID,
 	}).Decode(&home)
 	if err != nil {
@@ -382,7 +419,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 	// add the new room to the home
 	home.Rooms = append(home.Rooms, room)
 
-	_, errUpd := handler.collection.UpdateOne(handler.ctx, bson.M{
+	_, errUpd := handler.collHomes.UpdateOne(handler.ctx, bson.M{
 		"_id": objectID,
 	}, bson.M{
 		"$set": bson.M{
@@ -436,7 +473,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 
 	// get Home
 	var home models.Home
-	err := handler.collection.FindOne(handler.ctx, bson.M{
+	err := handler.collHomes.FindOne(handler.ctx, bson.M{
 		"_id": homeID,
 	}).Decode(&home)
 	if err != nil {
@@ -473,7 +510,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 			"rooms.$[x].modifiedAt": time.Now(),
 		},
 	}
-	_, errUpdate := handler.collection.UpdateOne(handler.ctx, filter, update, &opts)
+	_, errUpdate := handler.collHomes.UpdateOne(handler.ctx, filter, update, &opts)
 	if errUpdate != nil {
 		handler.logger.Errorf("REST - PUT - PutRoom - Cannot update a room in DB, errUpdate = %#v", errUpdate)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update room"})
@@ -506,7 +543,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 	}
 
 	var home models.Home
-	err := handler.collection.FindOne(handler.ctx, bson.M{
+	err := handler.collHomes.FindOne(handler.ctx, bson.M{
 		"_id": objectID,
 	}).Decode(&home)
 	if err != nil {
@@ -535,7 +572,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 			"rooms": bson.D{primitive.E{Key: "_id", Value: objectRid}},
 		},
 	}
-	_, err2 := handler.collection.UpdateOne(handler.ctx, filter, update)
+	_, err2 := handler.collHomes.UpdateOne(handler.ctx, filter, update)
 	if err2 != nil {
 		handler.logger.Error("REST - PUT - PutRoom - Cannot delete room in DB")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot delete room"})
@@ -549,7 +586,7 @@ func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectID primitive
 	// you can update a home only if you are the owner of that home
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 
-	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collectionProfiles)
+	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collProfiles)
 	if err != nil {
 		handler.logger.Error("isHomeOwnedBy - cannot find profile in session")
 		return false

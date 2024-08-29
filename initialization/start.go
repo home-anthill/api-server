@@ -11,7 +11,7 @@ import (
 )
 
 // Start function
-func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Collection, *mongo.Collection, *mongo.Collection) {
+func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Client) {
 	// 1. Init logger
 	logger := InitLogger()
 	defer logger.Sync()
@@ -19,19 +19,22 @@ func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Collectio
 	// 2. Init env
 	InitEnv(logger)
 
-	// 3. Init server
+	// 3. Init db
+	ctx := context.Background()
+	// Connect to DB
+	client := db.InitDb(ctx, logger)
+
+	// 4. Init server
 	port := os.Getenv("HTTP_PORT")
 	httpServer := os.Getenv("HTTP_SERVER")
 	oauthCallback := os.Getenv("OAUTH_CALLBACK")
-	router, ctx, collectionProfiles, collectionHomes, collectionDevices := BuildServer(httpServer, port, oauthCallback, logger)
+	router, ctx := BuildServer(ctx, httpServer, port, oauthCallback, logger, client)
 
-	return logger, router, ctx, collectionProfiles, collectionHomes, collectionDevices
+	return logger, router, ctx, client
 }
 
 // BuildServer - Exposed only for testing purposes
-func BuildServer(httpServer string, port string, oauthCallback string, logger *zap.SugaredLogger) (*gin.Engine, context.Context, *mongo.Collection, *mongo.Collection, *mongo.Collection) {
-	// Initialization
-	ctx := context.Background()
+func BuildServer(ctx context.Context, httpServer string, port string, oauthCallback string, logger *zap.SugaredLogger, client *mongo.Client) (*gin.Engine, context.Context) {
 	// Create a singleton validator instance. Validate is designed to be used as a singleton instance.
 	// It caches information about struct and validations.
 	validate := validator.New()
@@ -39,14 +42,11 @@ func BuildServer(httpServer string, port string, oauthCallback string, logger *z
 	// Config Gin framework mode based on env
 	setGinMode()
 
-	// Connect to DB
-	collectionProfiles, collectionHomes, collectionDevices := db.InitDb(ctx, logger)
-
 	// Instantiate GIN and apply some middlewares
 	logger.Info("BuildServer - GIN - Initializing...")
 	router, cookieStore := SetupRouter(httpServer, port, oauthCallback, logger)
-	RegisterRoutes(ctx, router, &cookieStore, logger, validate, collectionProfiles, collectionHomes, collectionDevices)
-	return router, ctx, collectionProfiles, collectionHomes, collectionDevices
+	RegisterRoutes(ctx, router, &cookieStore, logger, validate, client)
+	return router, ctx
 }
 
 func setGinMode() {

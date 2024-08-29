@@ -3,6 +3,7 @@ package api
 import (
 	"api-server/api/grpc/register"
 	"api-server/customerrors"
+	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
 	"bytes"
@@ -13,6 +14,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -52,8 +55,9 @@ type SensorRegisterReq struct {
 
 // Register struct
 type Register struct {
-	collection         *mongo.Collection
-	collectionProfiles *mongo.Collection
+	client             *mongo.Client
+	collDevices        *mongo.Collection
+	collProfiles       *mongo.Collection
 	ctx                context.Context
 	logger             *zap.SugaredLogger
 	grpcTarget         string
@@ -77,7 +81,7 @@ func ControllerDeviceValidation(sl validator.StructLevel) {
 }
 
 // NewRegister function
-func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mongo.Collection, collectionProfiles *mongo.Collection, validate *validator.Validate) *Register {
+func NewRegister(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Register {
 	grpcURL := os.Getenv("GRPC_URL")
 	sensorServerURL := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
 	keepAliveSensorURL := sensorServerURL + os.Getenv("HTTP_SENSOR_KEEPALIVE_API")
@@ -88,8 +92,9 @@ func NewRegister(ctx context.Context, logger *zap.SugaredLogger, collection *mon
 	validate.RegisterStructValidation(ControllerDeviceValidation, DeviceRegisterReq{})
 
 	return &Register{
-		collection:         collection,
-		collectionProfiles: collectionProfiles,
+		client:             client,
+		collDevices:        db.GetCollections(client).Devices,
+		collProfiles:       db.GetCollections(client).Profiles,
 		ctx:                ctx,
 		logger:             logger,
 		grpcTarget:         grpcURL,
@@ -120,7 +125,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
 	// search if profile token exists and retrieve profile
 	var profileFound models.Profile
-	errProfile := handler.collectionProfiles.FindOne(handler.ctx, bson.M{
+	errProfile := handler.collProfiles.FindOne(handler.ctx, bson.M{
 		"apiToken": registerBody.APIToken,
 	}).Decode(&profileFound)
 	if errProfile != nil {
@@ -131,7 +136,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 
 	// search and skip db add if device already exists
 	var device models.Device
-	err = handler.collection.FindOne(handler.ctx, bson.M{
+	err = handler.collDevices.FindOne(handler.ctx, bson.M{
 		"mac": registerBody.Mac,
 	}).Decode(&device)
 	if err == nil {
@@ -317,19 +322,38 @@ func (handler *Register) registerSensor(urlRegister string, payloadJSON []byte) 
 }
 
 func (handler *Register) insertDevice(device *models.Device, profile *models.Profile) error {
-	// Insert device
-	_, errInsert := handler.collection.InsertOne(handler.ctx, device)
-	if errInsert != nil {
-		return customerrors.Wrap(http.StatusInternalServerError, errInsert, "Cannot insert the new device")
+	// start-session
+	dbSession, err := handler.client.StartSession()
+	if err != nil {
+		handler.logger.Errorf("insertDevice - cannot start a db session, err = %#v", err)
+		return customerrors.Wrap(http.StatusInternalServerError, err, "unknown error while trying to register a device")
 	}
-	// push device.ID to profile.devices into api-server database
-	_, errUpd := handler.collectionProfiles.UpdateOne(
-		handler.ctx,
-		bson.M{"_id": profile.ID},
-		bson.M{"$push": bson.M{"devices": device.ID}},
-	)
-	if errUpd != nil {
-		return customerrors.Wrap(http.StatusInternalServerError, errUpd, "Cannot update profile with the new device")
+	// Defers ending the session after the transaction is committed or ended
+	defer dbSession.EndSession(context.TODO())
+
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+		// Official `mongo-driver` documentation state: "callback may be run
+		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
+
+		// Insert device
+		_, errInsert := handler.collDevices.InsertOne(sessionCtx, device)
+		if errInsert != nil {
+			return nil, customerrors.Wrap(http.StatusInternalServerError, errInsert, "Cannot insert the new device")
+		}
+		// push device.ID to profile.devices into api-server database
+		_, errUpd := handler.collProfiles.UpdateOne(
+			sessionCtx,
+			bson.M{"_id": profile.ID},
+			bson.M{"$push": bson.M{"devices": device.ID}},
+		)
+		if errUpd != nil {
+			return nil, customerrors.Wrap(http.StatusInternalServerError, errUpd, "Cannot update profile with the new device")
+		}
+		return nil, nil
+	}, options.Transaction().SetWriteConcern(writeconcern.Majority()))
+
+	if errTrans != nil {
+		handler.logger.Errorf("insertDevice - insert device in transaction, errTrans = %#v", errTrans)
 	}
-	return nil
+	return errTrans
 }

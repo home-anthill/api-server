@@ -1,6 +1,7 @@
 package api
 
 import (
+	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
 	"github.com/gin-contrib/sessions"
@@ -10,6 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"net/http"
@@ -24,21 +26,23 @@ type AssignDeviceReq struct {
 
 // AssignDevice struct
 type AssignDevice struct {
-	collectionProfiles *mongo.Collection
-	collectionHomes    *mongo.Collection
-	ctx                context.Context
-	logger             *zap.SugaredLogger
-	validate           *validator.Validate
+	client       *mongo.Client
+	collProfiles *mongo.Collection
+	collHomes    *mongo.Collection
+	ctx          context.Context
+	logger       *zap.SugaredLogger
+	validate     *validator.Validate
 }
 
 // NewAssignDevice function
-func NewAssignDevice(ctx context.Context, logger *zap.SugaredLogger, collectionProfiles *mongo.Collection, collectionHomes *mongo.Collection, validate *validator.Validate) *AssignDevice {
+func NewAssignDevice(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *AssignDevice {
 	return &AssignDevice{
-		collectionProfiles: collectionProfiles,
-		collectionHomes:    collectionHomes,
-		ctx:                ctx,
-		logger:             logger,
-		validate:           validate,
+		client:       client,
+		collProfiles: db.GetCollections(client).Profiles,
+		collHomes:    db.GetCollections(client).Homes,
+		ctx:          ctx,
+		logger:       logger,
+		validate:     validate,
 	}
 }
 
@@ -83,7 +87,7 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 	}
 	// get the profile from db
 	var profile models.Profile
-	err = handler.collectionProfiles.FindOne(handler.ctx, bson.M{
+	err = handler.collProfiles.FindOne(handler.ctx, bson.M{
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	if err != nil {
@@ -108,7 +112,7 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 
 	// 3. `assignDeviceReq.RoomID` must be a room of home with id = `assignDeviceReq.HomeID`
 	var home models.Home
-	err = handler.collectionHomes.FindOne(handler.ctx, bson.M{
+	err = handler.collHomes.FindOne(handler.ctx, bson.M{
 		"_id": homeObjID,
 	}).Decode(&home)
 	if err != nil {
@@ -129,40 +133,58 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		return
 	}
 
-	// 4. remove device with id = `deviceID` from all rooms of profile's homes
-	filterProfileHomes := bson.M{"_id": bson.M{"$in": profile.Homes}} // filter homes owned by the profile
-	updateClean := bson.M{
-		"$pull": bson.M{
-			// using the `all positional operator` https://www.mongodb.com/docs/manual/reference/operator/update/positional-all/
-			"rooms.$[].devices": deviceID,
-		},
-	}
-	_, errClean := handler.collectionHomes.UpdateMany(handler.ctx, filterProfileHomes, updateClean)
-	if errClean != nil {
-		handler.logger.Errorf("REST - DELETE - PutAssignDeviceToHomeRoom - cannot remove device from all rooms %#v", errClean)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot assign device to home and room"})
+	// start-session
+	dbSession, err := handler.client.StartSession()
+	if err != nil {
+		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot start a db session %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "unknown error while trying to assign a device to a room"})
 		return
 	}
+	// Defers ending the session after the transaction is committed or ended
+	defer dbSession.EndSession(context.TODO())
 
-	// 5. assign device with id = `deviceID` to room with id = `assignDeviceReq.RoomID` of home with id = `assignDeviceReq.HomeID`
-	filterHome := bson.D{bson.E{Key: "_id", Value: homeObjID}}
-	arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomObjID}}}
-	opts := options.UpdateOptions{
-		ArrayFilters: &arrayFiltersRoom,
-	}
-	update := bson.M{
-		"$push": bson.M{
-			"rooms.$[x].devices": deviceID,
-		},
-		"$set": bson.M{
-			"rooms.$[x].modifiedAt": time.Now(),
-		},
-		// TODO I should update `modifiedAt` of both `home` and `room` documents
-	}
-	_, errUpdate := handler.collectionHomes.UpdateOne(handler.ctx, filterHome, update, &opts)
-	if errUpdate != nil {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - Cannot assign device to room in DB, errUpdate = %#v", errUpdate)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot assign device to room"})
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+		// Official `mongo-driver` documentation state: "callback may be run
+		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
+
+		// 4. remove device with id = `deviceID` from all rooms of profile's homes
+		filterProfileHomes := bson.M{"_id": bson.M{"$in": profile.Homes}} // filter homes owned by the profile
+		updateClean := bson.M{
+			"$pull": bson.M{
+				// using the `all positional operator` https://www.mongodb.com/docs/manual/reference/operator/update/positional-all/
+				"rooms.$[].devices": deviceID,
+			},
+		}
+		_, errClean := handler.collHomes.UpdateMany(sessionCtx, filterProfileHomes, updateClean)
+		if errClean != nil {
+			handler.logger.Errorf("REST - DELETE - PutAssignDeviceToHomeRoom - cannot remove device from all rooms, errClean = %#v", errClean)
+			return nil, errClean
+		}
+
+		// 5. assign device with id = `deviceID` to room with id = `assignDeviceReq.RoomID` of home with id = `assignDeviceReq.HomeID`
+		filterHome := bson.D{bson.E{Key: "_id", Value: homeObjID}}
+		arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomObjID}}}
+		opts := options.UpdateOptions{
+			ArrayFilters: &arrayFiltersRoom,
+		}
+		update := bson.M{
+			"$addToSet": bson.M{
+				"rooms.$[x].devices": deviceID,
+			},
+			"$set": bson.M{
+				"rooms.$[x].modifiedAt": time.Now(),
+			},
+			// TODO I should update `modifiedAt` of both `home` and `room` documents
+		}
+		_, errUpdate := handler.collHomes.UpdateOne(sessionCtx, filterHome, update, &opts)
+		if errUpdate != nil {
+			handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot assign device to room, errUpdate = %#v", errUpdate)
+		}
+		return nil, errUpdate
+	}, options.Transaction().SetWriteConcern(writeconcern.Majority()))
+	if errTrans != nil {
+		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot assign device to room in transaction, errTrans = %#v", errTrans)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot assign device to room in DB"})
 		return
 	}
 

@@ -11,8 +11,15 @@ import (
 
 var client *mongo.Client
 
+// Collections struct
+type Collections struct {
+	Profiles *mongo.Collection
+	Homes    *mongo.Collection
+	Devices  *mongo.Collection
+}
+
 // InitDb function
-func InitDb(ctx context.Context, logger *zap.SugaredLogger) (*mongo.Collection, *mongo.Collection, *mongo.Collection) {
+func InitDb(ctx context.Context, logger *zap.SugaredLogger) *mongo.Client {
 	mongoDBUrl := os.Getenv("MONGODB_URL")
 	logger.Info("InitDb - connecting to MongoDB URL = " + mongoDBUrl)
 
@@ -31,14 +38,23 @@ func InitDb(ctx context.Context, logger *zap.SugaredLogger) (*mongo.Collection, 
 	}
 	logger.Info("Connected to MongoDB")
 
-	var dbName string
-	if os.Getenv("ENV") == "testing" {
-		dbName = "api-server-test"
-	} else {
-		dbName = "api-server"
+	return client
+}
+
+// GetCollections function
+func GetCollections(client *mongo.Client) *Collections {
+	return &Collections{
+		Profiles: client.Database(getDbName()).Collection("profiles"),
+		Homes:    client.Database(getDbName()).Collection("homes"),
+		Devices:  client.Database(getDbName()).Collection("devices"),
 	}
-	collectionProfiles := client.Database(dbName).Collection("profiles")
-	collectionHomes := client.Database(dbName).Collection("homes")
-	collectionDevices := client.Database(dbName).Collection("devices")
-	return collectionProfiles, collectionHomes, collectionDevices
+}
+
+// getDbName function
+func getDbName() string {
+	if os.Getenv("ENV") == "testing" {
+		return "api-server-test"
+	} else {
+		return "api-server"
+	}
 }
