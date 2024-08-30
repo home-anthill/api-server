@@ -21,6 +21,7 @@ GitHub releases [HERE](https://github.com/home-anthill/api-server/releases)
 
 Versions:
 
+- ??/09/2024 - 2.0.0
 - 20/08/2024 - 1.3.2
 - 20/08/2024 - 1.3.1
 - 27/07/2024 - 1.3.0
