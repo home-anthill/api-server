@@ -67,6 +67,15 @@ func AssignDeviceToProfile(ctx context.Context, collectionProfiles *mongo.Collec
 	return err
 }
 
+func SetAPITokenToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId primitive.ObjectID, apiToken string) error {
+	_, err := collectionProfiles.UpdateOne(
+		ctx,
+		bson.M{"_id": profileId},
+		bson.M{"$set": bson.M{"apiToken": apiToken}},
+	)
+	return err
+}
+
 // AssignDeviceToHomeAndRoom roomId must be inside home with homeId
 // This is an unsafe method used only in testing environment bypassing many checks
 func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Collection, homeId primitive.ObjectID, roomId primitive.ObjectID, deviceId primitive.ObjectID) error {

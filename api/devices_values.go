@@ -285,15 +285,16 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 }
 
 func (handler *DevicesValues) getDevice(deviceID primitive.ObjectID) (models.Device, error) {
-	handler.logger.Info("gRPC - getDevice - searching device with objectId: ", deviceID)
+	handler.logger.Debug("getDevice - searching device with objectId: ", deviceID)
 	var device models.Device
 	err := handler.collDevices.FindOne(handler.ctx, bson.M{
 		"_id": deviceID,
 	}).Decode(&device)
-	handler.logger.Info("Device found: ", device)
+	handler.logger.Debug("Device found: ", device)
 	return device, err
 }
 
+// TODO this private function is called also by online service. I should move this in a utility package
 // check if the profile contains that device -> if profile is the owner of that device
 func isDeviceInProfile(profile *models.Profile, deviceID primitive.ObjectID) bool {
 	return utils.Contains(profile.Devices, deviceID)

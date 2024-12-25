@@ -27,6 +27,7 @@ var devicesValues *api.DevicesValues
 var profiles *api.Profiles
 var register *api.Register
 var fcmToken *api.FCMToken
+var online *api.Online
 var keepAlive *api.KeepAlive
 
 var oauthCallbackURL string
@@ -38,26 +39,26 @@ func SetupRouter(logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
 	httpServer := os.Getenv("HTTP_SERVER")
 	oauthCallback := os.Getenv("OAUTH_CALLBACK")
 
-	// init oauthCallbackURL based on httpOrigin
+	// 1. init oauthCallbackURL based on httpOrigin
 	oauthCallbackURL = oauthCallback
 	logger.Info("SetupRouter - oauthCallbackURL is = " + oauthCallbackURL)
 
 	httpOrigin := httpServer + ":" + port
 	logger.Info("SetupRouter - httpOrigin is = " + httpOrigin)
 
-	// init GIN
+	// 2. init GIN
 	router := gin.Default()
-	// init session
+	// 3. init session
 	cookieStore := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("session", cookieStore))
-	// apply compression
+	// 4. apply compression
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
-	// fix a max POST payload size
+	// 5. fix a max POST payload size
 	logger.Info("SetupRouter - set mac POST payload size")
 	router.Use(limits.RequestSizeLimiter(1024 * 1024))
 
-	// 10. Configure CORS
+	// 6. Configure CORS
 	// - No origin allowed by default
 	// - GET,POST, PUT, HEAD methods
 	// - Credentials share disabled
@@ -83,7 +84,7 @@ func SetupRouter(logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
 		logger.Info("SetupRouter - CORS disabled")
 	}
 
-	// 11. Configure Gin to serve a SPA for non-production env
+	// 7. Configure Gin to serve a SPA for non-production env
 	// In prod we will use nginx, so this will be ignored!
 	// GIN is terrible with SPA, because you can configure static.serve
 	// but if you refresh the SPA it will return an error, and you cannot add something like /*
@@ -120,11 +121,13 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 	devicesValues = api.NewDevicesValues(ctx, logger, client, validate)
 	profiles = api.NewProfiles(ctx, logger, client)
 	register = api.NewRegister(ctx, logger, client, validate)
-	// FCM = Firebase Cloud Messaging => used to associate smartphone to an APIToken
+	// FCM = Firebase Cloud Messaging => identify a smartphone on Firebase to send notifications
 	fcmToken = api.NewFCMToken(ctx, logger, client, validate)
+	online = api.NewOnline(ctx, logger, client)
 
-	// 12. Configure oAuth2 authentication
+	// 1. Configure oAuth2 authentication
 	router.Use(sessions.Sessions("session", *cookieStore)) // session called "session"
+	// 2. Define public APIs
 	// public API to get Login URL
 	router.GET("/api/login", oauthGithub.GetLoginURL)
 	// public APIs
@@ -136,7 +139,7 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 	authorized.Use(oauthGithub.OauthAuth())
 	authorized.GET("", auth.LoginCallback)
 
-	// 13. Define /api group protected via JWTMiddleware
+	// 3. Define private APIs (/api group) protected via JWTMiddleware
 	private := router.Group("/api")
 	private.Use(auth.JWTMiddleware())
 	{
@@ -158,5 +161,7 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 
 		private.GET("/devices/:id/values", devicesValues.GetValuesDevice)
 		private.POST("/devices/:id/values", devicesValues.PostValueDevice)
+
+		private.GET("/online/:id", online.GetOnline)
 	}
 }
