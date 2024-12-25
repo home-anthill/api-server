@@ -25,16 +25,13 @@ func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Client) {
 	client := db.InitDb(ctx, logger)
 
 	// 4. Init server
-	port := os.Getenv("HTTP_PORT")
-	httpServer := os.Getenv("HTTP_SERVER")
-	oauthCallback := os.Getenv("OAUTH_CALLBACK")
-	router, ctx := BuildServer(ctx, httpServer, port, oauthCallback, logger, client)
+	router, ctx := BuildServer(ctx, logger, client)
 
 	return logger, router, ctx, client
 }
 
 // BuildServer - Exposed only for testing purposes
-func BuildServer(ctx context.Context, httpServer string, port string, oauthCallback string, logger *zap.SugaredLogger, client *mongo.Client) (*gin.Engine, context.Context) {
+func BuildServer(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client) (*gin.Engine, context.Context) {
 	// Create a singleton validator instance. Validate is designed to be used as a singleton instance.
 	// It caches information about struct and validations.
 	validate := validator.New()
@@ -44,7 +41,7 @@ func BuildServer(ctx context.Context, httpServer string, port string, oauthCallb
 
 	// Instantiate GIN and apply some middlewares
 	logger.Info("BuildServer - GIN - Initializing...")
-	router, cookieStore := SetupRouter(httpServer, port, oauthCallback, logger)
+	router, cookieStore := SetupRouter(logger)
 	RegisterRoutes(ctx, router, &cookieStore, logger, validate, client)
 	return router, ctx
 }

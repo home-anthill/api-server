@@ -423,7 +423,7 @@ var _ = Describe("Register", func() {
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
-				Expect(recorder.Body.String()).To(Equal(`{"error":"cnnot register, profile token missing or not valid"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot register, profile token missing or not valid"}`))
 			})
 		})
 	})

@@ -26,13 +26,18 @@ var assignDevices *api.AssignDevice
 var devicesValues *api.DevicesValues
 var profiles *api.Profiles
 var register *api.Register
+var fcmToken *api.FCMToken
 var keepAlive *api.KeepAlive
 
 var oauthCallbackURL string
 var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scopes
 
 // SetupRouter function
-func SetupRouter(httpServer string, port string, oauthCallback string, logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
+func SetupRouter(logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
+	port := os.Getenv("HTTP_PORT")
+	httpServer := os.Getenv("HTTP_SERVER")
+	oauthCallback := os.Getenv("OAUTH_CALLBACK")
+
 	// init oauthCallbackURL based on httpOrigin
 	oauthCallbackURL = oauthCallback
 	logger.Info("SetupRouter - oauthCallbackURL is = " + oauthCallbackURL)
@@ -78,7 +83,8 @@ func SetupRouter(httpServer string, port string, oauthCallback string, logger *z
 		logger.Info("SetupRouter - CORS disabled")
 	}
 
-	// 11. Configure Gin to serve a Single Page Application
+	// 11. Configure Gin to serve a SPA for non-production env
+	// In prod we will use nginx, so this will be ignored!
 	// GIN is terrible with SPA, because you can configure static.serve
 	// but if you refresh the SPA it will return an error, and you cannot add something like /*
 	// The only way is to manage this manually passing the filename in case it's a file, otherwise it must redirect
@@ -107,13 +113,15 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 	oauthGithub = api.NewGithub(ctx, logger, client, oauthCallbackURL, oauthScopes)
 	auth = api.NewAuth(ctx, logger)
 
+	keepAlive = api.NewKeepAlive(ctx, logger)
 	homes = api.NewHomes(ctx, logger, client, validate)
 	devices = api.NewDevices(ctx, logger, client)
 	assignDevices = api.NewAssignDevice(ctx, logger, client, validate)
 	devicesValues = api.NewDevicesValues(ctx, logger, client, validate)
 	profiles = api.NewProfiles(ctx, logger, client)
 	register = api.NewRegister(ctx, logger, client, validate)
-	keepAlive = api.NewKeepAlive(ctx, logger)
+	// FCM = Firebase Cloud Messaging => used to associate smartphone to an APIToken
+	fcmToken = api.NewFCMToken(ctx, logger, client, validate)
 
 	// 12. Configure oAuth2 authentication
 	router.Use(sessions.Sessions("session", *cookieStore)) // session called "session"
@@ -121,6 +129,7 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 	router.GET("/api/login", oauthGithub.GetLoginURL)
 	// public APIs
 	router.POST("/api/register", register.PostRegister)
+	router.POST("/api/fcmtoken", fcmToken.PostFCMToken)
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
 	// oAuth2 config to register the oauth callback API
 	authorized := router.Group("/api/callback")
