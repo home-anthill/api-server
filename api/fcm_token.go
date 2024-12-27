@@ -14,6 +14,7 @@ import (
 	"golang.org/x/net/context"
 	"net/http"
 	"os"
+	"time"
 )
 
 // InitFCMTokenReq struct
@@ -53,18 +54,18 @@ func NewFCMToken(ctx context.Context, logger *zap.SugaredLogger, client *mongo.C
 // PostFCMToken function to associate smartphone app with Firebase client to this server via APIToken
 // This will be sent to online server to store that data in Redis to be able to send Push Notifications
 func (handler *FCMToken) PostFCMToken(c *gin.Context) {
-	handler.logger.Info("REST - PostFCMToken called")
+	handler.logger.Info("REST - POST - PostFCMToken called")
 
 	var initFCMTokenBody InitFCMTokenReq
 	if err := c.ShouldBindJSON(&initFCMTokenBody); err != nil {
-		handler.logger.Errorf("REST - PostFCMToken - Cannot bind request body. Err = %v\n", err)
+		handler.logger.Errorf("REST - POST - PostFCMToken - Cannot bind request body. Err = %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 
 	err := handler.validate.Struct(initFCMTokenBody)
 	if err != nil {
-		handler.logger.Errorf("REST - PostFCMToken - request body is not valid, err %#v", err)
+		handler.logger.Errorf("REST - POST - PostFCMToken - request body is not valid, err %#v", err)
 		var errFields = utils.GetErrorMessage(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
 		return
@@ -76,16 +77,31 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 		"apiToken": initFCMTokenBody.APIToken,
 	}).Decode(&profileFound)
 	if errProfile != nil {
-		handler.logger.Errorf("REST - PostFCMToken - Cannot find profile with that apiToken. Err = %v\n", errProfile)
+		handler.logger.Errorf("REST - POST - PostFCMToken - Cannot find profile with that apiToken. Err = %v\n", errProfile)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot initialize FCM Token, profile token missing or not valid"})
+		return
+	}
+
+	// store FCM Token also on profile
+	_, err = handler.collProfiles.UpdateOne(handler.ctx, bson.M{
+		"_id": profileFound.ID,
+	}, bson.M{
+		"$set": bson.M{
+			"fcmToken":   initFCMTokenBody.FCMToken,
+			"modifiedAt": time.Now(),
+		},
+	})
+	if err != nil {
+		handler.logger.Error("REST - POST - PostFCMToken - Cannot update profile with fcmToken")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update profile with fcmToken"})
 		return
 	}
 
 	err = handler.initFCMTokenViaHTTP(&initFCMTokenBody)
 	if err != nil {
-		handler.logger.Errorf("REST - PostFCMToken - cannot initialize FCM Token via HTTP. Err %v\n", err)
+		handler.logger.Errorf("REST - POST - PostFCMToken - cannot initialize FCM Token via HTTP. Err %v\n", err)
 		if re, ok := err.(*customerrors.ErrorWrapper); ok {
-			handler.logger.Errorf("REST - PostFCMToken - cannot initialize FCM Token with status = %d, message = %s\n", re.Code, re.Message)
+			handler.logger.Errorf("REST - POST - PostFCMToken - cannot initialize FCM Token with status = %d, message = %s\n", re.Code, re.Message)
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot initialize FCM Token"})
 		return

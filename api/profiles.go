@@ -118,6 +118,7 @@ func (handler *Profiles) PostProfilesAPIToken(c *gin.Context) {
 }
 
 // PostProfilesFCMToken function to store the Firebase Cloud Messaging Token
+// this api is unused, because I set FCM Token on profile while calling fcm_token POST API
 func (handler *Profiles) PostProfilesFCMToken(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostProfilesFCMToken called")
 
