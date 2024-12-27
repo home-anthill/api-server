@@ -17,7 +17,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"io"
 	"net/http"
 	"os"
 	"reflect"
@@ -79,7 +78,8 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 	}
 
 	// check if device is in profile (device owned by profile)
-	if !isDeviceInProfile(&profile, objectID) {
+
+	if !utils.Contains(profile.Devices, objectID) {
 		handler.logger.Error("REST - GET - GetValuesDevice - this device is not in your profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
@@ -132,7 +132,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 		deviceValues := make([]models.SensorValue, 0)
 		for _, feature := range device.Features {
 			path := handler.sensorGetValueURL + device.UUID + "/" + feature.Name
-			_, result, err := handler.getSensorValue(path)
+			_, result, err := utils.Get(path)
 			if err != nil {
 				handler.logger.Errorf("REST - GetValuesDevice - cannot get sensor value from remote service = %#v", err)
 				// TODO manage errors
@@ -196,7 +196,7 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 	}
 
 	// check if device is in profile (device owned by profile)
-	if !isDeviceInProfile(&profile, objectID) {
+	if !utils.Contains(profile.Devices, objectID) {
 		handler.logger.Error("REST - POST - PostValueDevice - this is not your device")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return
@@ -220,16 +220,6 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 }
 
 // ------------------------------ Private methods ------------------------------
-
-func (handler *DevicesValues) getSensorValue(url string) (int, string, error) {
-	response, err := http.Get(url)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot get sensor value via HTTP")
-	}
-	defer response.Body.Close()
-	body, _ := io.ReadAll(response.Body)
-	return response.StatusCode, string(body), nil
-}
 
 func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.DeviceState, apiToken string) error {
 	handler.logger.Infof("gRPC - sendViaGrpc - Called with value = %#v and apiToken = %s", value, apiToken)
@@ -292,12 +282,6 @@ func (handler *DevicesValues) getDevice(deviceID primitive.ObjectID) (models.Dev
 	}).Decode(&device)
 	handler.logger.Debug("Device found: ", device)
 	return device, err
-}
-
-// TODO this private function is called also by online service. I should move this in a utility package
-// check if the profile contains that device -> if profile is the owner of that device
-func isDeviceInProfile(profile *models.Profile, deviceID primitive.ObjectID) bool {
-	return utils.Contains(profile.Devices, deviceID)
 }
 
 func getType(value interface{}) string {

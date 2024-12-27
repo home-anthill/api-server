@@ -6,7 +6,6 @@ import (
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
-	"bytes"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -19,7 +18,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"io"
 	"net/http"
 	"os"
 	"time"
@@ -210,7 +208,7 @@ func (handler *Register) PostRegister(c *gin.Context) {
 func (handler *Register) registerSensorViaHTTP(device *models.Device, profileFound *models.Profile) error {
 	// check if service is available calling keep-alive
 	// TODO remove this in a production code
-	_, _, keepAliveErr := handler.keepAliveSensorService(handler.keepAliveSensorURL)
+	_, _, keepAliveErr := utils.Get(handler.keepAliveSensorURL)
 	if keepAliveErr != nil {
 		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote register service")
 	}
@@ -236,7 +234,7 @@ func (handler *Register) registerSensorViaHTTP(device *models.Device, profileFou
 	}
 
 	for _, feature := range device.Features {
-		_, _, err := handler.registerSensor(handler.registerSensorURL+feature.Name, payloadJSON)
+		_, _, err := utils.Post(handler.registerSensorURL+feature.Name, payloadJSON)
 		if err != nil {
 			return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot register sensor device feature "+feature.Name)
 		}
@@ -298,27 +296,6 @@ func (handler *Register) registerControllerViaGRPC(device *models.Device, profil
 		return "", "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot invoke Register via gRPC")
 	}
 	return r.GetStatus(), r.GetMessage(), nil
-}
-
-func (handler *Register) keepAliveSensorService(urlKeepAlive string) (int, string, error) {
-	response, err := http.Get(urlKeepAlive)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot call keepAlive of the remote register service via HTTP")
-	}
-	defer response.Body.Close()
-	body, _ := io.ReadAll(response.Body)
-	return response.StatusCode, string(body), nil
-}
-
-func (handler *Register) registerSensor(urlRegister string, payloadJSON []byte) (int, string, error) {
-	var payloadBody = bytes.NewBuffer(payloadJSON)
-	response, err := http.Post(urlRegister, "application/json", payloadBody)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot register to sensor service via HTTP")
-	}
-	defer response.Body.Close()
-	body, _ := io.ReadAll(response.Body)
-	return response.StatusCode, string(body), nil
 }
 
 func (handler *Register) insertDevice(device *models.Device, profile *models.Profile) error {

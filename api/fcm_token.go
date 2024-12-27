@@ -5,7 +5,6 @@ import (
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
-	"bytes"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -13,7 +12,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"io"
 	"net/http"
 	"os"
 )
@@ -98,7 +96,7 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 func (handler *FCMToken) initFCMTokenViaHTTP(obj *InitFCMTokenReq) error {
 	// check if service is available calling keep-alive
 	// TODO remove this in a production code
-	_, _, keepAliveErr := handler.keepAliveOnlineService(handler.keepAliveOnlineURL)
+	_, _, keepAliveErr := utils.Get(handler.keepAliveOnlineURL)
 	if keepAliveErr != nil {
 		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote online service")
 	}
@@ -109,30 +107,9 @@ func (handler *FCMToken) initFCMTokenViaHTTP(obj *InitFCMTokenReq) error {
 		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create payload to call fcmToken service")
 	}
 
-	_, _, err = handler.initFCMToken(handler.fcmTokenOnlineURL, payloadJSON)
+	_, _, err = utils.Post(handler.fcmTokenOnlineURL, payloadJSON)
 	if err != nil {
 		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot init fcmToken")
 	}
 	return nil
-}
-
-func (handler *FCMToken) keepAliveOnlineService(urlKeepAlive string) (int, string, error) {
-	response, err := http.Get(urlKeepAlive)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot call keepAlive of the remote online service via HTTP")
-	}
-	defer response.Body.Close()
-	body, _ := io.ReadAll(response.Body)
-	return response.StatusCode, string(body), nil
-}
-
-func (handler *FCMToken) initFCMToken(urlOnline string, payloadJSON []byte) (int, string, error) {
-	var payloadBody = bytes.NewBuffer(payloadJSON)
-	response, err := http.Post(urlOnline, "application/json", payloadBody)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot call fcmToken service via HTTP")
-	}
-	defer response.Body.Close()
-	body, _ := io.ReadAll(response.Body)
-	return response.StatusCode, string(body), nil
 }

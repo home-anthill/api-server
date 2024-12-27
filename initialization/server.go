@@ -119,7 +119,7 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 	devices = api.NewDevices(ctx, logger, client)
 	assignDevices = api.NewAssignDevice(ctx, logger, client, validate)
 	devicesValues = api.NewDevicesValues(ctx, logger, client, validate)
-	profiles = api.NewProfiles(ctx, logger, client)
+	profiles = api.NewProfiles(ctx, logger, client, validate)
 	register = api.NewRegister(ctx, logger, client, validate)
 	// FCM = Firebase Cloud Messaging => identify a smartphone on Firebase to send notifications
 	fcmToken = api.NewFCMToken(ctx, logger, client, validate)
@@ -153,7 +153,8 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 		private.DELETE("/homes/:id/rooms/:rid", homes.DeleteRoom)
 
 		private.GET("/profile", profiles.GetProfile)
-		private.POST("/profiles/:id/tokens", profiles.PostProfilesToken)
+		private.POST("/profiles/:id/tokens", profiles.PostProfilesAPIToken)
+		private.POST("/profiles/:id/fcmTokens", profiles.PostProfilesFCMToken)
 
 		private.GET("/devices", devices.GetDevices)
 		private.PUT("/devices/:id", assignDevices.PutAssignDeviceToHomeRoom)

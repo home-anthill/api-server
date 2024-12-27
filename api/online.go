@@ -72,7 +72,7 @@ func (handler *Online) GetOnline(c *gin.Context) {
 	}
 
 	// check if device is in profile (device owned by profile)
-	if !isDeviceInProfile(&profile, objectID) {
+	if !utils.Contains(profile.Devices, objectID) {
 		handler.logger.Error("REST - GET - GetOnline - this device is not in your profile")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "this device is not in your profile"})
 		return

@@ -21,6 +21,7 @@ type Profile struct {
 	ID         primitive.ObjectID   `json:"id" bson:"_id"`
 	Github     GitHub               `json:"github" bson:"github"`
 	APIToken   string               `json:"apiToken" bson:"apiToken"`
+	FCMToken   string               `json:"fcmToken" bson:"fcmToken"`
 	Devices    []primitive.ObjectID `json:"devices" bson:"devices"`
 	Homes      []primitive.ObjectID `json:"homes" bson:"homes"`
 	CreatedAt  time.Time            `json:"createdAt" bson:"createdAt"`
