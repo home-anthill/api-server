@@ -49,8 +49,10 @@ jobs:
       - name: Run tests
         run: |
           echo "Use fake clientid and secretid in .env"
-          sed -i "s/<GET CLIENTID FROM YOUR GITHUB OAUTH2 APP>/ea12a3ed0bd1fb9ad363/g" .env_template
-          sed -i "s/<GET SECRETID FROM YOUR GITHUB OAUTH2 APP>/29adeafac16e5cd95d4d5063a3560fcfa5539246/g" .env_template
+          sed -i "s/<GET CLIENTID FOR WEBSITE FROM YOUR GITHUB OAUTH2 APP>/ea12a3ed0bd1fb9ad363/g" .env_template
+          sed -i "s/<GET SECRETID FOR WEBSITE FROM YOUR GITHUB OAUTH2 APP>/29adeafac16e5cd95d4d5063a3560fcfa5539246/g" .env_template
+          sed -i "s/<GET CLIENTID FOR APP FROM YOUR GITHUB OAUTH2 APP>/ea12a3ed0bd1fb9ad363/g" .env_template
+          sed -i "s/<GET SECRETID FOR APP FROM YOUR GITHUB OAUTH2 APP>/29adeafac16e5cd95d4d5063a3560fcfa5539246/g" .env_template
           cp .env_template .env
           echo "Installing dependencies"
           make deps
