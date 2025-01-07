@@ -4,15 +4,12 @@ import (
 	"api-server/api"
 	"api-server/db"
 	"api-server/initialization"
-	"api-server/models"
 	"api-server/testuutils"
 	"bytes"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
@@ -20,18 +17,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"time"
 )
 
-var githubUserTestmock = models.GitHub{
-	ID:        123456,
-	Login:     "Test",
-	Name:      "Test Test",
-	Email:     "test@test.com",
-	AvatarURL: "https://avatars.githubusercontent.com/u/123456?v=4",
-}
-
 var _ = Describe("FCMToken", func() {
+	var mockedProfileAPIToken = "2ee7e6d0-c216-4548-bd78-fa3b04bb5fef"
+
 	var ctx context.Context
 	var logger *zap.SugaredLogger
 	var router *gin.Engine
@@ -41,16 +31,6 @@ var _ = Describe("FCMToken", func() {
 	var collDevices *mongo.Collection
 	var httpMockServer *httptest.Server
 
-	currentDate := time.Now()
-	profile := models.Profile{
-		ID:         primitive.NewObjectID(),
-		Github:     githubUserTestmock,
-		APIToken:   uuid.NewString(),
-		Homes:      []primitive.ObjectID{}, // empty slice of ObjectIDs
-		Devices:    []primitive.ObjectID{}, // empty slice of ObjectIDs
-		CreatedAt:  currentDate,
-		ModifiedAt: currentDate,
-	}
 	keepAliveHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`[{"alive": true}]`))
@@ -99,11 +79,13 @@ var _ = Describe("FCMToken", func() {
 
 			It("should return a success", func() {
 				By("with an existing profile with a valid apiToken")
-				err := testuutils.InsertOne(ctx, collProfiles, profile)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				// set mocked APIToken to the logged profile
+				err := testuutils.SetAPITokenToProfile(ctx, collProfiles, profileRes.ID, mockedProfileAPIToken)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				initFCMTokenReq := api.InitFCMTokenReq{
-					APIToken: profile.APIToken,
 					FCMToken: "dTknleBlRLqEoWBMjiIr80:APA91bEs_Tf8dkrZ_eb872Ok--Up34Luqp1S4WZwzTGr6X1ag4PO4ksHwFFifNqTb1lhATzNcaVqDZ01kP35a0caOa6Akw4oCzYh0ElqL8msgjtZw2phLEk",
 				}
 				var buf bytes.Buffer
@@ -112,6 +94,8 @@ var _ = Describe("FCMToken", func() {
 
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/fcmtoken", &buf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -121,10 +105,16 @@ var _ = Describe("FCMToken", func() {
 
 		When("you pass bad inputs", func() {
 			It("should return an error, if body is missing", func() {
-				err := testuutils.InsertOne(ctx, collProfiles, profile)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				// set mocked APIToken to the logged profile
+				err := testuutils.SetAPITokenToProfile(ctx, collProfiles, profileRes.ID, mockedProfileAPIToken)
 				Expect(err).ShouldNot(HaveOccurred())
+
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/fcmtoken", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
@@ -132,44 +122,25 @@ var _ = Describe("FCMToken", func() {
 			})
 
 			It("should return an error, if body is not valid", func() {
-				err := testuutils.InsertOne(ctx, collProfiles, profile)
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				// set mocked APIToken to the logged profile
+				err := testuutils.SetAPITokenToProfile(ctx, collProfiles, profileRes.ID, mockedProfileAPIToken)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				initFCMTokenReq := api.InitFCMTokenReq{
-					APIToken: "1234", // not valid, because must be an UUIDv4
-					FCMToken: "abcd",
-				}
+				type emptyBody struct{}
 				var buf bytes.Buffer
-				err = json.NewEncoder(&buf).Encode(initFCMTokenReq)
+				err = json.NewEncoder(&buf).Encode(emptyBody{})
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
 				req := httptest.NewRequest(http.MethodPost, "/api/fcmtoken", &buf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
-				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: apitoken"}`))
-			})
-
-			It("should return an error, if apiToken doesn't exist", func() {
-				err := testuutils.InsertOne(ctx, collProfiles, profile)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				unknownAPIToken := uuid.NewString()
-				initFCMTokenReq := api.InitFCMTokenReq{
-					APIToken: unknownAPIToken,
-					FCMToken: "abcd",
-				}
-				var buf bytes.Buffer
-				err = json.NewEncoder(&buf).Encode(initFCMTokenReq)
-				Expect(err).ShouldNot(HaveOccurred())
-
-				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/fcmtoken", &buf)
-				req.Header.Add("Content-Type", `application/json`)
-				router.ServeHTTP(recorder, req)
-				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
-				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot initialize FCM Token, profile token missing or not valid"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: fcmtoken"}`))
 			})
 		})
 	})

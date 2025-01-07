@@ -3,9 +3,9 @@ package api
 import (
 	"api-server/customerrors"
 	"api-server/db"
-	"api-server/models"
 	"api-server/utils"
 	"encoding/json"
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,7 +19,6 @@ import (
 
 // InitFCMTokenReq struct
 type InitFCMTokenReq struct {
-	APIToken string `json:"apiToken" validate:"required,uuid4"`
 	FCMToken string `json:"fcmToken" validate:"required"`
 }
 
@@ -71,20 +70,18 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 		return
 	}
 
-	// search if profile token exists and retrieve profile
-	var profileFound models.Profile
-	errProfile := handler.collProfiles.FindOne(handler.ctx, bson.M{
-		"apiToken": initFCMTokenBody.APIToken,
-	}).Decode(&profileFound)
-	if errProfile != nil {
-		handler.logger.Errorf("REST - POST - PostFCMToken - Cannot find profile with that apiToken. Err = %v\n", errProfile)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot initialize FCM Token, profile token missing or not valid"})
+	// retrieve current profile object from database (using session profile as input)
+	session := sessions.Default(c)
+	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collProfiles)
+	if err != nil {
+		handler.logger.Error("REST - POST - PostFCMToken - cannot find profile in session")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 		return
 	}
 
 	// store FCM Token also on profile
 	_, err = handler.collProfiles.UpdateOne(handler.ctx, bson.M{
-		"_id": profileFound.ID,
+		"_id": profile.ID,
 	}, bson.M{
 		"$set": bson.M{
 			"fcmToken":   initFCMTokenBody.FCMToken,

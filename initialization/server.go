@@ -18,7 +18,8 @@ import (
 	"path/filepath"
 )
 
-var oauthGithub *api.GitHub
+var oauthGithub *api.LoginGitHub
+var oauthAppGithub *api.LoginGitHub
 var auth *api.Auth
 var homes *api.Homes
 var devices *api.Devices
@@ -31,26 +32,28 @@ var online *api.Online
 var keepAlive *api.KeepAlive
 
 var oauthCallbackURL string
+var oauthAppCallbackURL string
 var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scopes
 
 // SetupRouter function
-func SetupRouter(logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
+func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 	port := os.Getenv("HTTP_PORT")
 	httpServer := os.Getenv("HTTP_SERVER")
-	oauthCallback := os.Getenv("OAUTH_CALLBACK")
+	oauthCallback := os.Getenv("OAUTH2_CALLBACK")
+	oauthAppCallback := os.Getenv("OAUTH2_APP_CALLBACK")
 
-	// 1. init oauthCallbackURL based on httpOrigin
+	// 1. init oauthCallbackURL, oauthAppCallbackURL and httpOrigin vars
 	oauthCallbackURL = oauthCallback
-	logger.Info("SetupRouter - oauthCallbackURL is = " + oauthCallbackURL)
-
+	oauthAppCallbackURL = oauthAppCallback
 	httpOrigin := httpServer + ":" + port
 	logger.Info("SetupRouter - httpOrigin is = " + httpOrigin)
 
 	// 2. init GIN
 	router := gin.Default()
 	// 3. init session
-	cookieStore := cookie.NewStore([]byte("secret"))
-	router.Use(sessions.Sessions("session", cookieStore))
+	secretKey := os.Getenv("COOKIE_SECRET")
+	store := cookie.NewStore([]byte(secretKey))
+	router.Use(sessions.Sessions("mysession", store))
 	// 4. apply compression
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
@@ -106,12 +109,13 @@ func SetupRouter(logger *zap.SugaredLogger) (*gin.Engine, cookie.Store) {
 	} else {
 		logger.Info("SetupRouter - Skipping NoRoute config, because it's running in production mode")
 	}
-	return router, cookieStore
+	return router
 }
 
 // RegisterRoutes function
-func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie.Store, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
-	oauthGithub = api.NewGithub(ctx, logger, client, oauthCallbackURL, oauthScopes)
+func RegisterRoutes(ctx context.Context, router *gin.Engine, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
+	oauthGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_state", os.Getenv("OAUTH2_CLIENTID"), os.Getenv("OAUTH2_SECRETID"), oauthCallbackURL, oauthScopes)
+	oauthAppGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_app_state", os.Getenv("OAUTH2_APP_CLIENTID"), os.Getenv("OAUTH2_APP_SECRETID"), oauthAppCallbackURL, oauthScopes)
 	auth = api.NewAuth(ctx, logger)
 
 	keepAlive = api.NewKeepAlive(ctx, logger)
@@ -125,19 +129,25 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 	fcmToken = api.NewFCMToken(ctx, logger, client, validate)
 	online = api.NewOnline(ctx, logger, client)
 
-	// 1. Configure oAuth2 authentication
-	router.Use(sessions.Sessions("session", *cookieStore)) // session called "session"
-	// 2. Define public APIs
+	// 1. Define public APIs
 	// public API to get Login URL
 	router.GET("/api/login", oauthGithub.GetLoginURL)
-	// public APIs
+	router.GET("/api/login_app", oauthAppGithub.GetLoginURL)
+	// public API called by sensors and devices to register themselves
 	router.POST("/api/register", register.PostRegister)
-	router.POST("/api/fcmtoken", fcmToken.PostFCMToken)
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
-	// oAuth2 config to register the oauth callback API
-	authorized := router.Group("/api/callback")
-	authorized.Use(oauthGithub.OauthAuth())
-	authorized.GET("", auth.LoginCallback)
+
+	// 2. Define oAuth2 config to register callbacks
+	oauthGroup := router.Group("/api/callback")
+	oauthGroup.Use(oauthGithub.OauthAuth(false)) // don't bypass oauth2 state check security feature
+	oauthGroup.GET("", auth.LoginCallback)
+	oauthAppGroup := router.Group("/api/app_callback")
+	// Attention: in case of local development we want to reach our laptop from the mobile phone via LAN.
+	// To do this we need to use a local IP address in both `.env` and GitHub oAuth2 app callback.
+	// However with this setup, a secure cookie won't be set (I don't know why, probably it's related to the redirect made by Giithub server),
+	// so session will be always empty. To let us develop easily we skip oauth2 state security check on dev/test environments.
+	oauthAppGroup.Use(oauthAppGithub.OauthAuth(os.Getenv("ENV") != "prod"))
+	oauthAppGroup.GET("", auth.LoginMobileAppCallback)
 
 	// 3. Define private APIs (/api group) protected via JWTMiddleware
 	private := router.Group("/api")
@@ -163,6 +173,7 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, cookieStore *cookie
 		private.GET("/devices/:id/values", devicesValues.GetValuesDevice)
 		private.POST("/devices/:id/values", devicesValues.PostValueDevice)
 
+		private.POST("/fcmtoken", fcmToken.PostFCMToken)
 		private.GET("/online/:id", online.GetOnline)
 	}
 }

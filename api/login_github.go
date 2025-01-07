@@ -24,57 +24,58 @@ import (
 	"time"
 )
 
-// GitHub struct
-type GitHub struct {
-	client       *mongo.Client
-	collProfiles *mongo.Collection
-	ctx          context.Context
-	logger       *zap.SugaredLogger
-	oauthConfig  *oauth2.Config
+// LoginGitHub struct
+type LoginGitHub struct {
+	client             *mongo.Client
+	collProfiles       *mongo.Collection
+	ctx                context.Context
+	logger             *zap.SugaredLogger
+	oauthConfig        *oauth2.Config
+	sessionStateName   string
+	loginPathStateName string
 }
 
-// DbGithubUserTestmock mock object
-var DbGithubUserTestmock = models.GitHub{
-	ID:        123456,
-	Login:     "Test",
-	Name:      "Test Test",
-	Email:     "test@test.com",
-	AvatarURL: "https://avatars.githubusercontent.com/u/123456?v=4",
-}
-
-// NewGithub function
-func NewGithub(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, redirectURL string, scopes []string) *GitHub {
+// NewLoginGithub function
+func NewLoginGithub(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, sessionStateName, clientId, clientSecret, redirectURL string, scopes []string) *LoginGitHub {
 	gob.Register(models.Profile{})
 	// init global configuration with received params
 	oauthConfig := &oauth2.Config{
-		ClientID:     os.Getenv("OAUTH2_CLIENTID"),
-		ClientSecret: os.Getenv("OAUTH2_SECRETID"),
+		ClientID:     clientId,
+		ClientSecret: clientSecret,
 		RedirectURL:  redirectURL,
 		Scopes:       scopes,
 		Endpoint:     oauth2gh.Endpoint,
 	}
-	return &GitHub{
-		client:       client,
-		collProfiles: db.GetCollections(client).Profiles,
-		ctx:          ctx,
-		logger:       logger,
-		oauthConfig:  oauthConfig,
+	return &LoginGitHub{
+		client:             client,
+		collProfiles:       db.GetCollections(client).Profiles,
+		ctx:                ctx,
+		logger:             logger,
+		oauthConfig:        oauthConfig,
+		sessionStateName:   sessionStateName,
+		loginPathStateName: "state",
 	}
 }
 
 // GetLoginURL function
-func (handler *GitHub) GetLoginURL(c *gin.Context) {
+func (handler *LoginGitHub) GetLoginURL(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetLoginURL called")
 
-	state, err := utils.RandToken()
+	// generate a random state code
+	// https://medium.com/keycloak/the-importance-of-the-state-parameter-in-oauth-5419c94bef4c
+	// The “state” parameter is sent during the initial Authorization Request and sent back from
+	// the Authorization Server to the Client along with the Code (that can be later exchanged to a token).
+	// The Client should use the content of this parameter to make sure the Code it received matches
+	// the Authorization Request it sent.
+	// More info here: https://auth0.com/docs/secure/attack-protection/state-parameters
+	stateB64, err := utils.RandToken()
 	if err != nil {
 		handler.logger.Error("REST - GET - GetLoginURL - cannot create a random session token")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "unexpected session error"})
 		return
 	}
-
 	session := sessions.Default(c)
-	session.Set("state", state)
+	session.Set(handler.sessionStateName, stateB64)
 	err = session.Save()
 	if err != nil {
 		handler.logger.Error("REST - GET - GetLoginURL - cannot save session")
@@ -82,33 +83,41 @@ func (handler *GitHub) GetLoginURL(c *gin.Context) {
 		return
 	}
 
-	loginURL := handler.oauthConfig.AuthCodeURL(state)
-	noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
-	handler.logger.Info("REST - GET - GetLoginURL - result noUnicodeString: ", noUnicodeString)
+	// build loginURL adding the random state as query parameter
+	loginURL := handler.oauthConfig.AuthCodeURL(stateB64)
+	handler.logger.Debug("REST - GET - GetLoginURL - loginURL: ", loginURL)
 
-	loginURLRes := models.LoginURL{}
-	loginURLRes.LoginURL = noUnicodeString
-	c.JSON(http.StatusOK, &loginURLRes)
+	noUnicodeString := strings.ReplaceAll(loginURL, "\\u0026", "&amp;")
+	handler.logger.Debug("REST - GET - GetLoginURL - result noUnicodeString: ", noUnicodeString)
+	c.Redirect(http.StatusFound, noUnicodeString)
 }
 
 // OauthAuth function
-func (handler *GitHub) OauthAuth() gin.HandlerFunc {
+func (handler *LoginGitHub) OauthAuth(bypassStateCheck bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		// verify if the query param state code matches to one in session
+		// https://medium.com/keycloak/the-importance-of-the-state-parameter-in-oauth-5419c94bef4c
+		// The “state” parameter is sent during the initial Authorization Request and sent back from
+		// the Authorization Server to the Client along with the Code (that can be later exchanged to a token).
+		// The Client should use the content of this parameter to make sure the Code it received matches
+		// the Authorization Request it sent.
+		session := sessions.Default(c)
+		if !bypassStateCheck {
+			sessionStateB64 := session.Get(handler.sessionStateName)
+			if sessionStateB64 != c.Query(handler.loginPathStateName) {
+				handler.logger.Error("OauthAuth - invalid session state: %s ", sessionStateB64)
+				c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("invalid session state: %s", sessionStateB64))
+				return
+			}
+		}
+
 		// read current profile from session.
 		// if available save it in the context
-		session := sessions.Default(c)
 		if dbProfile, ok := session.Get("profile").(models.Profile); ok {
 			// profile is already on session, so you can simply proceed
 			handler.logger.Debug("OauthAuth - dbProfile already in session: ", dbProfile)
 			c.Set("profile", dbProfile)
 			c.Next()
-			return
-		}
-
-		retrievedState := session.Get("state")
-		if retrievedState != c.Query("state") {
-			handler.logger.Error("OauthAuth - invalid session state: %s ", retrievedState)
-			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("invalid session state: %s", retrievedState))
 			return
 		}
 
@@ -139,7 +148,7 @@ func (handler *GitHub) OauthAuth() gin.HandlerFunc {
 				AvatarURL: *githubClientUser.AvatarURL,
 			}
 		} else {
-			dbGithubUser = DbGithubUserTestmock
+			dbGithubUser = models.DbGithubUserTestmock
 		}
 
 		// ATTENTION!!!
@@ -152,7 +161,7 @@ func (handler *GitHub) OauthAuth() gin.HandlerFunc {
 			return
 		}
 
-		// find profile searching by github.id == githubClientUser.ID
+		// find profile searching by GitHub id
 		var profileFound models.Profile
 		err := handler.collProfiles.FindOne(c, bson.M{
 			"github.id": dbGithubUser.ID,
@@ -192,7 +201,7 @@ func (handler *GitHub) OauthAuth() gin.HandlerFunc {
 					return
 				}
 
-				// ad profile to db
+				// add profile to db
 				_, errInsProfile := handler.collProfiles.InsertOne(c, newProfile)
 				if errInsProfile != nil {
 					handler.logger.Errorf("OauthAuth - cannot save new profile on db: %v", errInsProfile)

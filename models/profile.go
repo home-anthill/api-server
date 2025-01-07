@@ -16,6 +16,15 @@ type GitHub struct {
 	AvatarURL string `json:"avatarURL" bson:"avatarURL"`
 }
 
+// DbGithubUserTestmock mock object
+var DbGithubUserTestmock = GitHub{
+	ID:        123456,
+	Login:     "Test",
+	Name:      "Test Test",
+	Email:     "test@test.com",
+	AvatarURL: "https://avatars.githubusercontent.com/u/123456?v=4",
+}
+
 // Profile struct
 type Profile struct {
 	ID         primitive.ObjectID   `json:"id" bson:"_id"`

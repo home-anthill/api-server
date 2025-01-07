@@ -41,8 +41,8 @@ func BuildServer(ctx context.Context, logger *zap.SugaredLogger, client *mongo.C
 
 	// Instantiate GIN and apply some middlewares
 	logger.Info("BuildServer - GIN - Initializing...")
-	router, cookieStore := SetupRouter(logger)
-	RegisterRoutes(ctx, router, &cookieStore, logger, validate, client)
+	router := SetupRouter(logger)
+	RegisterRoutes(ctx, router, logger, validate, client)
 	return router, ctx
 }
 

@@ -22,11 +22,11 @@ import (
 	"time"
 )
 
-var onlineCurrentDate = time.Now()
-var onlineUUID = uuid.NewString()
-var mockedProfileAPIToken = "2ee7e6d0-c216-4548-bd78-fa3b04bb5fef"
-
 var _ = Describe("Online", func() {
+	var onlineCurrentDate = time.Now()
+	var onlineUUID = uuid.NewString()
+	var mockedProfileAPIToken = "2ee7e6d0-c216-4548-bd78-fa3b04bb5fef"
+
 	var ctx context.Context
 	var logger *zap.SugaredLogger
 	var router *gin.Engine

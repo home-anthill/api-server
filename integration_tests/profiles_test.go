@@ -4,6 +4,7 @@ import (
 	"api-server/api"
 	"api-server/db"
 	"api-server/initialization"
+	"api-server/models"
 	"api-server/testuutils"
 	"bytes"
 	"encoding/json"
@@ -59,7 +60,7 @@ var _ = Describe("Profiles", func() {
 
 			Expect(profileRes.Homes).To(HaveLen(0))
 			Expect(profileRes.Devices).To(HaveLen(0))
-			Expect(profileRes.Github).To(Equal(api.DbGithubUserTestmock))
+			Expect(profileRes.Github).To(Equal(models.DbGithubUserTestmock))
 		})
 	})
 

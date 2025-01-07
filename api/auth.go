@@ -50,7 +50,29 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
 	location := url.URL{Path: "/postlogin", RawQuery: queryParams.Encode()}
 
 	c.Redirect(http.StatusFound, location.RequestURI())
-	c.JSON(http.StatusOK, gin.H{"token": tokenString})
+}
+
+// LoginMobileAppCallback function
+func (handler *Auth) LoginMobileAppCallback(c *gin.Context) {
+	handler.logger.Info("REST - GET - LoginMobileAppCallback called")
+	// jwtKey is a []byte containing your secret, e.g. []byte("my_secret_key")
+	var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
+
+	profile := c.Value("profile").(models.Profile)
+	expirationTime := time.Now().Add((60 * time.Minute) * 24 * 30 * 3) // 3 months
+
+	tokenString, err := utils.CreateJWT(profile, expirationTime, jwt.SigningMethodHS256, jwtKey)
+	if err != nil {
+		handler.logger.Error("REST - GET - LoginMobileAppCallback - cannot generate JWT")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot generate JWT"})
+		return
+	}
+
+	queryParams := url.Values{}
+	queryParams.Set("token", tokenString)
+	location := url.URL{Path: "homeanthill://homeanthill.eu/postlogin", RawQuery: queryParams.Encode()}
+
+	c.Redirect(http.StatusFound, location.RequestURI())
 }
 
 // JWTMiddleware function
