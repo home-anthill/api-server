@@ -93,7 +93,7 @@ func (handler *LoginGitHub) GetLoginURL(c *gin.Context) {
 }
 
 // OauthAuth function
-func (handler *LoginGitHub) OauthAuth(bypassStateCheck bool) gin.HandlerFunc {
+func (handler *LoginGitHub) OauthAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// verify if the query param state code matches to one in session
 		// https://medium.com/keycloak/the-importance-of-the-state-parameter-in-oauth-5419c94bef4c
@@ -102,13 +102,11 @@ func (handler *LoginGitHub) OauthAuth(bypassStateCheck bool) gin.HandlerFunc {
 		// The Client should use the content of this parameter to make sure the Code it received matches
 		// the Authorization Request it sent.
 		session := sessions.Default(c)
-		if !bypassStateCheck {
-			sessionStateB64 := session.Get(handler.sessionStateName)
-			if sessionStateB64 != c.Query(handler.loginPathStateName) {
-				handler.logger.Error("OauthAuth - invalid session state: %s ", sessionStateB64)
-				c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("invalid session state: %s", sessionStateB64))
-				return
-			}
+		sessionStateB64 := session.Get(handler.sessionStateName)
+		if sessionStateB64 != c.Query(handler.loginPathStateName) {
+			handler.logger.Error("OauthAuth - invalid session state: %s ", sessionStateB64)
+			c.AbortWithError(http.StatusInternalServerError, fmt.Errorf("invalid session state: %s", sessionStateB64))
+			return
 		}
 
 		// read current profile from session.

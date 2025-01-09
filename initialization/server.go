@@ -114,8 +114,12 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 
 // RegisterRoutes function
 func RegisterRoutes(ctx context.Context, router *gin.Engine, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
-	oauthGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_state", os.Getenv("OAUTH2_CLIENTID"), os.Getenv("OAUTH2_SECRETID"), oauthCallbackURL, oauthScopes)
-	oauthAppGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_app_state", os.Getenv("OAUTH2_APP_CLIENTID"), os.Getenv("OAUTH2_APP_SECRETID"), oauthAppCallbackURL, oauthScopes)
+	oauthGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_state",
+		os.Getenv("OAUTH2_CLIENTID"), os.Getenv("OAUTH2_SECRETID"),
+		oauthCallbackURL, oauthScopes)
+	oauthAppGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_app_state",
+		os.Getenv("OAUTH2_APP_CLIENTID"), os.Getenv("OAUTH2_APP_SECRETID"),
+		oauthAppCallbackURL, oauthScopes)
 	auth = api.NewAuth(ctx, logger)
 
 	keepAlive = api.NewKeepAlive(ctx, logger)
@@ -138,15 +142,15 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, logger *zap.Sugared
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
 
 	// 2. Define oAuth2 config to register callbacks
+	// Attention: if for some reason you'll receive an error in callbacks warning you that the state code in session is missing,
+	// it's happening because the browser cannot set the session cookie.
+	// I found this problem using a GitHub oAuth2 callback with a local IP address, instead of 'localhost', while testing
+	// oAuth2 flow on Android.
 	oauthGroup := router.Group("/api/callback")
-	oauthGroup.Use(oauthGithub.OauthAuth(false)) // don't bypass oauth2 state check security feature
+	oauthGroup.Use(oauthGithub.OauthAuth())
 	oauthGroup.GET("", auth.LoginCallback)
 	oauthAppGroup := router.Group("/api/app_callback")
-	// Attention: in case of local development we want to reach our laptop from the mobile phone via LAN.
-	// To do this we need to use a local IP address in both `.env` and GitHub oAuth2 app callback.
-	// However with this setup, a secure cookie won't be set (I don't know why, probably it's related to the redirect made by Giithub server),
-	// so session will be always empty. To let us develop easily we skip oauth2 state security check on dev/test environments.
-	oauthAppGroup.Use(oauthAppGithub.OauthAuth(os.Getenv("ENV") != "prod"))
+	oauthAppGroup.Use(oauthAppGithub.OauthAuth())
 	oauthAppGroup.GET("", auth.LoginMobileAppCallback)
 
 	// 3. Define private APIs (/api group) protected via JWTMiddleware

@@ -59,7 +59,7 @@ func (handler *Auth) LoginMobileAppCallback(c *gin.Context) {
 	var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
 
 	profile := c.Value("profile").(models.Profile)
-	expirationTime := time.Now().Add((60 * time.Minute) * 24 * 30 * 3) // 3 months
+	expirationTime := time.Now().Add((60 * time.Minute) * 24 * 30 * 6) // 6 months
 
 	tokenString, err := utils.CreateJWT(profile, expirationTime, jwt.SigningMethodHS256, jwtKey)
 	if err != nil {
@@ -68,7 +68,15 @@ func (handler *Auth) LoginMobileAppCallback(c *gin.Context) {
 		return
 	}
 
+	cookie, err := c.Request.Cookie("mysession")
+	if err != nil {
+		handler.logger.Error("REST - GET - LoginMobileAppCallback - cannot get session cookie from request")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get session cookie"})
+		return
+	}
+
 	queryParams := url.Values{}
+	queryParams.Set("session_cookie", cookie.Value)
 	queryParams.Set("token", tokenString)
 	location := url.URL{Path: "homeanthill://homeanthill.eu/postlogin", RawQuery: queryParams.Encode()}
 
