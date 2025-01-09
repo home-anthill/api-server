@@ -22,6 +22,12 @@ type InitFCMTokenReq struct {
 	FCMToken string `json:"fcmToken" validate:"required"`
 }
 
+// OnlineFCMReq struct
+type OnlineFCMReq struct {
+	APIToken string `json:"apiToken" validate:"required"`
+	FCMToken string `json:"fcmToken" validate:"required"`
+}
+
 // FCMToken struct
 type FCMToken struct {
 	client             *mongo.Client
@@ -94,7 +100,11 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 		return
 	}
 
-	err = handler.initFCMTokenViaHTTP(&initFCMTokenBody)
+	var onlineFCMReq = OnlineFCMReq{
+		APIToken: profile.APIToken,
+		FCMToken: initFCMTokenBody.FCMToken,
+	}
+	err = handler.initFCMTokenViaHTTP(&onlineFCMReq)
 	if err != nil {
 		handler.logger.Errorf("REST - POST - PostFCMToken - cannot initialize FCM Token via HTTP. Err %v\n", err)
 		if re, ok := err.(*customerrors.ErrorWrapper); ok {
@@ -106,7 +116,7 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "FCMToken assigned to APIToken"})
 }
 
-func (handler *FCMToken) initFCMTokenViaHTTP(obj *InitFCMTokenReq) error {
+func (handler *FCMToken) initFCMTokenViaHTTP(obj *OnlineFCMReq) error {
 	// check if service is available calling keep-alive
 	// TODO remove this in a production code
 	_, _, keepAliveErr := utils.Get(handler.keepAliveOnlineURL)
