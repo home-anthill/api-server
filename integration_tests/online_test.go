@@ -74,7 +74,7 @@ var _ = Describe("Online", func() {
 		//registerResponse := `[{"id": 123412341234123412341234, "code": 200}]`
 		mux := http.NewServeMux()
 		mux.HandleFunc("/online/"+onlineUUID, getSensorOnlineHandler)
-		httpListener, errHTTP := net.Listen("tcp", "localhost:8000")
+		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
 		logger.Infof("register_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
 		httpMockServer = httptest.NewUnstartedServer(mux)
