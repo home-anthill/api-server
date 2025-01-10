@@ -104,8 +104,6 @@ func (handler *Online) GetOnline(c *gin.Context) {
 	}
 
 	response := models.Online{}
-	response.UUID = device.UUID
-	response.APIToken = onlineResp.APIToken
 	response.CreatedAt = time.UnixMilli(onlineResp.CreatedAt)
 	response.ModifiedAt = time.UnixMilli(onlineResp.ModifiedAt)
 	c.JSON(http.StatusOK, &response)

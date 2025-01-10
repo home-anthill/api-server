@@ -120,8 +120,6 @@ var _ = Describe("Online", func() {
 				err = json.Unmarshal(recorder.Body.Bytes(), &online)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				Expect(online.UUID).To(Equal(onlineUUID))
-				Expect(online.APIToken).To(Equal(mockedProfileAPIToken))
 				Expect(online.CreatedAt.UnixMilli()).To(Equal(onlineCurrentDate.UnixMilli()))
 				Expect(online.ModifiedAt.UnixMilli()).To(Equal(onlineCurrentDate.UnixMilli()))
 			})
