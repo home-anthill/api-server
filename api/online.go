@@ -20,10 +20,11 @@ import (
 )
 
 type onlineResponse struct {
-	UUID       string `json:"uuid"`
-	APIToken   string `json:"apiToken"`
-	CreatedAt  int64  `json:"createdAt"`
-	ModifiedAt int64  `json:"modifiedAt"`
+	UUID        string `json:"uuid"`
+	APIToken    string `json:"apiToken"`
+	CreatedAt   int64  `json:"createdAt"`
+	ModifiedAt  int64  `json:"modifiedAt"`
+	CurrentTime int64  `json:"currentTime"`
 }
 
 // Online struct
@@ -106,6 +107,7 @@ func (handler *Online) GetOnline(c *gin.Context) {
 	response := models.Online{}
 	response.CreatedAt = time.UnixMilli(onlineResp.CreatedAt)
 	response.ModifiedAt = time.UnixMilli(onlineResp.ModifiedAt)
+	response.CurrentTime = time.UnixMilli(onlineResp.CurrentTime)
 	c.JSON(http.StatusOK, &response)
 }
 
