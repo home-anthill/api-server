@@ -150,6 +150,7 @@ func (handler *Homes) PostHome(c *gin.Context) {
 	home.Location = newHome.Location
 	home.CreatedAt = newDate
 	home.ModifiedAt = newDate
+	home.Rooms = []models.Room{}
 	for i := 0; i < len(newHome.Rooms); i++ {
 		var room models.Room
 		room.ID = primitive.NewObjectID()
