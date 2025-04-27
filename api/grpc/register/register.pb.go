@@ -191,7 +191,7 @@ const file_api_grpc_register_register_proto_rawDesc = "" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage2P\n" +
 	"\fRegistration\x12@\n" +
-	"\bRegister\x12\x19.register.RegisterRequest\x1a\x17.register.RegisterReply\"\x00B5Z3github.com/Ks89/air-conditioner/api-server/registerb\x06proto3"
+	"\bRegister\x12\x19.register.RegisterRequest\x1a\x17.register.RegisterReply\"\x00B2Z0github.com/Ks89/home-anthill/api-server/registerb\x06proto3"
 
 var (
 	file_api_grpc_register_register_proto_rawDescOnce sync.Once

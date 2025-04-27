@@ -358,7 +358,7 @@ const file_api_grpc_device_device_proto_rawDesc = "" +
 	"\amessage\x18\x02 \x01(\tR\amessage2\x84\x01\n" +
 	"\x06Device\x12<\n" +
 	"\tGetStatus\x12\x15.device.StatusRequest\x1a\x16.device.StatusResponse\"\x00\x12<\n" +
-	"\tSetValues\x12\x15.device.ValuesRequest\x1a\x16.device.ValuesResponse\"\x00B3Z1github.com/Ks89/air-conditioner/api-server/deviceb\x06proto3"
+	"\tSetValues\x12\x15.device.ValuesRequest\x1a\x16.device.ValuesResponse\"\x00B0Z.github.com/Ks89/home-anthill/api-server/deviceb\x06proto3"
 
 var (
 	file_api_grpc_device_device_proto_rawDescOnce sync.Once

@@ -27,11 +27,11 @@ proto:
 			--proto_path=.
 .PHONY: proto
 
-build: vet lint proto
+build: proto vet lint
 	go build -o ./build/api-server .
 .PHONY: build
 
-run: vet lint proto
+run: proto vet lint
 	air
 .PHONY: run
 

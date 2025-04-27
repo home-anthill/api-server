@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package device;
 
-option go_package = "github.com/Ks89/air-conditioner/api-server/device";
+option go_package = "github.com/Ks89/home-anthill/api-server/device";
 
 service Device {
   rpc GetStatus (StatusRequest) returns (StatusResponse) {}
