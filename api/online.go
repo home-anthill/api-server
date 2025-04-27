@@ -86,7 +86,7 @@ func (handler *Online) GetOnline(c *gin.Context) {
 		return
 	}
 
-	_, result, err := handler.onlineByUUIDService(handler.onlineByUUIDURL + "/" + device.UUID)
+	_, result, err := handler.onlineByUUIDService(handler.onlineByUUIDURL + device.UUID)
 	if err != nil {
 		handler.logger.Errorf("REST - GetOnline - cannot get online from remote service = %#v", err)
 		if re, ok := err.(*customerrors.ErrorWrapper); ok {

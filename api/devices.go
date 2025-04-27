@@ -1,6 +1,7 @@
 package api
 
 import (
+	"api-server/customerrors"
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
@@ -13,32 +14,38 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
+	"io"
 	"net/http"
 	"os"
 )
 
 // Devices struct
 type Devices struct {
-	client       *mongo.Client
-	collDevices  *mongo.Collection
-	collProfiles *mongo.Collection
-	collHomes    *mongo.Collection
-	ctx          context.Context
-	logger       *zap.SugaredLogger
-	grpcTarget   string
+	client          *mongo.Client
+	collDevices     *mongo.Collection
+	collProfiles    *mongo.Collection
+	collHomes       *mongo.Collection
+	ctx             context.Context
+	logger          *zap.SugaredLogger
+	grpcTarget      string
+	onlineByUUIDURL string
 }
 
 // NewDevices function
 func NewDevices(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client) *Devices {
 	grpcURL := os.Getenv("GRPC_URL")
+	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
+	onlineByUUIDURL := onlineServerURL + os.Getenv("HTTP_ONLINE_API")
+
 	return &Devices{
-		client:       client,
-		collDevices:  db.GetCollections(client).Devices,
-		collProfiles: db.GetCollections(client).Profiles,
-		collHomes:    db.GetCollections(client).Homes,
-		ctx:          ctx,
-		logger:       logger,
-		grpcTarget:   grpcURL,
+		client:          client,
+		collDevices:     db.GetCollections(client).Devices,
+		collProfiles:    db.GetCollections(client).Profiles,
+		collHomes:       db.GetCollections(client).Homes,
+		ctx:             ctx,
+		logger:          logger,
+		grpcTarget:      grpcURL,
+		onlineByUUIDURL: onlineByUUIDURL,
 	}
 }
 
@@ -125,6 +132,17 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 		return
 	}
 
+	// search device in DB
+	var device models.Device
+	err = handler.collDevices.FindOne(handler.ctx, bson.M{
+		"_id": objectID,
+	}).Decode(&device)
+	if err != nil {
+		handler.logger.Error("REST - DELETE - DeleteDevices - cannot find device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
+		return
+	}
+
 	// start-session
 	dbSession, err := handler.client.StartSession()
 	if err != nil {
@@ -173,8 +191,25 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 		})
 		if err1 != nil {
 			handler.logger.Errorf("REST - DELETE - DeleteDevices - cannot remove device")
+			return nil, err1
 		}
-		return nil, err1
+
+		// if a device is a poweroutage sensor, remove it also calling online service
+		if utils.HasPowerOutageFeature(device.Features) {
+			handler.logger.Debug("REST - DELETE - DeleteDevices - removing poweroutage sensor from online service")
+			_, result, err1 := handler.deleteOnlineByUUIDService(handler.onlineByUUIDURL + device.UUID)
+			if err1 != nil {
+				handler.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete online from remote service = %#v", err)
+				if re, ok := err1.(*customerrors.ErrorWrapper); ok {
+					handler.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete online with status = %d, message = %s\n", re.Code, re.Message)
+				}
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot delete online"})
+				return nil, err1
+			}
+			handler.logger.Debugf("REST - DELETE - DeleteDevices - result = %#v", result)
+		}
+
+		return nil, nil
 	}, options.Transaction().SetWriteConcern(writeconcern.Majority()))
 	if errTrans != nil {
 		handler.logger.Errorf("REST - DELETE - DeleteDevices - cannot remove device updating rooms and profile in transaction, errTrans = %#v", errTrans)
@@ -183,4 +218,19 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "device has been deleted"})
+}
+
+func (handler *Devices) deleteOnlineByUUIDService(urlOnline string) (int, string, error) {
+	req, err := http.NewRequest(http.MethodDelete, urlOnline, nil)
+	if err != nil {
+		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create HTTP request for online service")
+	}
+	client := &http.Client{}
+	response, err := client.Do(req)
+	if err != nil {
+		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot call online service via HTTP")
+	}
+	defer response.Body.Close()
+	body, _ := io.ReadAll(response.Body)
+	return response.StatusCode, string(body), nil
 }

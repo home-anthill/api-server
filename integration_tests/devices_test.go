@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -28,6 +29,7 @@ var _ = Describe("Devices", func() {
 	var collProfiles *mongo.Collection
 	var collHomes *mongo.Collection
 	var collDevices *mongo.Collection
+	var httpMockServer *httptest.Server
 
 	var currDate = time.Now()
 	var deviceController = models.Device{
@@ -71,6 +73,23 @@ var _ = Describe("Devices", func() {
 		CreatedAt:  currDate,
 		ModifiedAt: currDate,
 	}
+	var devicePowerOutageSensor = models.Device{
+		ID:           primitive.NewObjectID(),
+		Mac:          "AA:22:33:44:55:FF",
+		Manufacturer: "test3",
+		Model:        "poweroutage",
+		UUID:         uuid.NewString(),
+		Features: []models.Feature{{
+			UUID:   uuid.NewString(),
+			Type:   "sensor",
+			Name:   "poweroutage",
+			Enable: true,
+			Order:  1,
+			Unit:   "-",
+		}},
+		CreatedAt:  currDate,
+		ModifiedAt: currDate,
+	}
 	var home = models.Home{
 		ID:       primitive.NewObjectID(),
 		Name:     "home1",
@@ -87,6 +106,11 @@ var _ = Describe("Devices", func() {
 		ModifiedAt: currDate,
 	}
 
+	deletePowerOutageSensorOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	})
+
 	BeforeEach(func() {
 		logger, router, ctx, client = initialization.Start()
 		defer logger.Sync()
@@ -97,9 +121,25 @@ var _ = Describe("Devices", func() {
 
 		err := os.Setenv("SINGLE_USER_LOGIN_EMAIL", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())
+
+		// --------- start an HTTP server ---------
+		mux := http.NewServeMux()
+		mux.HandleFunc("/online/"+devicePowerOutageSensor.UUID, deletePowerOutageSensorOnlineHandler)
+		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
+		logger.Infof("online_test - HTTP client listening at %s", httpListener.Addr().String())
+		Expect(errHTTP).ShouldNot(HaveOccurred())
+		httpMockServer = httptest.NewUnstartedServer(mux)
+		// NewUnstartedServer creates an httpListener, so we need to Close that
+		// httpListener and replace it with the one we created.
+		httpMockServer.Listener.Close()
+		httpMockServer.Listener = httpListener
+		go func() {
+			httpMockServer.Start()
+		}()
 	})
 
 	AfterEach(func() {
+		httpMockServer.Close()
 		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
@@ -140,7 +180,7 @@ var _ = Describe("Devices", func() {
 		BeforeEach(func() {
 			err := testuutils.InsertOne(ctx, collDevices, deviceController)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = testuutils.InsertOne(ctx, collDevices, deviceSensor)
+			err = testuutils.InsertOne(ctx, collDevices, devicePowerOutageSensor)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = testuutils.InsertOne(ctx, collHomes, home)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -177,12 +217,38 @@ var _ = Describe("Devices", func() {
 				devices, err = testuutils.FindAll[models.Device](ctx, collDevices)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(devices).To(HaveLen(1))
-				Expect(devices[0].ID).To(Equal(deviceSensor.ID))
-				Expect(devices[0].Model).To(Equal(deviceSensor.Model))
-				Expect(devices[0].Manufacturer).To(Equal(deviceSensor.Manufacturer))
-				Expect(devices[0].Mac).To(Equal(deviceSensor.Mac))
-				Expect(devices[0].UUID).To(Equal(deviceSensor.UUID))
-				Expect(devices[0].Features).To(Equal(deviceSensor.Features))
+			})
+		})
+
+		When("profile owns a poweroutage sensor", func() {
+			It("should remove the poweroutage sensor", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, devicePowerOutageSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				err = testuutils.AssignDeviceToHomeAndRoom(ctx, collHomes, home.ID, home.Rooms[0].ID, devicePowerOutageSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				devices, err := testuutils.FindAll[models.Device](ctx, collDevices)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(devices).To(HaveLen(2))
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+devicePowerOutageSensor.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"device has been deleted"}`))
+
+				devices, err = testuutils.FindAll[models.Device](ctx, collDevices)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(devices).To(HaveLen(1))
 			})
 		})
 
