@@ -26,7 +26,6 @@ var devices *api.Devices
 var assignDevices *api.AssignDevice
 var devicesValues *api.DevicesValues
 var profiles *api.Profiles
-var register *api.Register
 var fcmToken *api.FCMToken
 var online *api.Online
 var keepAlive *api.KeepAlive
@@ -128,7 +127,6 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, logger *zap.Sugared
 	assignDevices = api.NewAssignDevice(ctx, logger, client, validate)
 	devicesValues = api.NewDevicesValues(ctx, logger, client, validate)
 	profiles = api.NewProfiles(ctx, logger, client, validate)
-	register = api.NewRegister(ctx, logger, client, validate)
 	// FCM = Firebase Cloud Messaging => identify a smartphone on Firebase to send notifications
 	fcmToken = api.NewFCMToken(ctx, logger, client, validate)
 	online = api.NewOnline(ctx, logger, client)
@@ -137,8 +135,6 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, logger *zap.Sugared
 	// public API to get Login URL
 	router.GET("/api/login", oauthGithub.GetLoginURL)
 	router.GET("/api/login_app", oauthAppGithub.GetLoginURL)
-	// public API called by sensors and devices to register themselves
-	router.POST("/api/register", register.PostRegister)
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
 
 	// 2. Define oAuth2 config to register callbacks
