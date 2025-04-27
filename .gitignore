@@ -3,7 +3,6 @@
 .vscode
 
 /public
-credentials.json
 .env
 tmp
 logs
