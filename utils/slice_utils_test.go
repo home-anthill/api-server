@@ -1,9 +1,10 @@
 package utils
 
 import (
+	"strconv"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"strconv"
 )
 
 var _ = Describe("using slice utils", func() {

@@ -3,6 +3,10 @@ package initialization
 import (
 	"api-server/api"
 	"api-server/utils"
+	"os"
+	"path"
+	"path/filepath"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
@@ -13,9 +17,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"os"
-	"path"
-	"path/filepath"
 )
 
 var oauthGithub *api.LoginGitHub

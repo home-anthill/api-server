@@ -7,6 +7,11 @@ import (
 	"api-server/models"
 	"api-server/utils"
 	"encoding/json"
+	"net/http"
+	"os"
+	"reflect"
+	"time"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -17,10 +22,6 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"net/http"
-	"os"
-	"reflect"
-	"time"
 )
 
 // DevicesValues struct

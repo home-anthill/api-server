@@ -1,10 +1,11 @@
 package initialization
 
 import (
-	"github.com/natefinch/lumberjack"
+	"os"
+
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"os"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // InitLogger function

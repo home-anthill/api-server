@@ -9,6 +9,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
@@ -18,11 +24,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"net"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"time"
 )
 
 var currentDate = time.Now()

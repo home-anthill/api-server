@@ -2,8 +2,9 @@ package utils
 
 import (
 	"api-server/models"
-	"github.com/golang-jwt/jwt/v5"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // JWTClaims creates a struct that will be encoded to a JWT.

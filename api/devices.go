@@ -5,6 +5,10 @@ import (
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
+	"io"
+	"net/http"
+	"os"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
@@ -14,9 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"io"
-	"net/http"
-	"os"
 )
 
 // Devices struct

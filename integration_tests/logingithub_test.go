@@ -3,15 +3,16 @@ package integration_tests
 import (
 	"api-server/initialization"
 	"encoding/base64"
-	"github.com/gin-gonic/gin"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"go.uber.org/zap"
 )
 
 var _ = Describe("LoginGithub", func() {

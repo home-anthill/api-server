@@ -5,6 +5,10 @@ import (
 	"api-server/db"
 	"api-server/utils"
 	"encoding/json"
+	"net/http"
+	"os"
+	"time"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -12,9 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"net/http"
-	"os"
-	"time"
 )
 
 // InitFCMTokenReq struct

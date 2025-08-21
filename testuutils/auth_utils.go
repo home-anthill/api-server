@@ -3,13 +3,14 @@ package testuutils
 import (
 	"api-server/models"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/onsi/gomega"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"github.com/onsi/gomega"
 )
 
 func GetJwt(router *gin.Engine) (string, string) {

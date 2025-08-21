@@ -3,12 +3,13 @@ package testuutils
 import (
 	"api-server/models"
 	"context"
+	"time"
+
 	"github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"time"
 )
 
 func DropAllCollections(ctx context.Context, collProfiles, collHomes, collDevices *mongo.Collection) {

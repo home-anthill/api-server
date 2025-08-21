@@ -3,11 +3,12 @@ package initialization
 import (
 	"api-server/db"
 	"context"
+	"os"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"os"
 )
 
 // Start function

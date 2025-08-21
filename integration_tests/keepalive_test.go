@@ -4,12 +4,13 @@ import (
 	"api-server/initialization"
 	"api-server/models"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/zap"
-	"net/http"
-	"net/http/httptest"
 )
 
 var _ = Describe("KeepAlive", func() {

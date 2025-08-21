@@ -8,6 +8,11 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/github"
@@ -18,10 +23,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	oauth2gh "golang.org/x/oauth2/github"
-	"net/http"
-	"os"
-	"strings"
-	"time"
 )
 
 // LoginGitHub struct

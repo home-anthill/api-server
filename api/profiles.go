@@ -4,6 +4,9 @@ import (
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
+	"net/http"
+	"time"
+
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -13,8 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
-	"net/http"
-	"time"
 )
 
 // ProfileUpdateFCMTokenReq struct
