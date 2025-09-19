@@ -9,6 +9,9 @@ import (
 // Type string
 type Type string
 
+// SupportedFeatureName string
+type SupportedFeatureName string
+
 // Controller and Sensor types
 const (
 	Controller Type = "controller"
@@ -38,21 +41,12 @@ type Device struct {
 	ModifiedAt   time.Time          `json:"modifiedAt" bson:"modifiedAt"`
 }
 
-// DeviceState struct
-type DeviceState struct {
-	// For 'On' you cannot use required for boolean, otherwise you cannot set as false
-	On          bool  `json:"on" validate:"boolean"`
-	Temperature int   `json:"temperature" validate:"required,min=17,max=30"`
-	Mode        int   `json:"mode" validate:"required,min=1,max=5"`
-	FanSpeed    int   `json:"fanSpeed" validate:"required,min=1,max=5"`
-	CreatedAt   int64 `json:"createdAt"`  // as unix epoch in milliseconds
-	ModifiedAt  int64 `json:"modifiedAt"` // as unix epoch in milliseconds
-}
-
-// SensorValue struct
-type SensorValue struct {
-	UUID       string  `json:"uuid"` // feature uuid
-	Value      float64 `json:"value"`
-	CreatedAt  int64   `json:"createdAt"`  // as unix epoch in milliseconds
-	ModifiedAt int64   `json:"modifiedAt"` // as unix epoch in milliseconds
+// DeviceFeatureState struct
+type DeviceFeatureState struct {
+	FeatureUUID string  `json:"featureUuid" validate:"required"`
+	Type        Type    `json:"type" validate:"required"`  // feature type
+	Name        string  `json:"name" validate:"required"`  // feature name
+	Value       float32 `json:"value" validate:"required"` // feature value
+	CreatedAt   int64   `json:"createdAt"`                 // as unix epoch in milliseconds
+	ModifiedAt  int64   `json:"modifiedAt"`                // as unix epoch in milliseconds
 }

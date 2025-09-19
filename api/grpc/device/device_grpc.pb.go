@@ -19,16 +19,16 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Device_GetStatus_FullMethodName = "/device.Device/GetStatus"
-	Device_SetValues_FullMethodName = "/device.Device/SetValues"
+	Device_GetValue_FullMethodName = "/device.Device/GetValue"
+	Device_SetValue_FullMethodName = "/device.Device/SetValue"
 )
 
 // DeviceClient is the client API for Device service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DeviceClient interface {
-	GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error)
-	SetValues(ctx context.Context, in *ValuesRequest, opts ...grpc.CallOption) (*ValuesResponse, error)
+	GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error)
+	SetValue(ctx context.Context, in *SetValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
 }
 
 type deviceClient struct {
@@ -39,20 +39,20 @@ func NewDeviceClient(cc grpc.ClientConnInterface) DeviceClient {
 	return &deviceClient{cc}
 }
 
-func (c *deviceClient) GetStatus(ctx context.Context, in *StatusRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+func (c *deviceClient) GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(StatusResponse)
-	err := c.cc.Invoke(ctx, Device_GetStatus_FullMethodName, in, out, cOpts...)
+	out := new(GetValueResponse)
+	err := c.cc.Invoke(ctx, Device_GetValue_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *deviceClient) SetValues(ctx context.Context, in *ValuesRequest, opts ...grpc.CallOption) (*ValuesResponse, error) {
+func (c *deviceClient) SetValue(ctx context.Context, in *SetValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ValuesResponse)
-	err := c.cc.Invoke(ctx, Device_SetValues_FullMethodName, in, out, cOpts...)
+	out := new(SetValueResponse)
+	err := c.cc.Invoke(ctx, Device_SetValue_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -63,8 +63,8 @@ func (c *deviceClient) SetValues(ctx context.Context, in *ValuesRequest, opts ..
 // All implementations must embed UnimplementedDeviceServer
 // for forward compatibility.
 type DeviceServer interface {
-	GetStatus(context.Context, *StatusRequest) (*StatusResponse, error)
-	SetValues(context.Context, *ValuesRequest) (*ValuesResponse, error)
+	GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error)
+	SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error)
 	mustEmbedUnimplementedDeviceServer()
 }
 
@@ -75,11 +75,11 @@ type DeviceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedDeviceServer struct{}
 
-func (UnimplementedDeviceServer) GetStatus(context.Context, *StatusRequest) (*StatusResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetStatus not implemented")
+func (UnimplementedDeviceServer) GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetValue not implemented")
 }
-func (UnimplementedDeviceServer) SetValues(context.Context, *ValuesRequest) (*ValuesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SetValues not implemented")
+func (UnimplementedDeviceServer) SetValue(context.Context, *SetValueRequest) (*SetValueResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SetValue not implemented")
 }
 func (UnimplementedDeviceServer) mustEmbedUnimplementedDeviceServer() {}
 func (UnimplementedDeviceServer) testEmbeddedByValue()                {}
@@ -102,38 +102,38 @@ func RegisterDeviceServer(s grpc.ServiceRegistrar, srv DeviceServer) {
 	s.RegisterService(&Device_ServiceDesc, srv)
 }
 
-func _Device_GetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(StatusRequest)
+func _Device_GetValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DeviceServer).GetStatus(ctx, in)
+		return srv.(DeviceServer).GetValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Device_GetStatus_FullMethodName,
+		FullMethod: Device_GetValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeviceServer).GetStatus(ctx, req.(*StatusRequest))
+		return srv.(DeviceServer).GetValue(ctx, req.(*GetValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Device_SetValues_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ValuesRequest)
+func _Device_SetValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetValueRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DeviceServer).SetValues(ctx, in)
+		return srv.(DeviceServer).SetValue(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Device_SetValues_FullMethodName,
+		FullMethod: Device_SetValue_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeviceServer).SetValues(ctx, req.(*ValuesRequest))
+		return srv.(DeviceServer).SetValue(ctx, req.(*SetValueRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -146,12 +146,12 @@ var Device_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*DeviceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetStatus",
-			Handler:    _Device_GetStatus_Handler,
+			MethodName: "GetValue",
+			Handler:    _Device_GetValue_Handler,
 		},
 		{
-			MethodName: "SetValues",
-			Handler:    _Device_SetValues_Handler,
+			MethodName: "SetValue",
+			Handler:    _Device_SetValue_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -93,45 +93,45 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 		return
 	}
 
-	isController := utils.HasControllerFeature(device.Features)
+	var deviceFeatureStates []models.DeviceFeatureState
+	for _, feature := range device.Features {
+		handler.logger.Debugf("REST - GET - GetValuesDevice - feature = %v", feature)
+		if feature.Type == models.Controller {
+			// Set up a connection to the server.
+			conn, err := grpc.NewClient(handler.grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
+			if err != nil {
+				handler.logger.Errorf("REST - GET - GetValuesDevice - cannot establish gRPC connection, err = %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values - connection error"})
+				return
+			}
+			defer conn.Close() // FIXME Possible resource leak, 'defer' is called in the 'for' loop
+			client := device3.NewDeviceClient(conn)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel() // FIXME Possible resource leak, 'defer' is called in the 'for' loop
 
-	if isController {
-		// Set up a connection to the server.
-		conn, err := grpc.NewClient(handler.grpcTarget, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if err != nil {
-			handler.logger.Error("REST - GET - GetValuesDevice - cannot establish gRPC connection")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values - connection error"})
-			return
-		}
-		defer conn.Close()
-		client := device3.NewDeviceClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
+			response, errSend := client.GetValue(ctx, &device3.GetValueRequest{
+				Id:          device.ID.Hex(),
+				FeatureUuid: feature.UUID,
+				FeatureName: feature.Name,
+				Mac:         device.Mac,
+				ApiToken:    profile.APIToken,
+			})
 
-		response, errSend := client.GetStatus(ctx, &device3.StatusRequest{
-			Id:       device.ID.Hex(),
-			Mac:      device.Mac,
-			ApiToken: profile.APIToken,
-		})
+			if errSend != nil {
+				handler.logger.Errorf("REST - GET - GetValuesDevice - cannot get values via gRPC, err = %v", errSend)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values"})
+				return
+			}
 
-		if errSend != nil {
-			handler.logger.Error("REST - GET - GetValuesDevice - cannot get values via gRPC")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values"})
-			return
-		}
-
-		deviceState := models.DeviceState{
-			On:          response.On,
-			Temperature: int(response.Temperature),
-			Mode:        int(response.Mode),
-			FanSpeed:    int(response.FanSpeed),
-			CreatedAt:   response.CreatedAt,
-			ModifiedAt:  response.ModifiedAt,
-		}
-		c.JSON(http.StatusOK, &deviceState)
-	} else {
-		deviceValues := make([]models.SensorValue, 0)
-		for _, feature := range device.Features {
+			deviceFeatureStates = append(deviceFeatureStates, models.DeviceFeatureState{
+				FeatureUUID: feature.UUID,
+				Type:        feature.Type,
+				Name:        feature.Name,
+				Value:       response.Value,
+				CreatedAt:   response.CreatedAt,
+				ModifiedAt:  response.ModifiedAt,
+			})
+		} else {
 			path := handler.sensorGetValueURL + device.UUID + "/" + feature.Name
 			_, result, err := utils.Get(path)
 			if err != nil {
@@ -140,7 +140,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 				// return custom_errors.Wrap(http.StatusInternalServerError, err, "Cannot register sensor device feature "+feature.Name)
 			}
 
-			sensorFeatureValue := models.SensorValue{}
+			sensorFeatureValue := models.DeviceFeatureState{}
 			err = json.Unmarshal([]byte(result), &sensorFeatureValue)
 			if err != nil {
 				handler.logger.Errorf("REST - GetValuesDevice - cannot unmarshal JSON response from sensor value remote service = %#v", err)
@@ -148,15 +148,15 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 			}
 			// add to the object with the value also other information
 			// to associate the value to the specific feature
-			sensorFeatureValue.UUID = feature.UUID
+			sensorFeatureValue.FeatureUUID = feature.UUID
+			sensorFeatureValue.Type = feature.Type
+			sensorFeatureValue.Name = feature.Name
 
 			handler.logger.Debugf("REST - GetValuesDevice - sensor value for feature = %s is = %#v\n", feature.Name, sensorFeatureValue)
-			deviceValues = append(deviceValues, sensorFeatureValue)
+			deviceFeatureStates = append(deviceFeatureStates, sensorFeatureValue)
 		}
-
-		c.JSON(http.StatusOK, deviceValues)
-
 	}
+	c.JSON(http.StatusOK, deviceFeatureStates)
 }
 
 // PostValueDevice function
@@ -170,16 +170,14 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 		return
 	}
 
-	var value models.DeviceState
-	if err := c.ShouldBindJSON(&value); err != nil {
+	var featureState models.DeviceFeatureState
+	if err := c.ShouldBindJSON(&featureState); err != nil {
 		handler.logger.Errorf("REST - POST - PostValueDevice - invalid request payload, err %#v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 
-	handler.logger.Debugf("REST - POST - PostValueDevice - body = %#v", value)
-
-	err := handler.validate.Struct(value)
+	err := handler.validate.Struct(featureState)
 	if err != nil {
 		handler.logger.Errorf("REST - POST - PostValueDevice - request body is not valid, err %#v", err)
 		var errFields = utils.GetErrorMessage(err)
@@ -210,7 +208,7 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 		return
 	}
 	// send via gRPC
-	err = handler.sendViaGrpc(&device, &value, profile.APIToken)
+	err = handler.sendViaGrpc(&device, &featureState, profile.APIToken)
 	if err != nil {
 		handler.logger.Errorf("REST - POST - PostValueDevice - cannot set value via gRPC, err %#v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
@@ -222,8 +220,8 @@ func (handler *DevicesValues) PostValueDevice(c *gin.Context) {
 
 // ------------------------------ Private methods ------------------------------
 
-func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.DeviceState, apiToken string) error {
-	handler.logger.Infof("gRPC - sendViaGrpc - Called with value = %#v and apiToken = %s", value, apiToken)
+func (handler *DevicesValues) sendViaGrpc(device *models.Device, featureState *models.DeviceFeatureState, apiToken string) error {
+	handler.logger.Infof("gRPC - sendViaGrpc - Called with value = %#v and apiToken = %s", featureState, apiToken)
 
 	// Set up a connection to the gRPC server.
 	securityDialOption, isSecure, err := utils.BuildSecurityDialOption()
@@ -258,17 +256,15 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, value *models.D
 	defer cancelBg()
 	ctx, cancel := context.WithDeadline(contextBg, clientDeadline)
 	defer cancel()
-	handler.logger.Infof("gRPC - sendViaGrpc - getType(value) %s", getType(value))
+	handler.logger.Infof("gRPC - sendViaGrpc - getType(value) %s", getType(featureState))
 
-	response, errSend := client.SetValues(ctx, &device3.ValuesRequest{
+	response, errSend := client.SetValue(ctx, &device3.SetValueRequest{
 		Id:          device.ID.Hex(),
-		Uuid:        device.UUID,
+		FeatureUuid: featureState.FeatureUUID,
+		FeatureName: featureState.Name,
 		Mac:         device.Mac,
-		On:          value.On,
-		Temperature: int32(value.Temperature),
-		Mode:        int32(value.Mode),
-		FanSpeed:    int32(value.FanSpeed),
 		ApiToken:    apiToken,
+		Value:       featureState.Value,
 	})
 	handler.logger.Debugf("gRPC - sendViaGrpc - Device set value status %s", response.GetStatus())
 	handler.logger.Debugf("gRPC - sendViaGrpc - Device set value message %s", response.GetMessage())

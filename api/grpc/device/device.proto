@@ -5,38 +5,38 @@ package device;
 option go_package = "github.com/Ks89/home-anthill/api-server/device";
 
 service Device {
-  rpc GetStatus (StatusRequest) returns (StatusResponse) {}
-  rpc SetValues (ValuesRequest) returns (ValuesResponse) {}
+  rpc GetValue (GetValueRequest) returns (GetValueResponse) {}
+  rpc SetValue (SetValueRequest) returns (SetValueResponse) {}
 }
 
-message StatusRequest {
+message GetValueRequest {
   string id = 1;
-  string uuid = 2;
-  string mac = 3;
-  string api_token = 4;
+  string featureUuid = 2;
+  string featureName = 3;
+  string mac = 4;
+  string api_token = 5;
 }
 
-message StatusResponse {
-  bool on = 1;
-  int32 temperature = 2;
-  int32 mode = 3;
-  int32 fan_speed = 4;
+message GetValueResponse {
+  string featureUuid = 1;
+  string featureName = 2;
+  string type = 3;
+  float value = 4;
   int64 created_at = 5;
   int64 modified_at = 6;
 }
 
-message ValuesRequest {
+message SetValueRequest {
   string id = 1;
-  string uuid = 2;
-  string mac = 3;
-  string api_token = 4;
-  bool on = 5;
-  int32 temperature = 6;
-  int32 mode = 7;
-  int32 fan_speed = 8;
+  string featureUuid = 2;
+  string featureName = 3;
+  string mac = 4;
+  string api_token = 5;
+  float value = 6;
 }
 
-message ValuesResponse {
+message SetValueResponse {
   string status = 1;
   string message = 2;
+  string featureUuid = 3;
 }
