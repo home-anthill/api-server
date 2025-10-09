@@ -24,10 +24,11 @@ const (
 type GetValueRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	FeatureUuid   string                 `protobuf:"bytes,2,opt,name=featureUuid,proto3" json:"featureUuid,omitempty"`
-	FeatureName   string                 `protobuf:"bytes,3,opt,name=featureName,proto3" json:"featureName,omitempty"`
-	Mac           string                 `protobuf:"bytes,4,opt,name=mac,proto3" json:"mac,omitempty"`
-	ApiToken      string                 `protobuf:"bytes,5,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
+	DeviceUuid    string                 `protobuf:"bytes,2,opt,name=deviceUuid,proto3" json:"deviceUuid,omitempty"`
+	FeatureUuid   string                 `protobuf:"bytes,3,opt,name=featureUuid,proto3" json:"featureUuid,omitempty"`
+	FeatureName   string                 `protobuf:"bytes,4,opt,name=featureName,proto3" json:"featureName,omitempty"`
+	Mac           string                 `protobuf:"bytes,5,opt,name=mac,proto3" json:"mac,omitempty"`
+	ApiToken      string                 `protobuf:"bytes,6,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -69,6 +70,13 @@ func (x *GetValueRequest) GetId() string {
 	return ""
 }
 
+func (x *GetValueRequest) GetDeviceUuid() string {
+	if x != nil {
+		return x.DeviceUuid
+	}
+	return ""
+}
+
 func (x *GetValueRequest) GetFeatureUuid() string {
 	if x != nil {
 		return x.FeatureUuid
@@ -101,10 +109,9 @@ type GetValueResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	FeatureUuid   string                 `protobuf:"bytes,1,opt,name=featureUuid,proto3" json:"featureUuid,omitempty"`
 	FeatureName   string                 `protobuf:"bytes,2,opt,name=featureName,proto3" json:"featureName,omitempty"`
-	Type          string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
-	Value         float32                `protobuf:"fixed32,4,opt,name=value,proto3" json:"value,omitempty"`
-	CreatedAt     int64                  `protobuf:"varint,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	ModifiedAt    int64                  `protobuf:"varint,6,opt,name=modified_at,json=modifiedAt,proto3" json:"modified_at,omitempty"`
+	Value         float32                `protobuf:"fixed32,3,opt,name=value,proto3" json:"value,omitempty"`
+	CreatedAt     int64                  `protobuf:"varint,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	ModifiedAt    int64                  `protobuf:"varint,5,opt,name=modified_at,json=modifiedAt,proto3" json:"modified_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -153,13 +160,6 @@ func (x *GetValueResponse) GetFeatureName() string {
 	return ""
 }
 
-func (x *GetValueResponse) GetType() string {
-	if x != nil {
-		return x.Type
-	}
-	return ""
-}
-
 func (x *GetValueResponse) GetValue() float32 {
 	if x != nil {
 		return x.Value
@@ -181,21 +181,94 @@ func (x *GetValueResponse) GetModifiedAt() int64 {
 	return 0
 }
 
+type SetValuesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // device id
+	DeviceUuid    string                 `protobuf:"bytes,2,opt,name=deviceUuid,proto3" json:"deviceUuid,omitempty"`
+	Mac           string                 `protobuf:"bytes,3,opt,name=mac,proto3" json:"mac,omitempty"`
+	ApiToken      string                 `protobuf:"bytes,4,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
+	FeatureValues []*SetValueRequest     `protobuf:"bytes,5,rep,name=featureValues,proto3" json:"featureValues,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetValuesRequest) Reset() {
+	*x = SetValuesRequest{}
+	mi := &file_api_grpc_device_device_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetValuesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetValuesRequest) ProtoMessage() {}
+
+func (x *SetValuesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_grpc_device_device_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetValuesRequest.ProtoReflect.Descriptor instead.
+func (*SetValuesRequest) Descriptor() ([]byte, []int) {
+	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SetValuesRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *SetValuesRequest) GetDeviceUuid() string {
+	if x != nil {
+		return x.DeviceUuid
+	}
+	return ""
+}
+
+func (x *SetValuesRequest) GetMac() string {
+	if x != nil {
+		return x.Mac
+	}
+	return ""
+}
+
+func (x *SetValuesRequest) GetApiToken() string {
+	if x != nil {
+		return x.ApiToken
+	}
+	return ""
+}
+
+func (x *SetValuesRequest) GetFeatureValues() []*SetValueRequest {
+	if x != nil {
+		return x.FeatureValues
+	}
+	return nil
+}
+
 type SetValueRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	FeatureUuid   string                 `protobuf:"bytes,2,opt,name=featureUuid,proto3" json:"featureUuid,omitempty"`
-	FeatureName   string                 `protobuf:"bytes,3,opt,name=featureName,proto3" json:"featureName,omitempty"`
-	Mac           string                 `protobuf:"bytes,4,opt,name=mac,proto3" json:"mac,omitempty"`
-	ApiToken      string                 `protobuf:"bytes,5,opt,name=api_token,json=apiToken,proto3" json:"api_token,omitempty"`
-	Value         float32                `protobuf:"fixed32,6,opt,name=value,proto3" json:"value,omitempty"`
+	FeatureUuid   string                 `protobuf:"bytes,1,opt,name=featureUuid,proto3" json:"featureUuid,omitempty"`
+	FeatureName   string                 `protobuf:"bytes,2,opt,name=featureName,proto3" json:"featureName,omitempty"`
+	Value         float32                `protobuf:"fixed32,3,opt,name=value,proto3" json:"value,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SetValueRequest) Reset() {
 	*x = SetValueRequest{}
-	mi := &file_api_grpc_device_device_proto_msgTypes[2]
+	mi := &file_api_grpc_device_device_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -207,7 +280,7 @@ func (x *SetValueRequest) String() string {
 func (*SetValueRequest) ProtoMessage() {}
 
 func (x *SetValueRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_grpc_device_device_proto_msgTypes[2]
+	mi := &file_api_grpc_device_device_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -220,14 +293,7 @@ func (x *SetValueRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetValueRequest.ProtoReflect.Descriptor instead.
 func (*SetValueRequest) Descriptor() ([]byte, []int) {
-	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{2}
-}
-
-func (x *SetValueRequest) GetId() string {
-	if x != nil {
-		return x.Id
-	}
-	return ""
+	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *SetValueRequest) GetFeatureUuid() string {
@@ -244,20 +310,6 @@ func (x *SetValueRequest) GetFeatureName() string {
 	return ""
 }
 
-func (x *SetValueRequest) GetMac() string {
-	if x != nil {
-		return x.Mac
-	}
-	return ""
-}
-
-func (x *SetValueRequest) GetApiToken() string {
-	if x != nil {
-		return x.ApiToken
-	}
-	return ""
-}
-
 func (x *SetValueRequest) GetValue() float32 {
 	if x != nil {
 		return x.Value
@@ -269,14 +321,13 @@ type SetValueResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Status        string                 `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	FeatureUuid   string                 `protobuf:"bytes,3,opt,name=featureUuid,proto3" json:"featureUuid,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SetValueResponse) Reset() {
 	*x = SetValueResponse{}
-	mi := &file_api_grpc_device_device_proto_msgTypes[3]
+	mi := &file_api_grpc_device_device_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -288,7 +339,7 @@ func (x *SetValueResponse) String() string {
 func (*SetValueResponse) ProtoMessage() {}
 
 func (x *SetValueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_grpc_device_device_proto_msgTypes[3]
+	mi := &file_api_grpc_device_device_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -301,7 +352,7 @@ func (x *SetValueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetValueResponse.ProtoReflect.Descriptor instead.
 func (*SetValueResponse) Descriptor() ([]byte, []int) {
-	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{3}
+	return file_api_grpc_device_device_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *SetValueResponse) GetStatus() string {
@@ -318,47 +369,46 @@ func (x *SetValueResponse) GetMessage() string {
 	return ""
 }
 
-func (x *SetValueResponse) GetFeatureUuid() string {
-	if x != nil {
-		return x.FeatureUuid
-	}
-	return ""
-}
-
 var File_api_grpc_device_device_proto protoreflect.FileDescriptor
 
 const file_api_grpc_device_device_proto_rawDesc = "" +
 	"\n" +
-	"\x1capi/grpc/device/device.proto\x12\x06device\"\x94\x01\n" +
+	"\x1capi/grpc/device/device.proto\x12\x06device\"\xb4\x01\n" +
 	"\x0fGetValueRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
-	"\vfeatureUuid\x18\x02 \x01(\tR\vfeatureUuid\x12 \n" +
-	"\vfeatureName\x18\x03 \x01(\tR\vfeatureName\x12\x10\n" +
-	"\x03mac\x18\x04 \x01(\tR\x03mac\x12\x1b\n" +
-	"\tapi_token\x18\x05 \x01(\tR\bapiToken\"\xc0\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1e\n" +
+	"\n" +
+	"deviceUuid\x18\x02 \x01(\tR\n" +
+	"deviceUuid\x12 \n" +
+	"\vfeatureUuid\x18\x03 \x01(\tR\vfeatureUuid\x12 \n" +
+	"\vfeatureName\x18\x04 \x01(\tR\vfeatureName\x12\x10\n" +
+	"\x03mac\x18\x05 \x01(\tR\x03mac\x12\x1b\n" +
+	"\tapi_token\x18\x06 \x01(\tR\bapiToken\"\xac\x01\n" +
 	"\x10GetValueResponse\x12 \n" +
 	"\vfeatureUuid\x18\x01 \x01(\tR\vfeatureUuid\x12 \n" +
-	"\vfeatureName\x18\x02 \x01(\tR\vfeatureName\x12\x12\n" +
-	"\x04type\x18\x03 \x01(\tR\x04type\x12\x14\n" +
-	"\x05value\x18\x04 \x01(\x02R\x05value\x12\x1d\n" +
+	"\vfeatureName\x18\x02 \x01(\tR\vfeatureName\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\x02R\x05value\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\x03R\tcreatedAt\x12\x1f\n" +
-	"\vmodified_at\x18\x06 \x01(\x03R\n" +
-	"modifiedAt\"\xaa\x01\n" +
-	"\x0fSetValueRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
-	"\vfeatureUuid\x18\x02 \x01(\tR\vfeatureUuid\x12 \n" +
-	"\vfeatureName\x18\x03 \x01(\tR\vfeatureName\x12\x10\n" +
-	"\x03mac\x18\x04 \x01(\tR\x03mac\x12\x1b\n" +
-	"\tapi_token\x18\x05 \x01(\tR\bapiToken\x12\x14\n" +
-	"\x05value\x18\x06 \x01(\x02R\x05value\"f\n" +
+	"created_at\x18\x04 \x01(\x03R\tcreatedAt\x12\x1f\n" +
+	"\vmodified_at\x18\x05 \x01(\x03R\n" +
+	"modifiedAt\"\xb0\x01\n" +
+	"\x10SetValuesRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1e\n" +
+	"\n" +
+	"deviceUuid\x18\x02 \x01(\tR\n" +
+	"deviceUuid\x12\x10\n" +
+	"\x03mac\x18\x03 \x01(\tR\x03mac\x12\x1b\n" +
+	"\tapi_token\x18\x04 \x01(\tR\bapiToken\x12=\n" +
+	"\rfeatureValues\x18\x05 \x03(\v2\x17.device.SetValueRequestR\rfeatureValues\"k\n" +
+	"\x0fSetValueRequest\x12 \n" +
+	"\vfeatureUuid\x18\x01 \x01(\tR\vfeatureUuid\x12 \n" +
+	"\vfeatureName\x18\x02 \x01(\tR\vfeatureName\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\x02R\x05value\"D\n" +
 	"\x10SetValueResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\x12 \n" +
-	"\vfeatureUuid\x18\x03 \x01(\tR\vfeatureUuid2\x8a\x01\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\x8c\x01\n" +
 	"\x06Device\x12?\n" +
-	"\bGetValue\x12\x17.device.GetValueRequest\x1a\x18.device.GetValueResponse\"\x00\x12?\n" +
-	"\bSetValue\x12\x17.device.SetValueRequest\x1a\x18.device.SetValueResponse\"\x00B0Z.github.com/Ks89/home-anthill/api-server/deviceb\x06proto3"
+	"\bGetValue\x12\x17.device.GetValueRequest\x1a\x18.device.GetValueResponse\"\x00\x12A\n" +
+	"\tSetValues\x12\x18.device.SetValuesRequest\x1a\x18.device.SetValueResponse\"\x00B0Z.github.com/Ks89/home-anthill/api-server/deviceb\x06proto3"
 
 var (
 	file_api_grpc_device_device_proto_rawDescOnce sync.Once
@@ -372,23 +422,25 @@ func file_api_grpc_device_device_proto_rawDescGZIP() []byte {
 	return file_api_grpc_device_device_proto_rawDescData
 }
 
-var file_api_grpc_device_device_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_grpc_device_device_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_api_grpc_device_device_proto_goTypes = []any{
 	(*GetValueRequest)(nil),  // 0: device.GetValueRequest
 	(*GetValueResponse)(nil), // 1: device.GetValueResponse
-	(*SetValueRequest)(nil),  // 2: device.SetValueRequest
-	(*SetValueResponse)(nil), // 3: device.SetValueResponse
+	(*SetValuesRequest)(nil), // 2: device.SetValuesRequest
+	(*SetValueRequest)(nil),  // 3: device.SetValueRequest
+	(*SetValueResponse)(nil), // 4: device.SetValueResponse
 }
 var file_api_grpc_device_device_proto_depIdxs = []int32{
-	0, // 0: device.Device.GetValue:input_type -> device.GetValueRequest
-	2, // 1: device.Device.SetValue:input_type -> device.SetValueRequest
-	1, // 2: device.Device.GetValue:output_type -> device.GetValueResponse
-	3, // 3: device.Device.SetValue:output_type -> device.SetValueResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	3, // 0: device.SetValuesRequest.featureValues:type_name -> device.SetValueRequest
+	0, // 1: device.Device.GetValue:input_type -> device.GetValueRequest
+	2, // 2: device.Device.SetValues:input_type -> device.SetValuesRequest
+	1, // 3: device.Device.GetValue:output_type -> device.GetValueResponse
+	4, // 4: device.Device.SetValues:output_type -> device.SetValueResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_api_grpc_device_device_proto_init() }
@@ -402,7 +454,7 @@ func file_api_grpc_device_device_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_grpc_device_device_proto_rawDesc), len(file_api_grpc_device_device_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

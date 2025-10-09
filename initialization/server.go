@@ -172,7 +172,7 @@ func RegisterRoutes(ctx context.Context, router *gin.Engine, logger *zap.Sugared
 		private.DELETE("/devices/:id", devices.DeleteDevice)
 
 		private.GET("/devices/:id/values", devicesValues.GetValuesDevice)
-		private.POST("/devices/:id/values", devicesValues.PostValueDevice)
+		private.POST("/devices/:id/values", devicesValues.PostValuesDevice)
 
 		private.POST("/fcmtoken", fcmToken.PostFCMToken)
 		private.GET("/online/:id", online.GetOnline)

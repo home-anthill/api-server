@@ -74,7 +74,7 @@ func (handler *deviceGrpcStub) GetValue(ctx context.Context, in *device.GetValue
 }
 
 // Attention: this function stub name must match the one defined in .proto file
-func (handler *deviceGrpcStub) SetValue(ctx context.Context, in *device.SetValueRequest) (*device.SetValueResponse, error) {
+func (handler *deviceGrpcStub) SetValues(ctx context.Context, in *device.SetValuesRequest) (*device.SetValueResponse, error) {
 	fmt.Printf("gRPC stub - SetValue - received = %#v\n", in)
 	return &device.SetValueResponse{
 		Status:  "200",
@@ -245,12 +245,12 @@ var _ = Describe("DevicesValues", func() {
 		//registerResponse := `[{"id": 123412341234123412341234, "code": 200}]`
 		mux := http.NewServeMux()
 		mux.HandleFunc("/keepalive", keepAliveHandler)
-		mux.HandleFunc("/sensors/"+deviceUUID+"/temperature", getSensorTemperatureHandler)
-		mux.HandleFunc("/sensors/"+deviceUUID+"/light", getSensorLightHandler)
-		mux.HandleFunc("/sensors/"+deviceUUID+"/humidity", getSensorHumidityHandler)
-		mux.HandleFunc("/sensors/"+deviceUUID+"/airpressure", getSensorAirpressureHandler)
-		mux.HandleFunc("/sensors/"+deviceUUID+"/motion", getSensorMotionHandler)
-		mux.HandleFunc("/sensors/"+deviceUUID+"/airquality", getSensorAirqualityHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+temperatureFeatureUUID+"/temperature", getSensorTemperatureHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+lightFeatureUUID+"/light", getSensorLightHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+humidityFeatureUUID+"/humidity", getSensorHumidityHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+airpressureFeatureUUID+"/airpressure", getSensorAirpressureHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+motionFeatureUUID+"/motion", getSensorMotionHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+airqualityFeatureUUID+"/airquality", getSensorAirqualityHandler)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8000")
 		logger.Infof("register_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
@@ -304,7 +304,7 @@ var _ = Describe("DevicesValues", func() {
 				Expect(deviceStates[0].ModifiedAt).To(Equal(currentDate.UnixMilli()))
 			})
 		})
-		//
+
 		When("profile owns a sensor", func() {
 			It("should get a list of values", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
@@ -452,24 +452,24 @@ var _ = Describe("DevicesValues", func() {
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				devState := models.DeviceFeatureState{
+				devStates := []*models.DeviceFeatureState{{
 					FeatureUUID: deviceController.Features[0].UUID,
 					Type:        models.Controller,
 					Name:        deviceController.Features[0].Name,
 					Value:       float32(22.45),
-				}
-				var deviceState bytes.Buffer
-				err = json.NewEncoder(&deviceState).Encode(devState)
+				}}
+				var deviceStates bytes.Buffer
+				err = json.NewEncoder(&deviceStates).Encode(devStates)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceState)
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceStates)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusOK))
-				Expect(recorder.Body.String()).To(Equal(`{"message":"set value success"}`))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"set values success"}`))
 			})
 		})
 
@@ -508,18 +508,18 @@ var _ = Describe("DevicesValues", func() {
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				devState := models.DeviceFeatureState{
+				devStates := []*models.DeviceFeatureState{{
 					FeatureUUID: deviceController.Features[0].UUID,
 					// type is a required field, but here it's missing
 					// name is a required field, but here it's missing
 					Value: float32(22.45),
-				}
-				var deviceState bytes.Buffer
-				err = json.NewEncoder(&deviceState).Encode(devState)
+				}}
+				var deviceStates bytes.Buffer
+				err = json.NewEncoder(&deviceStates).Encode(devStates)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceState)
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceStates)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -533,18 +533,18 @@ var _ = Describe("DevicesValues", func() {
 			It("should return an error, because device is not owned by profile", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 
-				devState := models.DeviceFeatureState{
+				devStates := []*models.DeviceFeatureState{{
 					FeatureUUID: deviceController.Features[0].UUID,
 					Type:        models.Controller,
 					Name:        deviceController.Features[0].Name,
 					Value:       float32(22.45),
-				}
-				var deviceState bytes.Buffer
-				err := json.NewEncoder(&deviceState).Encode(devState)
+				}}
+				var deviceStates bytes.Buffer
+				err := json.NewEncoder(&deviceStates).Encode(devStates)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceState)
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceStates)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
@@ -563,18 +563,18 @@ var _ = Describe("DevicesValues", func() {
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceID)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				devState := models.DeviceFeatureState{
+				devStates := []*models.DeviceFeatureState{{
 					FeatureUUID: deviceController.Features[0].UUID,
 					Type:        models.Controller,
 					Name:        deviceController.Features[0].Name,
 					Value:       float32(22.45),
-				}
-				var deviceState bytes.Buffer
-				err = json.NewEncoder(&deviceState).Encode(devState)
+				}}
+				var deviceStates bytes.Buffer
+				err = json.NewEncoder(&deviceStates).Encode(devStates)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+unexistingDeviceID.Hex()+"/values", &deviceState)
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+unexistingDeviceID.Hex()+"/values", &deviceStates)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)

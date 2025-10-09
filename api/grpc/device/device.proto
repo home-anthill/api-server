@@ -6,37 +6,41 @@ option go_package = "github.com/Ks89/home-anthill/api-server/device";
 
 service Device {
   rpc GetValue (GetValueRequest) returns (GetValueResponse) {}
-  rpc SetValue (SetValueRequest) returns (SetValueResponse) {}
+  rpc SetValues (SetValuesRequest) returns (SetValueResponse) {}
 }
 
 message GetValueRequest {
   string id = 1;
-  string featureUuid = 2;
-  string featureName = 3;
-  string mac = 4;
-  string api_token = 5;
+  string deviceUuid = 2;
+  string featureUuid = 3;
+  string featureName = 4;
+  string mac = 5;
+  string api_token = 6;
 }
 
 message GetValueResponse {
   string featureUuid = 1;
   string featureName = 2;
-  string type = 3;
-  float value = 4;
-  int64 created_at = 5;
-  int64 modified_at = 6;
+  float value = 3;
+  int64 created_at = 4;
+  int64 modified_at = 5;
+}
+
+message SetValuesRequest {
+  string id = 1; // device id
+  string deviceUuid = 2;
+  string mac = 3;
+  string api_token = 4;
+  repeated SetValueRequest featureValues = 5;
 }
 
 message SetValueRequest {
-  string id = 1;
-  string featureUuid = 2;
-  string featureName = 3;
-  string mac = 4;
-  string api_token = 5;
-  float value = 6;
+  string featureUuid = 1;
+  string featureName = 2;
+  float value = 3;
 }
 
 message SetValueResponse {
   string status = 1;
   string message = 2;
-  string featureUuid = 3;
 }
