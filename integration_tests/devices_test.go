@@ -74,16 +74,16 @@ var _ = Describe("Devices", func() {
 		CreatedAt:  currDate,
 		ModifiedAt: currDate,
 	}
-	var devicePowerOutageSensor = models.Device{
+	var deviceOnlineSensor = models.Device{
 		ID:           primitive.NewObjectID(),
 		Mac:          "AA:22:33:44:55:FF",
 		Manufacturer: "test3",
-		Model:        "poweroutage",
+		Model:        "online",
 		UUID:         uuid.NewString(),
 		Features: []models.Feature{{
 			UUID:   uuid.NewString(),
 			Type:   "sensor",
-			Name:   "poweroutage",
+			Name:   "online",
 			Enable: true,
 			Order:  1,
 			Unit:   "-",
@@ -107,7 +107,7 @@ var _ = Describe("Devices", func() {
 		ModifiedAt: currDate,
 	}
 
-	deletePowerOutageSensorOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	deleteOnlineSensorOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{}`))
 	})
@@ -125,7 +125,7 @@ var _ = Describe("Devices", func() {
 
 		// --------- start an HTTP server ---------
 		mux := http.NewServeMux()
-		mux.HandleFunc("/online/"+devicePowerOutageSensor.UUID, deletePowerOutageSensorOnlineHandler)
+		mux.HandleFunc("/online/"+deviceOnlineSensor.UUID, deleteOnlineSensorOnlineHandler)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
 		logger.Infof("online_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
@@ -181,7 +181,7 @@ var _ = Describe("Devices", func() {
 		BeforeEach(func() {
 			err := testuutils.InsertOne(ctx, collDevices, deviceController)
 			Expect(err).ShouldNot(HaveOccurred())
-			err = testuutils.InsertOne(ctx, collDevices, devicePowerOutageSensor)
+			err = testuutils.InsertOne(ctx, collDevices, deviceOnlineSensor)
 			Expect(err).ShouldNot(HaveOccurred())
 			err = testuutils.InsertOne(ctx, collHomes, home)
 			Expect(err).ShouldNot(HaveOccurred())
@@ -221,17 +221,17 @@ var _ = Describe("Devices", func() {
 			})
 		})
 
-		When("profile owns a poweroutage sensor", func() {
-			It("should remove the poweroutage sensor", func() {
+		When("profile owns a online sensor", func() {
+			It("should remove the online sensor", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, devicePowerOutageSensor.ID)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceOnlineSensor.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				err = testuutils.AssignDeviceToHomeAndRoom(ctx, collHomes, home.ID, home.Rooms[0].ID, devicePowerOutageSensor.ID)
+				err = testuutils.AssignDeviceToHomeAndRoom(ctx, collHomes, home.ID, home.Rooms[0].ID, deviceOnlineSensor.ID)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				devices, err := testuutils.FindAll[models.Device](ctx, collDevices)
@@ -239,7 +239,7 @@ var _ = Describe("Devices", func() {
 				Expect(devices).To(HaveLen(2))
 
 				recorder := httptest.NewRecorder()
-				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+devicePowerOutageSensor.ID.Hex(), nil)
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceOnlineSensor.ID.Hex(), nil)
 				req.Header.Add("Cookie", cookieSession)
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)

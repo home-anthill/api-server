@@ -195,9 +195,9 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 			return nil, err1
 		}
 
-		// if a device is a poweroutage sensor, remove it also calling online service
-		if utils.HasPowerOutageFeature(device.Features) {
-			handler.logger.Debug("REST - DELETE - DeleteDevices - removing poweroutage sensor from online service")
+		// if a device is a sensor with online feature, remove it also calling online service
+		if utils.HasOnlineFeature(device.Features) {
+			handler.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from online service")
 			_, result, err1 := handler.deleteOnlineByUUIDService(handler.onlineByUUIDURL + device.UUID)
 			if err1 != nil {
 				handler.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete online from remote service = %#v", err)

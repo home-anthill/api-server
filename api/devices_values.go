@@ -133,6 +133,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 			})
 		} else {
 			path := handler.sensorGetValueURL + device.UUID + "/features/" + feature.UUID + "/" + feature.Name
+			handler.logger.Debugf("REST - GetValuesDevice - path = %s\n", path)
 			_, result, err := utils.Get(path)
 			if err != nil {
 				handler.logger.Errorf("REST - GetValuesDevice - cannot get sensor value from remote service = %#v", err)

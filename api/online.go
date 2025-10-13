@@ -86,8 +86,17 @@ func (handler *Online) GetOnline(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
 		return
 	}
+	// get online feature of device from db
+	onlineFeature := utils.GetOnlineFeature(device.Features)
+	if onlineFeature == nil {
+		handler.logger.Error("REST - GET - GetOnline - cannot find online feature in this device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find online feature in this device"})
+		return
+	}
 
-	_, result, err := handler.onlineByUUIDService(handler.onlineByUUIDURL + device.UUID)
+	path := handler.onlineByUUIDURL + device.UUID + "/features/" + onlineFeature.UUID
+	handler.logger.Debugf("REST - GET - GetOnline - calling external 'online' service = %s", path)
+	_, result, err := handler.onlineByUUIDService(path)
 	if err != nil {
 		handler.logger.Errorf("REST - GetOnline - cannot get online from remote service = %#v", err)
 		if re, ok := err.(*customerrors.ErrorWrapper); ok {

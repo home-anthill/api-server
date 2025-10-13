@@ -24,8 +24,9 @@ import (
 )
 
 var _ = Describe("Online", func() {
-	var onlineCurrentDate = time.Now()
-	var onlineUUID = uuid.NewString()
+	var currentDate = time.Now()
+	var onlineDeviceUUID = uuid.NewString()
+	var onlineFeatureUUID = uuid.NewString()
 	var mockedProfileAPIToken = "2ee7e6d0-c216-4548-bd78-fa3b04bb5fef"
 
 	var ctx context.Context
@@ -41,23 +42,41 @@ var _ = Describe("Online", func() {
 		ID:           primitive.NewObjectID(),
 		Mac:          "AA:22:33:44:55:BB",
 		Manufacturer: "test",
-		Model:        "poweroutage",
-		UUID:         onlineUUID,
+		Model:        "power-outage",
+		UUID:         onlineDeviceUUID,
+		Features: []models.Feature{{
+			UUID:   onlineFeatureUUID,
+			Type:   "sensor",
+			Name:   "online",
+			Enable: true,
+			Order:  1,
+			Unit:   "-",
+		}},
+		CreatedAt:  currentDate,
+		ModifiedAt: currentDate,
+	}
+
+	var deviceSensorNoOnline = models.Device{
+		ID:           primitive.NewObjectID(),
+		Mac:          "FF:22:33:44:55:CC",
+		Manufacturer: "test",
+		Model:        "pir",
+		UUID:         uuid.NewString(),
 		Features: []models.Feature{{
 			UUID:   uuid.NewString(),
 			Type:   "sensor",
-			Name:   "poweroutage",
+			Name:   "motion",
 			Enable: true,
 			Order:  1,
-			Unit:   "",
+			Unit:   "-",
 		}},
-		CreatedAt:  onlineCurrentDate,
-		ModifiedAt: onlineCurrentDate,
+		CreatedAt:  currentDate,
+		ModifiedAt: currentDate,
 	}
 
 	getSensorOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(getOnlineJSONResponse(mockedProfileAPIToken, onlineCurrentDate, onlineCurrentDate)))
+		_, _ = w.Write([]byte(getOnlineJSONResponse(mockedProfileAPIToken, currentDate, currentDate)))
 	})
 
 	BeforeEach(func() {
@@ -73,7 +92,7 @@ var _ = Describe("Online", func() {
 
 		// --------- start an HTTP server ---------
 		mux := http.NewServeMux()
-		mux.HandleFunc("/online/"+onlineUUID, getSensorOnlineHandler)
+		mux.HandleFunc("/online/"+onlineDeviceUUID+"/features/"+onlineFeatureUUID, getSensorOnlineHandler)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
 		logger.Infof("online_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
@@ -96,9 +115,11 @@ var _ = Describe("Online", func() {
 		BeforeEach(func() {
 			err := testuutils.InsertOne(ctx, collDevices, deviceSensor)
 			Expect(err).ShouldNot(HaveOccurred())
+			err = testuutils.InsertOne(ctx, collDevices, deviceSensorNoOnline)
+			Expect(err).ShouldNot(HaveOccurred())
 		})
 
-		When("profile owns a sensor", func() {
+		When("profile owns a sensor with online feature", func() {
 			It("should get online", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
@@ -120,8 +141,30 @@ var _ = Describe("Online", func() {
 				err = json.Unmarshal(recorder.Body.Bytes(), &online)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				Expect(online.CreatedAt.UnixMilli()).To(Equal(onlineCurrentDate.UnixMilli()))
-				Expect(online.ModifiedAt.UnixMilli()).To(Equal(onlineCurrentDate.UnixMilli()))
+				Expect(online.CreatedAt.UnixMilli()).To(Equal(currentDate.UnixMilli()))
+				Expect(online.ModifiedAt.UnixMilli()).To(Equal(currentDate.UnixMilli()))
+			})
+		})
+
+		When("profile owns a sensor without online feature", func() {
+			It("should return an error, because sensor hasn't online feature", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				// set mocked APIToken to the logged profile
+				err := testuutils.SetAPITokenToProfile(ctx, collProfiles, profileRes.ID, mockedProfileAPIToken)
+				Expect(err).ShouldNot(HaveOccurred())
+				// assign mocked sensor device to the logged profile
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensorNoOnline.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/online/"+deviceSensorNoOnline.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find online feature in this device"}`))
 			})
 		})
 

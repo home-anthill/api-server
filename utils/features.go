@@ -11,11 +11,20 @@ func HasControllerFeature(features []models.Feature) bool {
 	return false
 }
 
-func HasPowerOutageFeature(features []models.Feature) bool {
+func HasOnlineFeature(features []models.Feature) bool {
 	for _, feature := range features {
-		if feature.Type == models.Sensor && feature.Name == "poweroutage" {
+		if feature.Type == models.Sensor && feature.Name == "online" {
 			return true
 		}
 	}
 	return false
+}
+
+func GetOnlineFeature(features []models.Feature) *models.Feature {
+	for _, feature := range features {
+		if feature.Type == models.Sensor && feature.Name == "online" {
+			return &feature
+		}
+	}
+	return nil
 }
