@@ -112,7 +112,10 @@ func (handler *Online) GetOnline(c *gin.Context) {
 	if err != nil {
 		handler.logger.Errorf("REST - GetOnline - cannot unmarshal JSON response from online remote service = %#v", err)
 		// TODO manage errors
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online response"})
+		return
 	}
+	handler.logger.Debugf("REST - GetOnline - external 'online' service response = %#v", onlineResp)
 
 	response := models.Online{}
 	response.CreatedAt = time.UnixMilli(onlineResp.CreatedAt)
