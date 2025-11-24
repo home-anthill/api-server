@@ -6,6 +6,7 @@ import (
 	"api-server/initialization"
 	"api-server/testuutils"
 	"bytes"
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -17,7 +18,6 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 var _ = Describe("FCMToken", func() {

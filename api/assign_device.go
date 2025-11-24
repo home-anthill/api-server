@@ -4,6 +4,7 @@ import (
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
+	"context"
 	"net/http"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/writeconcern"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 // AssignDeviceReq struct

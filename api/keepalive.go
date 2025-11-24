@@ -2,11 +2,11 @@ package api
 
 import (
 	"api-server/models"
+	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 // KeepAlive struct

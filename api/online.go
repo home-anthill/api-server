@@ -5,6 +5,7 @@ import (
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,7 +18,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 type onlineResponse struct {

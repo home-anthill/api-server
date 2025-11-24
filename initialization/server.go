@@ -3,6 +3,7 @@ package initialization
 import (
 	"api-server/api"
 	"api-server/utils"
+	"context"
 	"os"
 	"path"
 	"path/filepath"
@@ -16,7 +17,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 var oauthGithub *api.LoginGitHub

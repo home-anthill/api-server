@@ -7,6 +7,7 @@ import (
 	"api-server/models"
 	"api-server/testuutils"
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -18,7 +19,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 type newTokenResponse struct {

@@ -5,6 +5,7 @@ import (
 	"api-server/initialization"
 	"api-server/models"
 	"api-server/testuutils"
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -19,7 +20,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 var _ = Describe("Devices", func() {

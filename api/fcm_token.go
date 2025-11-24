@@ -4,6 +4,7 @@ import (
 	"api-server/customerrors"
 	"api-server/db"
 	"api-server/utils"
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -15,7 +16,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 // InitFCMTokenReq struct

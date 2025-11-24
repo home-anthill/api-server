@@ -5,6 +5,7 @@ import (
 	"api-server/initialization"
 	"api-server/testuutils"
 	"api-server/utils"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,7 +17,6 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
-	"golang.org/x/net/context"
 )
 
 var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
