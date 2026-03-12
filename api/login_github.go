@@ -17,9 +17,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-github/github"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 	oauth2gh "golang.org/x/oauth2/github"
@@ -182,11 +181,11 @@ func (handler *LoginGitHub) OauthAuth() gin.HandlerFunc {
 				currentDate := time.Now()
 				// profile not found, so create a new profile
 				var newProfile models.Profile
-				newProfile.ID = primitive.NewObjectID()
+				newProfile.ID = bson.NewObjectID()
 				newProfile.Github = dbGithubUser
 				newProfile.APIToken = uuid.NewString()
-				newProfile.Homes = []primitive.ObjectID{}   // empty slice of ObjectIDs
-				newProfile.Devices = []primitive.ObjectID{} // empty slice of ObjectIDs
+				newProfile.Homes = []bson.ObjectID{}   // empty slice of ObjectIDs
+				newProfile.Devices = []bson.ObjectID{} // empty slice of ObjectIDs
 				newProfile.CreatedAt = currentDate
 				newProfile.ModifiedAt = currentDate
 

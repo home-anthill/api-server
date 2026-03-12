@@ -17,8 +17,8 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -34,29 +34,29 @@ var _ = Describe("Homes", func() {
 	var currentDate1 = time.Now()
 	var currentDate2 = time.Now()
 	var home1 = models.Home{
-		ID:       primitive.NewObjectID(),
+		ID:       bson.NewObjectID(),
 		Name:     "home1",
 		Location: "location1",
 		Rooms: []models.Room{{
-			ID:         primitive.NewObjectID(),
+			ID:         bson.NewObjectID(),
 			Name:       "room1",
 			Floor:      1,
 			CreatedAt:  currentDate1,
 			ModifiedAt: currentDate1,
-			Devices:    []primitive.ObjectID{},
+			Devices:    []bson.ObjectID{},
 		}, {
-			ID:         primitive.NewObjectID(),
+			ID:         bson.NewObjectID(),
 			Name:       "room2",
 			Floor:      2,
 			CreatedAt:  currentDate1,
 			ModifiedAt: currentDate1,
-			Devices:    []primitive.ObjectID{},
+			Devices:    []bson.ObjectID{},
 		}},
 		CreatedAt:  currentDate1,
 		ModifiedAt: currentDate1,
 	}
 	var home2 = models.Home{
-		ID:         primitive.NewObjectID(),
+		ID:         bson.NewObjectID(),
 		Name:       "home2",
 		Location:   "location2",
 		Rooms:      []models.Room{},
@@ -500,7 +500,7 @@ var _ = Describe("Homes", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				missingHomeID := primitive.NewObjectID()
+				missingHomeID := bson.NewObjectID()
 
 				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -634,7 +634,7 @@ var _ = Describe("Homes", func() {
 
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingHomeID := primitive.NewObjectID()
+				missingHomeID := bson.NewObjectID()
 
 				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -785,7 +785,7 @@ var _ = Describe("Homes", func() {
 
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingHomeID := primitive.NewObjectID()
+				missingHomeID := bson.NewObjectID()
 
 				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -811,7 +811,7 @@ var _ = Describe("Homes", func() {
 
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingRoomID := primitive.NewObjectID()
+				missingRoomID := bson.NewObjectID()
 
 				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -902,7 +902,7 @@ var _ = Describe("Homes", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				missingHomeID := primitive.NewObjectID()
+				missingHomeID := bson.NewObjectID()
 				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, missingHomeID)
 				Expect(err).ShouldNot(HaveOccurred())
 
@@ -919,7 +919,7 @@ var _ = Describe("Homes", func() {
 			It("should return an error, because roomId is not a room of home1 in db", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
-				missingRoomID := primitive.NewObjectID()
+				missingRoomID := bson.NewObjectID()
 
 				err := testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home1.ID)
 				Expect(err).ShouldNot(HaveOccurred())

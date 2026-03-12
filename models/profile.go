@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
 // GitHub struct
@@ -28,12 +28,12 @@ var DbGithubUserTestmock = GitHub{
 
 // Profile struct
 type Profile struct {
-	ID         primitive.ObjectID   `json:"id" bson:"_id"`
-	Github     GitHub               `json:"github" bson:"github"`
-	APIToken   string               `json:"apiToken" bson:"apiToken"`
-	FCMToken   string               `json:"fcmToken" bson:"fcmToken"`
-	Devices    []primitive.ObjectID `json:"devices" bson:"devices"`
-	Homes      []primitive.ObjectID `json:"homes" bson:"homes"`
-	CreatedAt  time.Time            `json:"createdAt" bson:"createdAt"`
-	ModifiedAt time.Time            `json:"modifiedAt" bson:"modifiedAt"`
+	ID         bson.ObjectID   `json:"id" bson:"_id"`
+	Github     GitHub          `json:"github" bson:"github"`
+	APIToken   string          `json:"apiToken" bson:"apiToken"`
+	FCMToken   string          `json:"fcmToken" bson:"fcmToken"`
+	Devices    []bson.ObjectID `json:"devices" bson:"devices"`
+	Homes      []bson.ObjectID `json:"homes" bson:"homes"`
+	CreatedAt  time.Time       `json:"createdAt" bson:"createdAt"`
+	ModifiedAt time.Time       `json:"modifiedAt" bson:"modifiedAt"`
 }

@@ -4,9 +4,9 @@ import (
 	"context"
 	"os"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/readpref"
 	"go.uber.org/zap"
 )
 
@@ -20,13 +20,13 @@ type Collections struct {
 }
 
 // InitDb function
-func InitDb(ctx context.Context, logger *zap.SugaredLogger) *mongo.Client {
+func InitDb(logger *zap.SugaredLogger) *mongo.Client {
 	mongoDBUrl := os.Getenv("MONGODB_URL")
 	logger.Info("InitDb - connecting to MongoDB URL = " + mongoDBUrl)
 
 	// connect to DB
 	var err error
-	client, err = mongo.Connect(ctx, options.Client().ApplyURI(mongoDBUrl))
+	client, err = mongo.Connect(options.Client().ApplyURI(mongoDBUrl))
 	if err != nil {
 		logger.Fatalf("Cannot connect to MongoDB: %s", err)
 		panic("Cannot connect to MongoDB")

@@ -12,9 +12,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -77,7 +76,7 @@ func (handler *Profiles) PostProfilesAPIToken(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostProfilesAPIToken called")
 
 	// get profileID from path params
-	profileID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	profileID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - POST - PostProfilesAPIToken - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -124,7 +123,7 @@ func (handler *Profiles) PostProfilesFCMToken(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostProfilesFCMToken called")
 
 	// get profileID from path params
-	profileID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	profileID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - POST - PostProfilesFCMToken - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})

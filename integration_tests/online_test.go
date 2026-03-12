@@ -18,8 +18,8 @@ import (
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -39,7 +39,7 @@ var _ = Describe("Online", func() {
 	var httpMockServer *httptest.Server
 
 	var deviceSensor = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "AA:22:33:44:55:BB",
 		Manufacturer: "test",
 		Model:        "power-outage",
@@ -57,7 +57,7 @@ var _ = Describe("Online", func() {
 	}
 
 	var deviceSensorNoOnline = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "FF:22:33:44:55:CC",
 		Manufacturer: "test",
 		Model:        "pir",
@@ -204,7 +204,7 @@ var _ = Describe("Online", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				unexistingDeviceID := primitive.NewObjectID()
+				unexistingDeviceID := bson.NewObjectID()
 
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceID)
 				Expect(err).ShouldNot(HaveOccurred())

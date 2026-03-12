@@ -12,11 +12,10 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"go.uber.org/zap"
 )
 
@@ -98,7 +97,7 @@ func (handler *Devices) GetDevices(c *gin.Context) {
 func (handler *Devices) DeleteDevice(c *gin.Context) {
 	handler.logger.Info("REST - DELETE - DeleteDevice called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - GET - DeleteDevice - wrong format of device id")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of device id"})
@@ -154,7 +153,7 @@ func (handler *Devices) DeleteDevice(c *gin.Context) {
 	// Defers ending the session after the transaction is committed or ended
 	defer dbSession.EndSession(context.TODO())
 
-	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx context.Context) (interface{}, error) {
 		// Official `mongo-driver` documentation state: "callback may be run
 		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
 

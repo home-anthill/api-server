@@ -18,8 +18,8 @@ import (
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -34,44 +34,44 @@ var _ = Describe("AssignDevices", func() {
 
 	var currDate = time.Now()
 	var home = models.Home{
-		ID:       primitive.NewObjectID(),
+		ID:       bson.NewObjectID(),
 		Name:     "home1",
 		Location: "location1",
 		Rooms: []models.Room{{
-			ID:         primitive.NewObjectID(),
+			ID:         bson.NewObjectID(),
 			Name:       "room1",
 			Floor:      1,
 			CreatedAt:  currDate,
 			ModifiedAt: currDate,
-			Devices:    []primitive.ObjectID{},
+			Devices:    []bson.ObjectID{},
 		}, {
-			ID:         primitive.NewObjectID(),
+			ID:         bson.NewObjectID(),
 			Name:       "room2",
 			Floor:      2,
 			CreatedAt:  currDate,
 			ModifiedAt: currDate,
-			Devices:    []primitive.ObjectID{},
+			Devices:    []bson.ObjectID{},
 		}},
 		CreatedAt:  currDate,
 		ModifiedAt: currDate,
 	}
 	var home2 = models.Home{
-		ID:       primitive.NewObjectID(),
+		ID:       bson.NewObjectID(),
 		Name:     "home2",
 		Location: "location2",
 		Rooms: []models.Room{{
-			ID:         primitive.NewObjectID(),
+			ID:         bson.NewObjectID(),
 			Name:       "room1",
 			Floor:      3,
 			CreatedAt:  currDate,
 			ModifiedAt: currDate,
-			Devices:    []primitive.ObjectID{},
+			Devices:    []bson.ObjectID{},
 		}},
 		CreatedAt:  currDate,
 		ModifiedAt: currDate,
 	}
 	var deviceController = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "11:22:33:44:55:66",
 		Manufacturer: "test",
 		Model:        "test",
@@ -88,7 +88,7 @@ var _ = Describe("AssignDevices", func() {
 		ModifiedAt: currDate,
 	}
 	var deviceSensor = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "AA:22:33:44:55:BB",
 		Manufacturer: "test2",
 		Model:        "test2",
@@ -316,7 +316,7 @@ var _ = Describe("AssignDevices", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				unknownHomeID, _ := primitive.ObjectIDFromHex("640499d9973e9ad5f58d3135")
+				unknownHomeID, _ := bson.ObjectIDFromHex("640499d9973e9ad5f58d3135")
 
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -344,7 +344,7 @@ var _ = Describe("AssignDevices", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				unknownRoomID, _ := primitive.ObjectIDFromHex("640499d9973e9ad5f58d3135")
+				unknownRoomID, _ := bson.ObjectIDFromHex("640499d9973e9ad5f58d3135")
 
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
 				Expect(err).ShouldNot(HaveOccurred())

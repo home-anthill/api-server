@@ -20,8 +20,8 @@ import (
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
@@ -94,7 +94,7 @@ var _ = Describe("DevicesValues", func() {
 	var httpMockServer *httptest.Server
 
 	var deviceController = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "11:22:33:44:55:66",
 		Manufacturer: "test",
 		Model:        "test",
@@ -113,7 +113,7 @@ var _ = Describe("DevicesValues", func() {
 	// hybrid device like a thermostat
 	// (temperature sensor + airconditioner)
 	var deviceHybrid = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "CC:22:33:44:55:66",
 		Manufacturer: "test",
 		Model:        "test",
@@ -137,7 +137,7 @@ var _ = Describe("DevicesValues", func() {
 		ModifiedAt: currentDate,
 	}
 	var deviceSensor = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "AA:22:33:44:55:BB",
 		Manufacturer: "test2",
 		Model:        "test2",
@@ -421,7 +421,7 @@ var _ = Describe("DevicesValues", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				unexistingDeviceID := primitive.NewObjectID()
+				unexistingDeviceID := bson.NewObjectID()
 
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceID)
 				Expect(err).ShouldNot(HaveOccurred())
@@ -559,7 +559,7 @@ var _ = Describe("DevicesValues", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-				unexistingDeviceID := primitive.NewObjectID()
+				unexistingDeviceID := bson.NewObjectID()
 				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, unexistingDeviceID)
 				Expect(err).ShouldNot(HaveOccurred())
 

@@ -11,11 +11,10 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"go.uber.org/zap"
 )
 
@@ -51,7 +50,7 @@ func NewAssignDevice(ctx context.Context, logger *zap.SugaredLogger, client *mon
 func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 	handler.logger.Info("REST - PUT - PutAssignDeviceToHomeRoom called")
 
-	deviceID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	deviceID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of device 'id' path param")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of device 'id' path param"})
@@ -70,8 +69,8 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
 		return
 	}
-	homeObjID, errHomeObjID := primitive.ObjectIDFromHex(assignDeviceReq.HomeID)
-	roomObjID, errRoomObjID := primitive.ObjectIDFromHex(assignDeviceReq.RoomID)
+	homeObjID, errHomeObjID := bson.ObjectIDFromHex(assignDeviceReq.HomeID)
+	roomObjID, errRoomObjID := bson.ObjectIDFromHex(assignDeviceReq.RoomID)
 	if errHomeObjID != nil || errRoomObjID != nil {
 		handler.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of one of the values in body")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the values in body"})
@@ -144,7 +143,7 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 	// Defers ending the session after the transaction is committed or ended
 	defer dbSession.EndSession(context.TODO())
 
-	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx context.Context) (interface{}, error) {
 		// Official `mongo-driver` documentation state: "callback may be run
 		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
 
@@ -164,9 +163,9 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 
 		// 5. assign device with id = `deviceID` to room with id = `roomObjID` of home with id = `homeObjID`
 		filterHome := bson.D{bson.E{Key: "_id", Value: homeObjID}}
-		arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomObjID}}}
-		opts := options.UpdateOptions{
-			ArrayFilters: &arrayFiltersRoom,
+		arrayFiltersRoom := bson.A{bson.M{"x._id": roomObjID}}
+		opts := []options.Lister[options.UpdateOneOptions]{
+			options.UpdateOne().SetArrayFilters(arrayFiltersRoom),
 		}
 		update := bson.M{
 			"$addToSet": bson.M{
@@ -177,7 +176,7 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 				"modifiedAt":            time.Now(),
 			},
 		}
-		_, errUpdate := handler.collHomes.UpdateOne(sessionCtx, filterHome, update, &opts)
+		_, errUpdate := handler.collHomes.UpdateOne(sessionCtx, filterHome, update, opts...)
 		if errUpdate != nil {
 			handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot assign device to room, errUpdate = %#v", errUpdate)
 		}

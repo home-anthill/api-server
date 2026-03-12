@@ -17,8 +17,8 @@ import (
 	"github.com/google/uuid"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -34,7 +34,7 @@ var _ = Describe("Devices", func() {
 
 	var currDate = time.Now()
 	var deviceController = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "11:22:33:44:55:66",
 		Manufacturer: "test",
 		Model:        "test",
@@ -51,7 +51,7 @@ var _ = Describe("Devices", func() {
 		ModifiedAt: currDate,
 	}
 	var deviceSensor = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "AA:22:33:44:55:BB",
 		Manufacturer: "test2",
 		Model:        "test2",
@@ -75,7 +75,7 @@ var _ = Describe("Devices", func() {
 		ModifiedAt: currDate,
 	}
 	var deviceOnlineSensor = models.Device{
-		ID:           primitive.NewObjectID(),
+		ID:           bson.NewObjectID(),
 		Mac:          "AA:22:33:44:55:FF",
 		Manufacturer: "test3",
 		Model:        "online",
@@ -92,16 +92,16 @@ var _ = Describe("Devices", func() {
 		ModifiedAt: currDate,
 	}
 	var home = models.Home{
-		ID:       primitive.NewObjectID(),
+		ID:       bson.NewObjectID(),
 		Name:     "home1",
 		Location: "location1",
 		Rooms: []models.Room{{
-			ID:         primitive.NewObjectID(),
+			ID:         bson.NewObjectID(),
 			Name:       "room1",
 			Floor:      1,
 			CreatedAt:  currDate,
 			ModifiedAt: currDate,
-			Devices:    []primitive.ObjectID{},
+			Devices:    []bson.ObjectID{},
 		}},
 		CreatedAt:  currDate,
 		ModifiedAt: currDate,

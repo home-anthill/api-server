@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -23,7 +23,7 @@ func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Client) {
 	// 3. Init db
 	ctx := context.Background()
 	// Connect to DB
-	client := db.InitDb(ctx, logger)
+	client := db.InitDb(logger)
 
 	// 4. Init server
 	router, ctx := BuildServer(ctx, logger, client)

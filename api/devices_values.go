@@ -15,9 +15,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -61,7 +60,7 @@ func NewDevicesValues(ctx context.Context, logger *zap.SugaredLogger, client *mo
 func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetValuesDevice called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - GET - GetValuesDevice - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -164,7 +163,7 @@ func (handler *DevicesValues) GetValuesDevice(c *gin.Context) {
 func (handler *DevicesValues) PostValuesDevice(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostValuesDevice called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Errorf("REST - GET - PostValuesDevice - wrong format of the path param 'id', err %#v", errID)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -281,7 +280,7 @@ func (handler *DevicesValues) sendViaGrpc(device *models.Device, featureStates [
 	return errSend
 }
 
-func (handler *DevicesValues) getDevice(deviceID primitive.ObjectID) (models.Device, error) {
+func (handler *DevicesValues) getDevice(deviceID bson.ObjectID) (models.Device, error) {
 	handler.logger.Debug("getDevice - searching device with objectId: ", deviceID)
 	var device models.Device
 	err := handler.collDevices.FindOne(handler.ctx, bson.M{

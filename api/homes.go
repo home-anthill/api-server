@@ -11,11 +11,10 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/writeconcern"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"go.uber.org/zap"
 )
 
@@ -146,7 +145,7 @@ func (handler *Homes) PostHome(c *gin.Context) {
 
 	// create a Home document object
 	var home models.Home
-	home.ID = primitive.NewObjectID()
+	home.ID = bson.NewObjectID()
 	home.Name = newHome.Name
 	home.Location = newHome.Location
 	home.CreatedAt = newDate
@@ -154,7 +153,7 @@ func (handler *Homes) PostHome(c *gin.Context) {
 	home.Rooms = []models.Room{}
 	for i := 0; i < len(newHome.Rooms); i++ {
 		var room models.Room
-		room.ID = primitive.NewObjectID()
+		room.ID = bson.NewObjectID()
 		room.Name = newHome.Rooms[i].Name
 		room.Floor = newHome.Rooms[i].Floor
 		room.CreatedAt = newDate
@@ -172,7 +171,7 @@ func (handler *Homes) PostHome(c *gin.Context) {
 	// Defers ending the session after the transaction is committed or ended
 	defer dbSession.EndSession(context.TODO())
 
-	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx context.Context) (interface{}, error) {
 		// Official `mongo-driver` documentation state: "callback may be run
 		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
 		_, err1 := handler.collHomes.InsertOne(sessionCtx, home)
@@ -204,7 +203,7 @@ func (handler *Homes) PostHome(c *gin.Context) {
 func (handler *Homes) PutHome(c *gin.Context) {
 	handler.logger.Info("REST - PUT - PutHome called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - PUT - PutHome - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -257,7 +256,7 @@ func (handler *Homes) PutHome(c *gin.Context) {
 func (handler *Homes) DeleteHome(c *gin.Context) {
 	handler.logger.Info("REST - DELETE - DeleteHome called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - DELETE - DeleteHome - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -281,7 +280,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 		return
 	}
-	var newHomes []primitive.ObjectID
+	var newHomes []bson.ObjectID
 	for _, homeID := range profile.Homes {
 		if homeID != objectID {
 			newHomes = append(newHomes, homeID)
@@ -298,7 +297,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 	// Defers ending the session after the transaction is committed or ended
 	defer dbSession.EndSession(context.TODO())
 
-	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx mongo.SessionContext) (interface{}, error) {
+	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx context.Context) (interface{}, error) {
 		// Official `mongo-driver` documentation state: "callback may be run
 		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
 		_, errUpd := handler.collProfiles.UpdateOne(sessionCtx, bson.M{
@@ -333,7 +332,7 @@ func (handler *Homes) DeleteHome(c *gin.Context) {
 func (handler *Homes) GetRooms(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetRooms called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - GET - GetRooms - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -366,7 +365,7 @@ func (handler *Homes) GetRooms(c *gin.Context) {
 func (handler *Homes) PostRoom(c *gin.Context) {
 	handler.logger.Info("REST - POST - PostRoom called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - POST - PostRoom - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -412,7 +411,7 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 
 	// create a Home document object
 	var room models.Room
-	room.ID = primitive.NewObjectID()
+	room.ID = bson.NewObjectID()
 	room.Name = newRoom.Name
 	room.Floor = newRoom.Floor
 	room.CreatedAt = newDate
@@ -442,8 +441,8 @@ func (handler *Homes) PostRoom(c *gin.Context) {
 func (handler *Homes) PutRoom(c *gin.Context) {
 	handler.logger.Info("REST - PUT - PutRoom called")
 
-	homeID, errID := primitive.ObjectIDFromHex(c.Param("id"))
-	roomID, errRid := primitive.ObjectIDFromHex(c.Param("rid"))
+	homeID, errID := bson.ObjectIDFromHex(c.Param("id"))
+	roomID, errRid := bson.ObjectIDFromHex(c.Param("rid"))
 	if errID != nil || errRid != nil {
 		handler.logger.Error("REST - PUT - PutRoom - wrong format of one of the path params")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the path params"})
@@ -498,12 +497,11 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 	}
 
 	// update room
-	filter := bson.D{primitive.E{Key: "_id", Value: homeID}}
-	arrayFilters := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomID}}}
-	upsert := true
-	opts := options.UpdateOptions{
-		ArrayFilters: &arrayFilters,
-		Upsert:       &upsert,
+	filter := bson.D{bson.E{Key: "_id", Value: homeID}}
+	arrayFilters := bson.A{bson.M{"x._id": roomID}}
+	opts := []options.Lister[options.UpdateOneOptions]{
+		options.UpdateOne().SetUpsert(true),
+		options.UpdateOne().SetArrayFilters(arrayFilters),
 	}
 	update := bson.M{
 		"$set": bson.M{
@@ -512,7 +510,7 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 			"rooms.$[x].modifiedAt": time.Now(),
 		},
 	}
-	_, errUpdate := handler.collHomes.UpdateOne(handler.ctx, filter, update, &opts)
+	_, errUpdate := handler.collHomes.UpdateOne(handler.ctx, filter, update, opts...)
 	if errUpdate != nil {
 		handler.logger.Errorf("REST - PUT - PutRoom - Cannot update a room in DB, errUpdate = %#v", errUpdate)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update room"})
@@ -526,8 +524,8 @@ func (handler *Homes) PutRoom(c *gin.Context) {
 func (handler *Homes) DeleteRoom(c *gin.Context) {
 	handler.logger.Info("REST - DELETE - DeleteRoom called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
-	objectRid, errRid := primitive.ObjectIDFromHex(c.Param("rid"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
+	objectRid, errRid := bson.ObjectIDFromHex(c.Param("rid"))
 	if errID != nil || errRid != nil {
 		handler.logger.Error("REST - PUT - PutRoom - wrong format of one of the path params")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the path params"})
@@ -568,10 +566,10 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 	}
 
 	// delete room by id
-	filter := bson.D{primitive.E{Key: "_id", Value: objectID}}
+	filter := bson.D{bson.E{Key: "_id", Value: objectID}}
 	update := bson.M{
 		"$pull": bson.M{
-			"rooms": bson.D{primitive.E{Key: "_id", Value: objectRid}},
+			"rooms": bson.D{bson.E{Key: "_id", Value: objectRid}},
 		},
 	}
 	_, err2 := handler.collHomes.UpdateOne(handler.ctx, filter, update)
@@ -584,7 +582,7 @@ func (handler *Homes) DeleteRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "room has been deleted"})
 }
 
-func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectID primitive.ObjectID) bool {
+func (handler *Homes) isHomeOwnedBy(session sessions.Session, objectID bson.ObjectID) bool {
 	// you can update a home only if you are the owner of that home
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 

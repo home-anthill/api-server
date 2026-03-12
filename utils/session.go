@@ -8,9 +8,8 @@ import (
 	"fmt"
 
 	"github.com/gin-contrib/sessions"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // GetProfileFromSession retrieve current profile ID from session
@@ -36,7 +35,7 @@ func GetLoggedProfile(ctx context.Context, session *sessions.Session, collection
 	return profile, err
 }
 
-func Contains(s []primitive.ObjectID, objToFind primitive.ObjectID) bool {
+func Contains(s []bson.ObjectID, objToFind bson.ObjectID) bool {
 	for _, v := range s {
 		if v.Hex() == objToFind.Hex() {
 			return true

@@ -6,10 +6,9 @@ import (
 	"time"
 
 	"github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func DropAllCollections(ctx context.Context, collProfiles, collHomes, collDevices *mongo.Collection) {
@@ -37,7 +36,7 @@ func FindAll[T interface{}](ctx context.Context, collection *mongo.Collection) (
 	return result, nil
 }
 
-func FindOneById[T interface{}](ctx context.Context, collection *mongo.Collection, id primitive.ObjectID) (T, error) {
+func FindOneById[T interface{}](ctx context.Context, collection *mongo.Collection, id bson.ObjectID) (T, error) {
 	var model T
 	err := collection.FindOne(ctx, bson.M{
 		"_id": id,
@@ -50,7 +49,7 @@ func InsertOne(ctx context.Context, collection *mongo.Collection, obj interface{
 	return err
 }
 
-func AssignHomeToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId primitive.ObjectID, homeId primitive.ObjectID) error {
+func AssignHomeToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId bson.ObjectID, homeId bson.ObjectID) error {
 	_, err := collectionProfiles.UpdateOne(
 		ctx,
 		bson.M{"_id": profileId},
@@ -59,7 +58,7 @@ func AssignHomeToProfile(ctx context.Context, collectionProfiles *mongo.Collecti
 	return err
 }
 
-func AssignDeviceToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId primitive.ObjectID, deviceId primitive.ObjectID) error {
+func AssignDeviceToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId bson.ObjectID, deviceId bson.ObjectID) error {
 	_, err := collectionProfiles.UpdateOne(
 		ctx,
 		bson.M{"_id": profileId},
@@ -68,7 +67,7 @@ func AssignDeviceToProfile(ctx context.Context, collectionProfiles *mongo.Collec
 	return err
 }
 
-func SetAPITokenToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId primitive.ObjectID, apiToken string) error {
+func SetAPITokenToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId bson.ObjectID, apiToken string) error {
 	_, err := collectionProfiles.UpdateOne(
 		ctx,
 		bson.M{"_id": profileId},
@@ -79,7 +78,7 @@ func SetAPITokenToProfile(ctx context.Context, collectionProfiles *mongo.Collect
 
 // AssignDeviceToHomeAndRoom roomId must be inside home with homeId
 // This is an unsafe method used only in testing environment bypassing many checks
-func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Collection, homeId primitive.ObjectID, roomId primitive.ObjectID, deviceId primitive.ObjectID) error {
+func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Collection, homeId bson.ObjectID, roomId bson.ObjectID, deviceId bson.ObjectID) error {
 	var home models.Home
 	err := collectionHomes.FindOne(ctx, bson.M{
 		"_id": homeId,
@@ -89,9 +88,9 @@ func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Colle
 	}
 
 	filterHome := bson.D{bson.E{Key: "_id", Value: homeId}}
-	arrayFiltersRoom := options.ArrayFilters{Filters: bson.A{bson.M{"x._id": roomId}}}
-	opts := options.UpdateOptions{
-		ArrayFilters: &arrayFiltersRoom,
+	arrayFiltersRoom := bson.A{bson.M{"x._id": roomId}}
+	opts := []options.Lister[options.UpdateOneOptions]{
+		options.UpdateOne().SetArrayFilters(arrayFiltersRoom),
 	}
 	update := bson.M{
 		"$push": bson.M{
@@ -101,6 +100,6 @@ func AssignDeviceToHomeAndRoom(ctx context.Context, collectionHomes *mongo.Colle
 			"rooms.$[x].modifiedAt": time.Now(),
 		},
 	}
-	_, err = collectionHomes.UpdateOne(ctx, filterHome, update, &opts)
+	_, err = collectionHomes.UpdateOne(ctx, filterHome, update, opts...)
 	return err
 }

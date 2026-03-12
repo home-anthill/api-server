@@ -16,8 +16,8 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -102,7 +102,7 @@ var _ = Describe("Profiles", func() {
 
 		It("should return an error, if profileId is not the one in session", func() {
 			jwtToken, cookieSession := testuutils.GetJwt(router)
-			profileID := primitive.NewObjectID()
+			profileID := bson.NewObjectID()
 			recorder := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileID.Hex()+"/tokens", nil)
 			req.Header.Add("Cookie", cookieSession)
@@ -163,7 +163,7 @@ var _ = Describe("Profiles", func() {
 
 		It("should return an error, if profileId is not the one in session", func() {
 			jwtToken, cookieSession := testuutils.GetJwt(router)
-			profileID := primitive.NewObjectID()
+			profileID := bson.NewObjectID()
 
 			profileUpdateFCMTokenReq := api.ProfileUpdateFCMTokenReq{
 				FCMToken: "MOCKED_FCM_TOKEN",

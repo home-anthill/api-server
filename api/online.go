@@ -14,9 +14,8 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
 
@@ -57,7 +56,7 @@ func NewOnline(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Cli
 func (handler *Online) GetOnline(c *gin.Context) {
 	handler.logger.Info("REST - GET - GetOnline called")
 
-	objectID, errID := primitive.ObjectIDFromHex(c.Param("id"))
+	objectID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
 		handler.logger.Error("REST - GET - GetOnline - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
@@ -125,7 +124,7 @@ func (handler *Online) GetOnline(c *gin.Context) {
 }
 
 // TODO this is equals to the method defined in devices_values
-func (handler *Online) getDevice(deviceID primitive.ObjectID) (models.Device, error) {
+func (handler *Online) getDevice(deviceID bson.ObjectID) (models.Device, error) {
 	handler.logger.Debug("getDevice - searching device with objectId: ", deviceID)
 	var device models.Device
 	err := handler.collDevices.FindOne(handler.ctx, bson.M{
