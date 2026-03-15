@@ -1,0 +1,32 @@
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/logger_config.go:15","msg":"InitLogger - called"}
+{"level":"debug","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:18","msg":"BuildConfig - envFile = /Users/ks89/git/home-anthill/api-server/.env"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:41","msg":"ENVIRONMENT = "}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:42","msg":"LOG_FOLDER = ./logs/"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:43","msg":"MONGODB_URL = mongodb://localhost:27017/"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:44","msg":"HTTP_SERVER = http://localhost"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:45","msg":"HTTP_PORT = 8082"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:46","msg":"OAUTH2_CALLBACK = http://localhost:8082/api/callback"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:47","msg":"OAUTH2_CLIENTID = 181a9b0e2ed4bb00c42f"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:48","msg":"OAUTH2_SECRETID = ba238a5ae9eb6f61feef7b9a230e5a1f7077591c"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:49","msg":"OAUTH2_APP_CALLBACK = http://localhost:8082/api/app_callback"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:50","msg":"OAUTH2_APP_CLIENTID = Ov23liM8Zzf3QwWwWz2f"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:51","msg":"OAUTH2_APP_SECRETID = f404d63ea81ddb37d1c78edd12f2dc13329a6779"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:52","msg":"HTTP_CORS = true"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:53","msg":"HTTP_SENSOR_SERVER = http://localhost"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:54","msg":"HTTP_SENSOR_PORT = 8000"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:55","msg":"HTTP_SENSOR_GETVALUE_API = /sensors/"}
+{"level":"info","ts":"2026-03-15T23:34:27.093+0100","caller":"initialization/environment.go:56","msg":"HTTP_SENSOR_REGISTER_API = /sensors/register/"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:57","msg":"HTTP_SENSOR_KEEPALIVE_API = /keepalive/"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:58","msg":"HTTP_ONLINE_SERVER = http://localhost"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:59","msg":"HTTP_ONLINE_PORT = 8089"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:60","msg":"HTTP_ONLINE_API = /online/"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:61","msg":"HTTP_ONLINE_FCMTOKEN_API = /fcmtoken/"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:62","msg":"HTTP_ONLINE_KEEPALIVE_API = /keepalive/"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:63","msg":"GRPC_URL = localhost:50051"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:64","msg":"GRPC_TLS = false"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:65","msg":"CERT_FOLDER_PATH = cert"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:66","msg":"SINGLE_USER_LOGIN_EMAIL = "}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:67","msg":"JWT_PASSWORD = ]7V{LBmLS$?RB;9iVmV-L;N_KQAn=hWA"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:68","msg":"COOKIE_SECRET = zk*nfB#@"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"initialization/environment.go:69","msg":"INTERNAL_CLUSTER_PATH = api-server-svc.home-anthill.svc.cluster.local"}
+{"level":"info","ts":"2026-03-15T23:34:27.094+0100","caller":"db/database.go:25","msg":"InitDb - connecting to MongoDB URL = mongodb://localhost:27017/"}

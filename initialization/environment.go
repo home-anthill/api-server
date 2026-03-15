@@ -39,6 +39,7 @@ func printEnv(logger *zap.SugaredLogger) {
 	}
 
 	logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
+	logger.Info("LOG_FOLDER = " + os.Getenv("LOG_FOLDER"))
 	logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
 	logger.Info("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
 	logger.Info("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
