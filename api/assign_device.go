@@ -18,61 +18,59 @@ import (
 	"go.uber.org/zap"
 )
 
-// AssignDeviceReq struct
+// AssignDeviceReq is the request body for assigning a device to a home room.
 type AssignDeviceReq struct {
 	HomeID string `json:"homeId" validate:"required"`
 	RoomID string `json:"roomId" validate:"required"`
 }
 
-// AssignDevice struct
+// AssignDevice handles assigning devices to rooms within a home.
 type AssignDevice struct {
 	client       *mongo.Client
 	collProfiles *mongo.Collection
 	collHomes    *mongo.Collection
-	ctx          context.Context
 	logger       *zap.SugaredLogger
 	validate     *validator.Validate
 }
 
-// NewAssignDevice function
-func NewAssignDevice(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *AssignDevice {
+// NewAssignDevice constructs an AssignDevice handler with the given dependencies.
+func NewAssignDevice(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *AssignDevice {
 	return &AssignDevice{
 		client:       client,
 		collProfiles: db.GetCollections(client).Profiles,
 		collHomes:    db.GetCollections(client).Homes,
-		ctx:          ctx,
 		logger:       logger,
 		validate:     validate,
 	}
 }
 
 // PutAssignDeviceToHomeRoom function
-func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
-	handler.logger.Info("REST - PUT - PutAssignDeviceToHomeRoom called")
+func (ad *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
+	ad.logger.Info("REST - PUT - PutAssignDeviceToHomeRoom called")
 
-	deviceID, errID := bson.ObjectIDFromHex(c.Param("id"))
-	if errID != nil {
-		handler.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of device 'id' path param")
+	deviceID, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		ad.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of device 'id' path param")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of device 'id' path param"})
 		return
 	}
 
 	var assignDeviceReq AssignDeviceReq
-	if err := c.ShouldBindJSON(&assignDeviceReq); err != nil {
-		handler.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - Cannot bind request body", err)
+	if err = c.ShouldBindJSON(&assignDeviceReq); err != nil {
+		ad.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - Cannot bind request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
 		return
 	}
-	if err := handler.validate.Struct(assignDeviceReq); err != nil {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - request body is not valid, err %#v", err)
+	if err = ad.validate.Struct(assignDeviceReq); err != nil {
+		ad.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - request body is not valid, err %#v", err)
 		var errFields = utils.GetErrorMessage(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
 		return
 	}
-	homeObjID, errHomeObjID := bson.ObjectIDFromHex(assignDeviceReq.HomeID)
-	roomObjID, errRoomObjID := bson.ObjectIDFromHex(assignDeviceReq.RoomID)
-	if errHomeObjID != nil || errRoomObjID != nil {
-		handler.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of one of the values in body")
+	homeObjID, errHome := bson.ObjectIDFromHex(assignDeviceReq.HomeID)
+	roomObjID, errRoom := bson.ObjectIDFromHex(assignDeviceReq.RoomID)
+	if errHome != nil || errRoom != nil {
+		ad.logger.Error("REST - PUT - PutAssignDeviceToHomeRoom - wrong format of one of the values in body")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of one of the values in body"})
 		return
 	}
@@ -81,42 +79,42 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 	session := sessions.Default(c)
 	profileSession, err := utils.GetProfileFromSession(&session)
 	if err != nil {
-		handler.logger.Error("REST - GET - PutAssignDeviceToHomeRoom - cannot find profile in session")
+		ad.logger.Error("REST - GET - PutAssignDeviceToHomeRoom - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 		return
 	}
 	// get the profile from db
 	var profile models.Profile
-	err = handler.collProfiles.FindOne(handler.ctx, bson.M{
+	err = ad.collProfiles.FindOne(c.Request.Context(), bson.M{
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	if err != nil {
-		handler.logger.Error("REST - GET - PutAssignDeviceToHomeRoom - cannot find profile in db")
+		ad.logger.Error("REST - GET - PutAssignDeviceToHomeRoom - cannot find profile in db")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
 	// 1. profile must be the owner of device with id = `deviceID`
 	if _, found := utils.Find(profile.Devices, deviceID); !found {
-		handler.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of device with id = '%s'", deviceID)
+		ad.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of device with id = '%s'", deviceID)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "you are not the owner of this device id = " + deviceID.Hex()})
 		return
 	}
 
 	// 2. profile must be the owner of home with id = `assignDeviceReq.HomeID`
 	if _, found := utils.Find(profile.Homes, homeObjID); !found {
-		handler.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of home with id = '%s'", assignDeviceReq.HomeID)
+		ad.logger.Errorf("REST - GET - PutAssignDeviceToHomeRoom - profile must be the owner of home with id = '%s'", assignDeviceReq.HomeID)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "you are not the owner of home id = " + assignDeviceReq.HomeID})
 		return
 	}
 
 	// 3. `assignDeviceReq.RoomID` must be a room of home with id = `assignDeviceReq.HomeID`
 	var home models.Home
-	err = handler.collHomes.FindOne(handler.ctx, bson.M{
+	err = ad.collHomes.FindOne(c.Request.Context(), bson.M{
 		"_id": homeObjID,
 	}).Decode(&home)
 	if err != nil {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find home with id = '%s'", assignDeviceReq.HomeID)
+		ad.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find home with id = '%s'", assignDeviceReq.HomeID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find home id = " + assignDeviceReq.HomeID})
 		return
 	}
@@ -128,22 +126,22 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		}
 	}
 	if !roomFound {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find room with id = '%s'", assignDeviceReq.RoomID)
+		ad.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot find room with id = '%s'", assignDeviceReq.RoomID)
 		c.JSON(http.StatusNotFound, gin.H{"error": "Cannot find room id = " + assignDeviceReq.RoomID})
 		return
 	}
 
 	// start-session
-	dbSession, err := handler.client.StartSession()
+	dbSession, err := ad.client.StartSession()
 	if err != nil {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot start a db session %#v", err)
+		ad.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot start a db session %#v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "unknown error while trying to assign a device to a room"})
 		return
 	}
 	// Defers ending the session after the transaction is committed or ended
-	defer dbSession.EndSession(context.TODO())
+	defer dbSession.EndSession(c.Request.Context())
 
-	_, errTrans := dbSession.WithTransaction(context.TODO(), func(sessionCtx context.Context) (interface{}, error) {
+	_, errTrans := dbSession.WithTransaction(c.Request.Context(), func(sessionCtx context.Context) (interface{}, error) {
 		// Official `mongo-driver` documentation state: "callback may be run
 		// multiple times during WithTransaction due to retry attempts, so it must be idempotent."
 
@@ -155,9 +153,9 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 				"rooms.$[].devices": deviceID,
 			},
 		}
-		_, errClean := handler.collHomes.UpdateMany(sessionCtx, filterProfileHomes, updateClean)
+		_, errClean := ad.collHomes.UpdateMany(sessionCtx, filterProfileHomes, updateClean)
 		if errClean != nil {
-			handler.logger.Errorf("REST - DELETE - PutAssignDeviceToHomeRoom - cannot remove device from all rooms, errClean = %#v", errClean)
+			ad.logger.Errorf("REST - DELETE - PutAssignDeviceToHomeRoom - cannot remove device from all rooms, errClean = %#v", errClean)
 			return nil, errClean
 		}
 
@@ -176,17 +174,24 @@ func (handler *AssignDevice) PutAssignDeviceToHomeRoom(c *gin.Context) {
 				"modifiedAt":            time.Now(),
 			},
 		}
-		_, errUpdate := handler.collHomes.UpdateOne(sessionCtx, filterHome, update, opts...)
+		_, errUpdate := ad.collHomes.UpdateOne(sessionCtx, filterHome, update, opts...)
 		if errUpdate != nil {
-			handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot assign device to room, errUpdate = %#v", errUpdate)
+			ad.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot assign device to room, errUpdate = %#v", errUpdate)
 		}
 		return nil, errUpdate
 	}, options.Transaction().SetWriteConcern(writeconcern.Majority()))
 	if errTrans != nil {
-		handler.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot assign device to room in transaction, errTrans = %#v", errTrans)
+		ad.logger.Errorf("REST - PUT - PutAssignDeviceToHomeRoom - cannot assign device to room in transaction, errTrans = %#v", errTrans)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot assign device to room in DB"})
 		return
 	}
 
+	ad.logger.Infow("AUDIT - device assigned to room",
+		"profileID", profileSession.ID.Hex(),
+		"deviceID", deviceID.Hex(),
+		"homeID", homeObjID.Hex(),
+		"roomID", roomObjID.Hex(),
+		"clientIP", c.ClientIP(),
+	)
 	c.JSON(http.StatusOK, gin.H{"message": "device has been assigned to room"})
 }

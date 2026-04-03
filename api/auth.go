@@ -3,7 +3,6 @@ package api
 import (
 	"api-server/models"
 	"api-server/utils"
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,35 +15,47 @@ import (
 	"go.uber.org/zap"
 )
 
-// Auth struct
+const webTokenTTL = 60 * time.Minute
+const mobileTokenTTL = 6 * 30 * 24 * time.Hour
+
+// Auth handles JWT token issuance and validation.
 type Auth struct {
-	ctx    context.Context
 	logger *zap.SugaredLogger
+	jwtKey []byte
 }
 
-// NewAuth function
-func NewAuth(ctx context.Context, logger *zap.SugaredLogger) *Auth {
+// NewAuth constructs an Auth using the JWT key from the environment.
+func NewAuth(logger *zap.SugaredLogger) *Auth {
 	return &Auth{
-		ctx:    ctx,
 		logger: logger,
+		jwtKey: []byte(os.Getenv("JWT_PASSWORD")),
 	}
 }
 
 // LoginCallback function
-func (handler *Auth) LoginCallback(c *gin.Context) {
-	handler.logger.Info("REST - GET - LoginCallback called")
-	// jwtKey is a []byte containing your secret, e.g. []byte("my_secret_key")
-	var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
+func (a *Auth) LoginCallback(c *gin.Context) {
+	a.logger.Info("REST - GET - LoginCallback called")
 
-	profile := c.Value("profile").(models.Profile)
-	expirationTime := time.Now().Add(60 * time.Minute)
+	profile, ok := c.Value("profile").(models.Profile)
+	if !ok {
+		a.logger.Error("REST - GET - LoginCallback - profile not found in context")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "profile not found in context"})
+		return
+	}
+	expirationTime := time.Now().Add(webTokenTTL)
 
-	tokenString, err := utils.CreateJWT(profile, expirationTime, jwt.SigningMethodHS256, jwtKey)
+	tokenString, err := utils.CreateJWT(profile, expirationTime, jwt.SigningMethodHS256, a.jwtKey)
 	if err != nil {
-		handler.logger.Error("REST - GET - LoginCallback - cannot generate JWT")
+		a.logger.Error("REST - GET - LoginCallback - cannot generate JWT")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot generate JWT"})
 		return
 	}
+
+	a.logger.Infow("AUDIT - JWT issued (web)",
+		"profileID", profile.ID.Hex(),
+		"clientIP", c.ClientIP(),
+		"expiry", expirationTime,
+	)
 
 	queryParams := url.Values{}
 	queryParams.Set("token", tokenString)
@@ -54,24 +65,33 @@ func (handler *Auth) LoginCallback(c *gin.Context) {
 }
 
 // LoginMobileAppCallback function
-func (handler *Auth) LoginMobileAppCallback(c *gin.Context) {
-	handler.logger.Info("REST - GET - LoginMobileAppCallback called")
-	// jwtKey is a []byte containing your secret, e.g. []byte("my_secret_key")
-	var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
+func (a *Auth) LoginMobileAppCallback(c *gin.Context) {
+	a.logger.Info("REST - GET - LoginMobileAppCallback called")
 
-	profile := c.Value("profile").(models.Profile)
-	expirationTime := time.Now().Add((60 * time.Minute) * 24 * 30 * 6) // 6 months
+	profile, ok := c.Value("profile").(models.Profile)
+	if !ok {
+		a.logger.Error("REST - GET - LoginMobileAppCallback - profile not found in context")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "profile not found in context"})
+		return
+	}
+	expirationTime := time.Now().Add(mobileTokenTTL)
 
-	tokenString, err := utils.CreateJWT(profile, expirationTime, jwt.SigningMethodHS256, jwtKey)
+	tokenString, err := utils.CreateJWT(profile, expirationTime, jwt.SigningMethodHS256, a.jwtKey)
 	if err != nil {
-		handler.logger.Error("REST - GET - LoginMobileAppCallback - cannot generate JWT")
+		a.logger.Error("REST - GET - LoginMobileAppCallback - cannot generate JWT")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot generate JWT"})
 		return
 	}
 
+	a.logger.Infow("AUDIT - JWT issued (mobile)",
+		"profileID", profile.ID.Hex(),
+		"clientIP", c.ClientIP(),
+		"expiry", expirationTime,
+	)
+
 	cookie, err := c.Request.Cookie("mysession")
 	if err != nil {
-		handler.logger.Error("REST - GET - LoginMobileAppCallback - cannot get session cookie from request")
+		a.logger.Error("REST - GET - LoginMobileAppCallback - cannot get session cookie from request")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get session cookie"})
 		return
 	}
@@ -85,13 +105,13 @@ func (handler *Auth) LoginMobileAppCallback(c *gin.Context) {
 }
 
 // JWTMiddleware function
-func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
+func (a *Auth) JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		const BearerSchema = "Bearer"
 		authHeader := c.GetHeader("Authorization")
 
 		if authHeader == "" {
-			handler.logger.Error("JWTMiddleware - authorization header not found")
+			a.logger.Error("JWTMiddleware - authorization header not found")
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"error": "authorization header not found",
 			})
@@ -102,7 +122,7 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 		tokenString := authHeader[(len(BearerSchema) + 1):]
 
 		if tokenString == "" {
-			handler.logger.Error("JWTMiddleware - bearer token not found")
+			a.logger.Error("JWTMiddleware - bearer token not found")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"error": "bearer token not found",
 			})
@@ -120,14 +140,13 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			// jwtKey is a []byte containing your secret, e.g. []byte("my_secret_key")
-			var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
-			return jwtKey, nil
+			// jwtKey is injected in Auth struct
+			return a.jwtKey, nil
 		})
 
 		if token == nil || !token.Valid || err != nil {
 			if errors.Is(err, jwt.ErrTokenMalformed) {
-				handler.logger.Error("JWTMiddleware - " + err.Error())
+				a.logger.Errorw("JWTMiddleware - token validation failed", "error", err)
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": "that's not even a token",
 				})
@@ -135,14 +154,14 @@ func (handler *Auth) JWTMiddleware() gin.HandlerFunc {
 				return
 			} else if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet) {
 				// Token is either expired or not active yet
-				handler.logger.Error("JWTMiddleware - " + err.Error())
+				a.logger.Errorw("JWTMiddleware - token validation failed", "error", err)
 				c.JSON(http.StatusUnauthorized, gin.H{
 					"error": "token is expired",
 				})
 				c.Abort()
 				return
 			} else {
-				handler.logger.Error("JWTMiddleware - not logged, token is not valid")
+				a.logger.Error("JWTMiddleware - not logged, token is not valid")
 				c.JSON(http.StatusUnauthorized, gin.H{"error": "not logged, token is not valid"})
 				c.Abort()
 				return

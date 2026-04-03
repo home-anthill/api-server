@@ -21,9 +21,9 @@ func HasOnlineFeature(features []models.Feature) bool {
 }
 
 func GetOnlineFeature(features []models.Feature) *models.Feature {
-	for _, feature := range features {
-		if feature.Type == models.Sensor && feature.Name == "online" {
-			return &feature
+	for i := range features {
+		if features[i].Type == models.Sensor && features[i].Name == "online" {
+			return &features[i]
 		}
 	}
 	return nil

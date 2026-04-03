@@ -1,6 +1,6 @@
 package models
 
-// LoginURL struct
+// LoginURL is the response body for the login URL endpoint.
 type LoginURL struct {
-	LoginURL string `json:"loginURL"`
+	URL string `json:"loginURL"`
 }

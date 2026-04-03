@@ -2,7 +2,6 @@ package initialization
 
 import (
 	"api-server/db"
-	"context"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -12,27 +11,25 @@ import (
 )
 
 // Start function
-func Start() (*zap.SugaredLogger, *gin.Engine, context.Context, *mongo.Client) {
+func Start() (*zap.SugaredLogger, *gin.Engine, *mongo.Client) {
 	// 1. Init logger
 	logger := InitLogger()
-	defer logger.Sync()
 
 	// 2. Init env
 	InitEnv(logger)
 
 	// 3. Init db
-	ctx := context.Background()
 	// Connect to DB
 	client := db.InitDb(logger)
 
 	// 4. Init server
-	router, ctx := BuildServer(ctx, logger, client)
+	router := BuildServer(logger, client)
 
-	return logger, router, ctx, client
+	return logger, router, client
 }
 
 // BuildServer - Exposed only for testing purposes
-func BuildServer(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client) (*gin.Engine, context.Context) {
+func BuildServer(logger *zap.SugaredLogger, client *mongo.Client) *gin.Engine {
 	// Create a singleton validator instance. Validate is designed to be used as a singleton instance.
 	// It caches information about struct and validations.
 	validate := validator.New()
@@ -43,8 +40,8 @@ func BuildServer(ctx context.Context, logger *zap.SugaredLogger, client *mongo.C
 	// Instantiate GIN and apply some middlewares
 	logger.Info("BuildServer - GIN - Initializing...")
 	router := SetupRouter(logger)
-	RegisterRoutes(ctx, router, logger, validate, client)
-	return router, ctx
+	RegisterRoutes(router, logger, validate, client)
+	return router
 }
 
 func setGinMode() {

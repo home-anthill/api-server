@@ -80,7 +80,8 @@ var _ = Describe("Online", func() {
 	})
 
 	BeforeEach(func() {
-		logger, router, ctx, client = initialization.Start()
+		logger, router, client = initialization.Start()
+		ctx = context.Background()
 		defer logger.Sync()
 
 		collProfiles = db.GetCollections(client).Profiles

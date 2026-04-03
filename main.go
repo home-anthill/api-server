@@ -7,15 +7,16 @@ import (
 )
 
 func main() {
-	logger, router, _, client := initialization.Start()
+	logger, router, client := initialization.Start()
+	defer logger.Sync()
 	defer client.Disconnect(context.TODO())
 
 	// Start server
 	port := os.Getenv("HTTP_PORT")
-	logger.Info("GIN - up and running with port: " + port)
+	logger.Infof("GIN - up and running with port: %s", port)
 	err := router.Run(":" + port)
 	if err != nil {
 		logger.Error("Cannot start HTTP server", err)
-		panic(err)
+		os.Exit(1)
 	}
 }

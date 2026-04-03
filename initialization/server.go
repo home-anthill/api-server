@@ -3,10 +3,11 @@ package initialization
 import (
 	"api-server/api"
 	"api-server/utils"
-	"context"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
@@ -19,37 +20,19 @@ import (
 	"go.uber.org/zap"
 )
 
-var oauthGithub *api.LoginGitHub
-var oauthAppGithub *api.LoginGitHub
-var auth *api.Auth
-var homes *api.Homes
-var devices *api.Devices
-var assignDevices *api.AssignDevice
-var devicesValues *api.DevicesValues
-var profiles *api.Profiles
-var fcmToken *api.FCMToken
-var online *api.Online
-var keepAlive *api.KeepAlive
-
-var oauthCallbackURL string
-var oauthAppCallbackURL string
-var oauthScopes = []string{"repo"} //https://developer.github.com/v3/oauth/#scopes
-
 // SetupRouter function
 func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 	port := os.Getenv("HTTP_PORT")
 	httpServer := os.Getenv("HTTP_SERVER")
-	oauthCallback := os.Getenv("OAUTH2_CALLBACK")
-	oauthAppCallback := os.Getenv("OAUTH2_APP_CALLBACK")
-
-	// 1. init oauthCallbackURL, oauthAppCallbackURL and httpOrigin vars
-	oauthCallbackURL = oauthCallback
-	oauthAppCallbackURL = oauthAppCallback
 	httpOrigin := httpServer + ":" + port
-	logger.Info("SetupRouter - httpOrigin is = " + httpOrigin)
+	logger.Infof("SetupRouter - httpOrigin = %s", httpOrigin)
 
 	// 2. init GIN
-	router := gin.Default()
+	// Use gin.New() instead of gin.Default() to avoid Gin's built-in Logger middleware,
+	// which logs full request details (including bodies that may contain credentials).
+	// Recovery() is kept to handle panics gracefully.
+	router := gin.New()
+	router.Use(gin.Recovery())
 	// 3. init session
 	secretKey := os.Getenv("COOKIE_SECRET")
 	store := cookie.NewStore([]byte(secretKey))
@@ -58,8 +41,9 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// 5. fix a max POST payload size
-	logger.Info("SetupRouter - set mac POST payload size")
-	router.Use(limits.RequestSizeLimiter(1024 * 1024))
+	const maxRequestBodySize = 1 * 1024 * 1024 // 1 MB
+	logger.Info("SetupRouter - set max POST payload size")
+	router.Use(limits.RequestSizeLimiter(maxRequestBodySize))
 
 	// 6. Configure CORS
 	// - No origin allowed by default
@@ -67,7 +51,7 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 	// - Credentials share disabled
 	// - Preflight requests cached for 12 hours
 	if os.Getenv("HTTP_CORS") == "true" {
-		logger.Warn("SetupRouter - CORS enabled and httpOrigin is = " + httpOrigin)
+		logger.Warnf("SetupRouter - CORS enabled and httpOrigin is = %s", httpOrigin)
 		config := cors.DefaultConfig()
 		config.AllowOrigins = []string{
 			"http://" + os.Getenv("INTERNAL_CLUSTER_PATH"),
@@ -96,12 +80,19 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 	if os.Getenv("ENV") != "prod" {
 		logger.Info("SetupRouter - Adding NoRoute to handle static files")
 		router.NoRoute(func(c *gin.Context) {
-			dir, file := path.Split(c.Request.RequestURI)
+			_, file := path.Split(c.Request.URL.Path)
 			ext := filepath.Ext(file)
 			allowedExts := []string{".html", ".htm", ".js", ".css", ".json", ".txt", ".jpeg", ".jpg", ".png", ".ico", ".map", ".svg"}
 			_, found := utils.Find(allowedExts, ext)
 			if found {
-				c.File("./public" + path.Join(dir, file))
+				// Strip the leading separator so filepath.Join doesn't treat it as absolute
+				trimmed := strings.TrimLeft(filepath.FromSlash(c.Request.URL.Path), string(filepath.Separator))
+				cleanPath := filepath.Clean(filepath.Join("public", trimmed))
+				if !strings.HasPrefix(cleanPath, "public"+string(filepath.Separator)) {
+					c.Status(http.StatusBadRequest)
+					return
+				}
+				c.File("./" + cleanPath)
 			} else {
 				c.File("./public/index.html")
 			}
@@ -113,24 +104,28 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 }
 
 // RegisterRoutes function
-func RegisterRoutes(ctx context.Context, router *gin.Engine, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
-	oauthGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_state",
+func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
+	oauthCallbackURL := os.Getenv("OAUTH2_CALLBACK")
+	oauthAppCallbackURL := os.Getenv("OAUTH2_APP_CALLBACK")
+	oauthScopes := []string{"repo"} // https://developer.github.com/v3/oauth/#scopes
+
+	oauthGithub := api.NewLoginGithub(logger, client, "oauth2_state",
 		os.Getenv("OAUTH2_CLIENTID"), os.Getenv("OAUTH2_SECRETID"),
 		oauthCallbackURL, oauthScopes)
-	oauthAppGithub = api.NewLoginGithub(ctx, logger, client, "oauth2_app_state",
+	oauthAppGithub := api.NewLoginGithub(logger, client, "oauth2_app_state",
 		os.Getenv("OAUTH2_APP_CLIENTID"), os.Getenv("OAUTH2_APP_SECRETID"),
 		oauthAppCallbackURL, oauthScopes)
-	auth = api.NewAuth(ctx, logger)
+	auth := api.NewAuth(logger)
 
-	keepAlive = api.NewKeepAlive(ctx, logger)
-	homes = api.NewHomes(ctx, logger, client, validate)
-	devices = api.NewDevices(ctx, logger, client)
-	assignDevices = api.NewAssignDevice(ctx, logger, client, validate)
-	devicesValues = api.NewDevicesValues(ctx, logger, client, validate)
-	profiles = api.NewProfiles(ctx, logger, client, validate)
+	keepAlive := api.NewKeepAlive(logger)
+	homes := api.NewHomes(logger, client, validate)
+	devices := api.NewDevices(logger, client)
+	assignDevices := api.NewAssignDevice(logger, client, validate)
+	devicesValues := api.NewDevicesValues(logger, client, validate)
+	profiles := api.NewProfiles(logger, client, validate)
 	// FCM = Firebase Cloud Messaging => identify a smartphone on Firebase to send notifications
-	fcmToken = api.NewFCMToken(ctx, logger, client, validate)
-	online = api.NewOnline(ctx, logger, client)
+	fcmToken := api.NewFCMToken(logger, client, validate)
+	online := api.NewOnline(logger, client)
 
 	// 1. Define public APIs
 	// public API to get Login URL

@@ -20,7 +20,7 @@ var _ = Describe("LoginGithub", func() {
 	var router *gin.Engine
 
 	BeforeEach(func() {
-		logger, router, _, _ = initialization.Start()
+		logger, router, _ = initialization.Start()
 		defer logger.Sync()
 	})
 

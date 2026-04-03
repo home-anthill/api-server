@@ -1,6 +1,7 @@
 package initialization
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -26,45 +27,44 @@ func InitEnv(logger *zap.SugaredLogger) {
 func readEnv() (string, error) {
 	// solution taken from https://stackoverflow.com/a/68347834/3590376
 	projectName := regexp.MustCompile(`^(.*` + projectDirName + `)`)
-	currentWorkDirectory, _ := os.Getwd()
+	currentWorkDirectory, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("cannot get current working directory: %w", err)
+	}
 	rootPath := projectName.Find([]byte(currentWorkDirectory))
 	envFilePath := string(rootPath) + `/.env`
-	err := godotenv.Load(envFilePath)
+	err = godotenv.Load(envFilePath)
 	return envFilePath, err
 }
 
 func printEnv(logger *zap.SugaredLogger) {
 	if os.Getenv("JWT_PASSWORD") == "" {
-		panic(fmt.Errorf("'JWT_PASSWORD' environment variable is mandatory"))
+		panic(errors.New("'JWT_PASSWORD' environment variable is mandatory"))
 	}
 
-	logger.Info("ENVIRONMENT = " + os.Getenv("ENV"))
-	logger.Info("LOG_FOLDER = " + os.Getenv("LOG_FOLDER"))
-	logger.Info("MONGODB_URL = " + os.Getenv("MONGODB_URL"))
-	logger.Info("HTTP_SERVER = " + os.Getenv("HTTP_SERVER"))
-	logger.Info("HTTP_PORT = " + os.Getenv("HTTP_PORT"))
-	logger.Info("OAUTH2_CALLBACK = " + os.Getenv("OAUTH2_CALLBACK"))
-	logger.Info("OAUTH2_CLIENTID = " + os.Getenv("OAUTH2_CLIENTID"))
-	logger.Info("OAUTH2_SECRETID = " + os.Getenv("OAUTH2_SECRETID"))
-	logger.Info("OAUTH2_APP_CALLBACK = " + os.Getenv("OAUTH2_APP_CALLBACK"))
-	logger.Info("OAUTH2_APP_CLIENTID = " + os.Getenv("OAUTH2_APP_CLIENTID"))
-	logger.Info("OAUTH2_APP_SECRETID = " + os.Getenv("OAUTH2_APP_SECRETID"))
-	logger.Info("HTTP_CORS = " + os.Getenv("HTTP_CORS"))
-	logger.Info("HTTP_SENSOR_SERVER = " + os.Getenv("HTTP_SENSOR_SERVER"))
-	logger.Info("HTTP_SENSOR_PORT = " + os.Getenv("HTTP_SENSOR_PORT"))
-	logger.Info("HTTP_SENSOR_GETVALUE_API = " + os.Getenv("HTTP_SENSOR_GETVALUE_API"))
-	logger.Info("HTTP_SENSOR_REGISTER_API = " + os.Getenv("HTTP_SENSOR_REGISTER_API"))
-	logger.Info("HTTP_SENSOR_KEEPALIVE_API = " + os.Getenv("HTTP_SENSOR_KEEPALIVE_API"))
-	logger.Info("HTTP_ONLINE_SERVER = " + os.Getenv("HTTP_ONLINE_SERVER"))
-	logger.Info("HTTP_ONLINE_PORT = " + os.Getenv("HTTP_ONLINE_PORT"))
-	logger.Info("HTTP_ONLINE_API = " + os.Getenv("HTTP_ONLINE_API"))
-	logger.Info("HTTP_ONLINE_FCMTOKEN_API = " + os.Getenv("HTTP_ONLINE_FCMTOKEN_API"))
-	logger.Info("HTTP_ONLINE_KEEPALIVE_API = " + os.Getenv("HTTP_ONLINE_KEEPALIVE_API"))
-	logger.Info("GRPC_URL = " + os.Getenv("GRPC_URL"))
-	logger.Info("GRPC_TLS = " + os.Getenv("GRPC_TLS"))
-	logger.Info("CERT_FOLDER_PATH = " + os.Getenv("CERT_FOLDER_PATH"))
-	logger.Info("SINGLE_USER_LOGIN_EMAIL = " + os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
-	logger.Info("JWT_PASSWORD = " + os.Getenv("JWT_PASSWORD"))
-	logger.Info("COOKIE_SECRET = " + os.Getenv("COOKIE_SECRET"))
-	logger.Info("INTERNAL_CLUSTER_PATH = " + os.Getenv("INTERNAL_CLUSTER_PATH"))
+	logger.Infof("ENVIRONMENT = %s", os.Getenv("ENV"))
+	logger.Infof("LOG_FOLDER = %s", os.Getenv("LOG_FOLDER"))
+	logger.Infof("MONGODB_URL = %s", os.Getenv("MONGODB_URL"))
+	logger.Infof("HTTP_SERVER = %s", os.Getenv("HTTP_SERVER"))
+	logger.Infof("HTTP_PORT = %s", os.Getenv("HTTP_PORT"))
+	logger.Infof("OAUTH2_CALLBACK = %s", os.Getenv("OAUTH2_CALLBACK"))
+	logger.Infof("OAUTH2_CLIENTID = %s", os.Getenv("OAUTH2_CLIENTID"))
+	logger.Infof("OAUTH2_APP_CALLBACK = %s", os.Getenv("OAUTH2_APP_CALLBACK"))
+	logger.Infof("OAUTH2_APP_CLIENTID = %s", os.Getenv("OAUTH2_APP_CLIENTID"))
+	logger.Infof("HTTP_CORS = %s", os.Getenv("HTTP_CORS"))
+	logger.Infof("HTTP_SENSOR_SERVER = %s", os.Getenv("HTTP_SENSOR_SERVER"))
+	logger.Infof("HTTP_SENSOR_PORT = %s", os.Getenv("HTTP_SENSOR_PORT"))
+	logger.Infof("HTTP_SENSOR_GETVALUE_API = %s", os.Getenv("HTTP_SENSOR_GETVALUE_API"))
+	logger.Infof("HTTP_SENSOR_REGISTER_API = %s", os.Getenv("HTTP_SENSOR_REGISTER_API"))
+	logger.Infof("HTTP_SENSOR_KEEPALIVE_API = %s", os.Getenv("HTTP_SENSOR_KEEPALIVE_API"))
+	logger.Infof("HTTP_ONLINE_SERVER = %s", os.Getenv("HTTP_ONLINE_SERVER"))
+	logger.Infof("HTTP_ONLINE_PORT = %s", os.Getenv("HTTP_ONLINE_PORT"))
+	logger.Infof("HTTP_ONLINE_API = %s", os.Getenv("HTTP_ONLINE_API"))
+	logger.Infof("HTTP_ONLINE_FCMTOKEN_API = %s", os.Getenv("HTTP_ONLINE_FCMTOKEN_API"))
+	logger.Infof("HTTP_ONLINE_KEEPALIVE_API = %s", os.Getenv("HTTP_ONLINE_KEEPALIVE_API"))
+	logger.Infof("GRPC_URL = %s", os.Getenv("GRPC_URL"))
+	logger.Infof("GRPC_TLS = %s", os.Getenv("GRPC_TLS"))
+	logger.Infof("CERT_FOLDER_PATH = %s", os.Getenv("CERT_FOLDER_PATH"))
+	logger.Infof("SINGLE_USER_LOGIN_EMAIL = %s", os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
+	logger.Infof("INTERNAL_CLUSTER_PATH = %s", os.Getenv("INTERNAL_CLUSTER_PATH"))
 }

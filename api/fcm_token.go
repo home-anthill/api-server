@@ -4,7 +4,6 @@ import (
 	"api-server/customerrors"
 	"api-server/db"
 	"api-server/utils"
-	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -18,30 +17,29 @@ import (
 	"go.uber.org/zap"
 )
 
-// InitFCMTokenReq struct
+// InitFCMTokenReq is the request body for registering a Firebase Cloud Messaging token.
 type InitFCMTokenReq struct {
-	FCMToken string `json:"fcmToken" validate:"required"`
+	FCMToken string `json:"fcmToken" validate:"required,max=512"`
 }
 
-// OnlineFCMReq struct
+// OnlineFCMReq is the payload forwarded to the online service to associate an FCM token with an API token.
 type OnlineFCMReq struct {
 	APIToken string `json:"apiToken" validate:"required"`
-	FCMToken string `json:"fcmToken" validate:"required"`
+	FCMToken string `json:"fcmToken" validate:"required,max=512"`
 }
 
-// FCMToken struct
+// FCMToken handles Firebase Cloud Messaging token registration for push notifications.
 type FCMToken struct {
 	client             *mongo.Client
 	collProfiles       *mongo.Collection
-	ctx                context.Context
 	logger             *zap.SugaredLogger
 	keepAliveOnlineURL string
 	fcmTokenOnlineURL  string
 	validate           *validator.Validate
 }
 
-// NewFCMToken function
-func NewFCMToken(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *FCMToken {
+// NewFCMToken constructs an FCMToken handler with the given dependencies.
+func NewFCMToken(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *FCMToken {
 	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
 	keepAliveOnlineURL := onlineServerURL + os.Getenv("HTTP_ONLINE_KEEPALIVE_API")
 	fcmTokenOnlineURL := onlineServerURL + os.Getenv("HTTP_ONLINE_FCMTOKEN_API")
@@ -49,7 +47,6 @@ func NewFCMToken(ctx context.Context, logger *zap.SugaredLogger, client *mongo.C
 	return &FCMToken{
 		client:             client,
 		collProfiles:       db.GetCollections(client).Profiles,
-		ctx:                ctx,
 		logger:             logger,
 		keepAliveOnlineURL: keepAliveOnlineURL,
 		fcmTokenOnlineURL:  fcmTokenOnlineURL,
@@ -59,19 +56,19 @@ func NewFCMToken(ctx context.Context, logger *zap.SugaredLogger, client *mongo.C
 
 // PostFCMToken function to associate smartphone app with Firebase client to this server via APIToken
 // This will be sent to online server to store that data in Redis to be able to send Push Notifications
-func (handler *FCMToken) PostFCMToken(c *gin.Context) {
-	handler.logger.Info("REST - POST - PostFCMToken called")
+func (ft *FCMToken) PostFCMToken(c *gin.Context) {
+	ft.logger.Info("REST - POST - PostFCMToken called")
 
 	var initFCMTokenBody InitFCMTokenReq
 	if err := c.ShouldBindJSON(&initFCMTokenBody); err != nil {
-		handler.logger.Errorf("REST - POST - PostFCMToken - Cannot bind request body. Err = %v\n", err)
+		ft.logger.Errorf("REST - POST - PostFCMToken - Cannot bind request body. Err = %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 
-	err := handler.validate.Struct(initFCMTokenBody)
+	err := ft.validate.Struct(initFCMTokenBody)
 	if err != nil {
-		handler.logger.Errorf("REST - POST - PostFCMToken - request body is not valid, err %#v", err)
+		ft.logger.Errorf("REST - POST - PostFCMToken - request body is not valid, err %#v", err)
 		var errFields = utils.GetErrorMessage(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
 		return
@@ -79,15 +76,15 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(handler.ctx, &session, handler.collProfiles)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), &session, ft.collProfiles)
 	if err != nil {
-		handler.logger.Error("REST - POST - PostFCMToken - cannot find profile in session")
+		ft.logger.Error("REST - POST - PostFCMToken - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 		return
 	}
 
 	// store FCM Token also on profile
-	_, err = handler.collProfiles.UpdateOne(handler.ctx, bson.M{
+	_, err = ft.collProfiles.UpdateOne(c.Request.Context(), bson.M{
 		"_id": profile.ID,
 	}, bson.M{
 		"$set": bson.M{
@@ -96,7 +93,7 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		handler.logger.Error("REST - POST - PostFCMToken - Cannot update profile with fcmToken")
+		ft.logger.Error("REST - POST - PostFCMToken - Cannot update profile with fcmToken")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update profile with fcmToken"})
 		return
 	}
@@ -105,22 +102,25 @@ func (handler *FCMToken) PostFCMToken(c *gin.Context) {
 		APIToken: profile.APIToken,
 		FCMToken: initFCMTokenBody.FCMToken,
 	}
-	err = handler.initFCMTokenViaHTTP(&onlineFCMReq)
+	err = ft.initFCMTokenViaHTTP(&onlineFCMReq)
 	if err != nil {
-		handler.logger.Errorf("REST - POST - PostFCMToken - cannot initialize FCM Token via HTTP. Err %v\n", err)
+		ft.logger.Errorf("REST - POST - PostFCMToken - cannot initialize FCM Token via HTTP. Err %v\n", err)
 		if re, ok := err.(*customerrors.ErrorWrapper); ok {
-			handler.logger.Errorf("REST - POST - PostFCMToken - cannot initialize FCM Token with status = %d, message = %s\n", re.Code, re.Message)
+			ft.logger.Errorf("REST - POST - PostFCMToken - cannot initialize FCM Token with status = %d, message = %s\n", re.Code, re.Message)
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot initialize FCM Token"})
 		return
 	}
+	ft.logger.Infow("AUDIT - FCM token registered",
+		"profileID", profile.ID.Hex(),
+		"clientIP", c.ClientIP(),
+	)
 	c.JSON(http.StatusOK, gin.H{"message": "FCMToken assigned to APIToken"})
 }
 
-func (handler *FCMToken) initFCMTokenViaHTTP(obj *OnlineFCMReq) error {
+func (ft *FCMToken) initFCMTokenViaHTTP(obj *OnlineFCMReq) error {
 	// check if service is available calling keep-alive
-	// TODO remove this in a production code
-	_, _, keepAliveErr := utils.Get(handler.keepAliveOnlineURL)
+	_, _, keepAliveErr := utils.Get(ft.keepAliveOnlineURL)
 	if keepAliveErr != nil {
 		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote online service")
 	}
@@ -131,7 +131,7 @@ func (handler *FCMToken) initFCMTokenViaHTTP(obj *OnlineFCMReq) error {
 		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create payload to call fcmToken service")
 	}
 
-	_, _, err = utils.Post(handler.fcmTokenOnlineURL, payloadJSON)
+	_, _, err = utils.Post(ft.fcmTokenOnlineURL, payloadJSON)
 	if err != nil {
 		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot init fcmToken")
 	}

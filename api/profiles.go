@@ -4,7 +4,6 @@ import (
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
-	"context"
 	"net/http"
 	"time"
 
@@ -17,12 +16,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// ProfileUpdateFCMTokenReq struct
+// ProfileUpdateFCMTokenReq is the request body for updating a profile's FCM token.
 type ProfileUpdateFCMTokenReq struct {
-	FCMToken string `json:"fcmToken" validate:"required"`
+	FCMToken string `json:"fcmToken" validate:"required,max=512"`
 }
 
-// GithubResponse struct
+// GithubResponse is the GitHub user data returned in a profile response.
 type GithubResponse struct {
 	Login     string `json:"login"`
 	Name      string `json:"name"`
@@ -30,34 +29,32 @@ type GithubResponse struct {
 	AvatarURL string `json:"avatarURL"`
 }
 
-// Profiles struct
+// Profiles handles user profile retrieval and token management.
 type Profiles struct {
 	client       *mongo.Client
 	collProfiles *mongo.Collection
-	ctx          context.Context
 	logger       *zap.SugaredLogger
 	validate     *validator.Validate
 }
 
-// NewProfiles function
-func NewProfiles(ctx context.Context, logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Profiles {
+// NewProfiles constructs a Profiles handler with the given dependencies.
+func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Profiles {
 	return &Profiles{
 		client:       client,
 		collProfiles: db.GetCollections(client).Profiles,
-		ctx:          ctx,
 		logger:       logger,
 		validate:     validate,
 	}
 }
 
 // GetProfile function
-func (handler *Profiles) GetProfile(c *gin.Context) {
-	handler.logger.Info("REST - GET - GetProfile called")
+func (p *Profiles) GetProfile(c *gin.Context) {
+	p.logger.Info("REST - GET - GetProfile called")
 
 	session := sessions.Default(c)
 	profile, err := utils.GetProfileFromSession(&session)
 	if err != nil {
-		handler.logger.Error("REST - GET - GetProfile - Cannot get user profile")
+		p.logger.Error("REST - GET - GetProfile - Cannot get user profile")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Cannot get user profile"})
 		return
 	}
@@ -72,13 +69,13 @@ func (handler *Profiles) GetProfile(c *gin.Context) {
 }
 
 // PostProfilesAPIToken function to regenerate the API Token
-func (handler *Profiles) PostProfilesAPIToken(c *gin.Context) {
-	handler.logger.Info("REST - POST - PostProfilesAPIToken called")
+func (p *Profiles) PostProfilesAPIToken(c *gin.Context) {
+	p.logger.Info("REST - POST - PostProfilesAPIToken called")
 
 	// get profileID from path params
 	profileID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
-		handler.logger.Error("REST - POST - PostProfilesAPIToken - wrong format of the path param 'id'")
+		p.logger.Error("REST - POST - PostProfilesAPIToken - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
 	}
@@ -87,21 +84,21 @@ func (handler *Profiles) PostProfilesAPIToken(c *gin.Context) {
 	session := sessions.Default(c)
 	profileSession, err := utils.GetProfileFromSession(&session)
 	if err != nil {
-		handler.logger.Error("REST - POST - PostProfilesAPIToken - cannot find profile in session")
+		p.logger.Error("REST - POST - PostProfilesAPIToken - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 		return
 	}
 
 	// check if the profile you are trying to update (path param) is your profile (session profile)
 	if profileSession.ID != profileID {
-		handler.logger.Error("REST - POST - PostProfilesAPIToken - Current profileID is different than profileID in session")
+		p.logger.Error("REST - POST - PostProfilesAPIToken - Current profileID is different than profileID in session")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot re-generate APIToken for a different profile then yours"})
 		return
 	}
 
 	apiToken := uuid.NewString()
 
-	_, err = handler.collProfiles.UpdateOne(handler.ctx, bson.M{
+	_, err = p.collProfiles.UpdateOne(c.Request.Context(), bson.M{
 		"_id": profileSession.ID,
 	}, bson.M{
 		"$set": bson.M{
@@ -110,22 +107,26 @@ func (handler *Profiles) PostProfilesAPIToken(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		handler.logger.Error("REST - POST - PostProfilesAPIToken - Cannot update profile with the new apiToken")
+		p.logger.Error("REST - POST - PostProfilesAPIToken - Cannot update profile with the new apiToken")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
+	p.logger.Infow("AUDIT - API token regenerated",
+		"profileID", profileSession.ID.Hex(),
+		"clientIP", c.ClientIP(),
+	)
 	c.JSON(http.StatusOK, gin.H{"apiToken": apiToken})
 }
 
 // PostProfilesFCMToken function to store the Firebase Cloud Messaging Token
 // this api is unused, because I set FCM Token on profile while calling fcm_token POST API
-func (handler *Profiles) PostProfilesFCMToken(c *gin.Context) {
-	handler.logger.Info("REST - POST - PostProfilesFCMToken called")
+func (p *Profiles) PostProfilesFCMToken(c *gin.Context) {
+	p.logger.Info("REST - POST - PostProfilesFCMToken called")
 
 	// get profileID from path params
 	profileID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
-		handler.logger.Error("REST - POST - PostProfilesFCMToken - wrong format of the path param 'id'")
+		p.logger.Error("REST - POST - PostProfilesFCMToken - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
 	}
@@ -134,34 +135,34 @@ func (handler *Profiles) PostProfilesFCMToken(c *gin.Context) {
 	session := sessions.Default(c)
 	profileSession, err := utils.GetProfileFromSession(&session)
 	if err != nil {
-		handler.logger.Error("REST - POST - PostProfilesFCMToken - cannot find profile in session")
+		p.logger.Error("REST - POST - PostProfilesFCMToken - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 		return
 	}
 
 	// check if the profile you are trying to update (path param) is your profile (session profile)
 	if profileSession.ID != profileID {
-		handler.logger.Error("REST - POST - PostProfilesFCMToken - Current profileID is different than profileID in session")
+		p.logger.Error("REST - POST - PostProfilesFCMToken - Current profileID is different than profileID in session")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot set FCMToken for a different profile then yours"})
 		return
 	}
 
 	var profileUpdateFCMTokenReq ProfileUpdateFCMTokenReq
 	if err = c.ShouldBindJSON(&profileUpdateFCMTokenReq); err != nil {
-		handler.logger.Error("REST - POST - PostProfilesFCMToken - Cannot bind request body", err)
+		p.logger.Error("REST - POST - PostProfilesFCMToken - Cannot bind request body", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
 
-	err = handler.validate.Struct(profileUpdateFCMTokenReq)
+	err = p.validate.Struct(profileUpdateFCMTokenReq)
 	if err != nil {
-		handler.logger.Errorf("REST - POST - PostProfilesFCMToken - request body is not valid, err %#v", err)
+		p.logger.Errorf("REST - POST - PostProfilesFCMToken - request body is not valid, err %#v", err)
 		var errFields = utils.GetErrorMessage(err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body, these fields are not valid:" + errFields})
 		return
 	}
 
-	_, err = handler.collProfiles.UpdateOne(handler.ctx, bson.M{
+	_, err = p.collProfiles.UpdateOne(c.Request.Context(), bson.M{
 		"_id": profileSession.ID,
 	}, bson.M{
 		"$set": bson.M{
@@ -170,9 +171,13 @@ func (handler *Profiles) PostProfilesFCMToken(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		handler.logger.Error("REST - POST - PostProfilesFCMToken - Cannot update profile with fcmToken")
+		p.logger.Error("REST - POST - PostProfilesFCMToken - Cannot update profile with fcmToken")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set fcmToken"})
 		return
 	}
+	p.logger.Infow("AUDIT - FCM token updated on profile",
+		"profileID", profileSession.ID.Hex(),
+		"clientIP", c.ClientIP(),
+	)
 	c.JSON(http.StatusOK, gin.H{"message": "Profile update with FCM Token"})
 }
