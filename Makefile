@@ -47,8 +47,10 @@ deps:
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	go install github.com/air-verse/air@latest
 	go install golang.org/x/vuln/cmd/govulncheck@latest
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 	go get -u
 	go mod tidy
 	go install github.com/nikolaydubina/go-cover-treemap@latest
-	echo "You should update protoc manually: https://grpc.io/docs/protoc-installation/"
+	echo "Note: protoc (protobuf compiler) must be installed separately: https://grpc.io/docs/protoc-installation/"
 .PHONY: deps
