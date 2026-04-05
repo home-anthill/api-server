@@ -41,6 +41,9 @@ func printEnv(logger *zap.SugaredLogger) {
 	if os.Getenv("JWT_PASSWORD") == "" {
 		panic(errors.New("'JWT_PASSWORD' environment variable is mandatory"))
 	}
+	if os.Getenv("JWT_REFRESH_PASSWORD") == "" {
+		panic(errors.New("'JWT_REFRESH_PASSWORD' environment variable is mandatory"))
+	}
 
 	logger.Infof("ENVIRONMENT = %s", os.Getenv("ENV"))
 	logger.Infof("LOG_FOLDER = %s", os.Getenv("LOG_FOLDER"))

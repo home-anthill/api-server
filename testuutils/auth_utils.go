@@ -13,6 +13,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
+func joinCookies(recorder *httptest.ResponseRecorder) string {
+	return strings.Join(recorder.Header().Values("Set-Cookie"), "; ")
+}
+
 func GetJwt(router *gin.Engine) (string, string) {
 	recorder := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/api/login", nil)
@@ -34,10 +38,10 @@ func GetJwt(router *gin.Engine) (string, string) {
 	router.ServeHTTP(recorder, req)
 	gomega.Expect(recorder.Code).To(gomega.Equal(http.StatusFound))
 	redirectUrl := recorder.Header().Get("location")
-	gomega.Expect(redirectUrl).To(gomega.HavePrefix("/postlogin?token="))
-	jwtToken := strings.ReplaceAll(redirectUrl, "/postlogin?token=", "")
-	cookieSession = recorder.Header().Get("Set-Cookie")
-	return jwtToken, cookieSession
+	gomega.Expect(redirectUrl).To(gomega.HavePrefix("/postlogin#token="))
+	jwtToken := strings.ReplaceAll(redirectUrl, "/postlogin#token=", "")
+	allCookies := joinCookies(recorder)
+	return jwtToken, allCookies
 }
 
 func GetJwtMobileApp(router *gin.Engine) (string, string) {
@@ -61,10 +65,10 @@ func GetJwtMobileApp(router *gin.Engine) (string, string) {
 	router.ServeHTTP(recorder, req)
 	gomega.Expect(recorder.Code).To(gomega.Equal(http.StatusFound))
 	redirectUrl := recorder.Header().Get("location")
-	gomega.Expect(redirectUrl).To(gomega.HavePrefix("/postlogin?token="))
-	jwtToken := strings.ReplaceAll(redirectUrl, "/postlogin?token=", "")
-	cookieSession = recorder.Header().Get("Set-Cookie")
-	return jwtToken, cookieSession
+	gomega.Expect(redirectUrl).To(gomega.HavePrefix("/postlogin#token="))
+	jwtToken := strings.ReplaceAll(redirectUrl, "/postlogin#token=", "")
+	allCookies := joinCookies(recorder)
+	return jwtToken, allCookies
 }
 
 func GetLoggedProfile(router *gin.Engine, jwtToken, cookieSession string) models.Profile {

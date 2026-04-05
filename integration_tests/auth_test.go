@@ -6,6 +6,7 @@ import (
 	"api-server/testuutils"
 	"api-server/utils"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,8 +19,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
-
-var jwtKey = []byte(os.Getenv("JWT_PASSWORD"))
 
 var _ = Describe("LoginGithub", func() {
 	var ctx context.Context
@@ -88,9 +87,9 @@ var _ = Describe("LoginGithub", func() {
 			jwtToken, cookieSession := testuutils.GetJwt(router)
 			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-			// create an expired JWY
+			// create an expired JWT
 			expirationTime := time.Now().Add(-60 * time.Minute)
-			tokenString, err := utils.CreateJWT(profileRes, expirationTime, jwt.SigningMethodHS256, jwtKey)
+			tokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_PASSWORD")))
 			Expect(err).ShouldNot(HaveOccurred())
 			logger.Infof("tokenString = %s", tokenString)
 
@@ -100,7 +99,84 @@ var _ = Describe("LoginGithub", func() {
 			req.Header.Add("Authorization", "Bearer "+tokenString)
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
-			Expect(recorder.Body.String()).To(Equal(`{"error":"not logged, token is not valid"}`))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"token is expired"}`))
+		})
+
+		It("should reject a refresh token used as an access token", func() {
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+			expirationTime := time.Now().Add(60 * time.Minute)
+			refreshTokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.RefreshToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_PASSWORD")))
+			Expect(err).ShouldNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/api/profile", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "Bearer "+refreshTokenString)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token cannot be used as access token"}`))
+		})
+	})
+
+	Context("calling refresh token api", func() {
+		It("should return a new access token with a valid refresh token cookie", func() {
+			_, cookieSession := testuutils.GetJwt(router)
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
+			req.Header.Add("Cookie", cookieSession)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var body map[string]string
+			err := json.Unmarshal(recorder.Body.Bytes(), &body)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(body["token"]).ShouldNot(BeEmpty())
+
+			// refresh token cookie must also be rotated
+			Expect(recorder.Header().Get("Set-Cookie")).To(ContainSubstring("refresh_token="))
+		})
+
+		It("should return an error if refresh token cookie is missing", func() {
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token not found"}`))
+		})
+
+		It("should return an error if refresh token is expired", func() {
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+			expirationTime := time.Now().Add(-60 * time.Minute)
+			expiredRefreshToken, err := utils.CreateJWT(profileRes, expirationTime, utils.RefreshToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_REFRESH_PASSWORD")))
+			Expect(err).ShouldNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
+			req.AddCookie(&http.Cookie{Name: "refresh_token", Value: expiredRefreshToken})
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token expired"}`))
+		})
+
+		It("should return an error if an access token is used as refresh token", func() {
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+			expirationTime := time.Now().Add(60 * time.Minute)
+			accessToken, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_REFRESH_PASSWORD")))
+			Expect(err).ShouldNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
+			req.AddCookie(&http.Cookie{Name: "refresh_token", Value: accessToken})
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid token type"}`))
 		})
 	})
 })

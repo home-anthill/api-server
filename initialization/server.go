@@ -53,6 +53,7 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 	if os.Getenv("HTTP_CORS") == "true" {
 		logger.Warnf("SetupRouter - CORS enabled and httpOrigin is = %s", httpOrigin)
 		config := cors.DefaultConfig()
+		config.AllowCredentials = true
 		config.AllowOrigins = []string{
 			"http://" + os.Getenv("INTERNAL_CLUSTER_PATH"),
 			"http://" + os.Getenv("INTERNAL_CLUSTER_PATH") + ":80",
@@ -115,7 +116,7 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 	oauthAppGithub := api.NewLoginGithub(logger, client, "oauth2_app_state",
 		os.Getenv("OAUTH2_APP_CLIENTID"), os.Getenv("OAUTH2_APP_SECRETID"),
 		oauthAppCallbackURL, oauthScopes)
-	auth := api.NewAuth(logger)
+	auth := api.NewAuth(logger, client)
 
 	keepAlive := api.NewKeepAlive(logger)
 	homes := api.NewHomes(logger, client, validate)
@@ -128,9 +129,10 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 	online := api.NewOnline(logger, client)
 
 	// 1. Define public APIs
-	// public API to get Login URL
+	// public APIs (keepalive and authentication)
 	router.GET("/api/login", oauthGithub.GetLoginURL)
 	router.GET("/api/login_app", oauthAppGithub.GetLoginURL)
+	router.POST("/api/token/refresh", auth.RefreshToken)
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
 
 	// 2. Define oAuth2 config to register callbacks
