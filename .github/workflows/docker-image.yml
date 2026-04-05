@@ -46,8 +46,6 @@ jobs:
           mongodb-version: 8.0
           mongodb-replica-set: test-rs
           mongodb-port: 27017
-      - name: Run security audit
-        run: make check
       - name: Run tests
         run: |
           echo "Use fake clientid and secretid in .env"
@@ -62,6 +60,8 @@ jobs:
           make vet
           echo "Running lint"
           make lint
+          echo "Run security audit"
+          make check
           echo "Running tests"
           make test
 
