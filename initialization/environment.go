@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 
 	"github.com/joho/godotenv"
@@ -19,7 +20,7 @@ func InitEnv(logger *zap.SugaredLogger) {
 	logger.Debugf("BuildConfig - envFile = %s", envFile)
 	if err != nil {
 		logger.Error("BuildConfig - failed to load the env file")
-		panic("InitEnv - failed to load the env file at ./" + envFile)
+		panic(fmt.Sprintf("InitEnv - failed to load the env file at %s: %v", envFile, err))
 	}
 	printEnv(logger)
 }
@@ -32,7 +33,7 @@ func readEnv() (string, error) {
 		return "", fmt.Errorf("cannot get current working directory: %w", err)
 	}
 	rootPath := projectName.Find([]byte(currentWorkDirectory))
-	envFilePath := string(rootPath) + `/.env`
+	envFilePath := filepath.Join(string(rootPath), ".env")
 	err = godotenv.Load(envFilePath)
 	return envFilePath, err
 }
