@@ -88,8 +88,8 @@ func (ft *FCMToken) PostFCMToken(c *gin.Context) {
 		"_id": profile.ID,
 	}, bson.M{
 		"$set": bson.M{
-			"fcmToken":   initFCMTokenBody.FCMToken,
-			"modifiedAt": time.Now(),
+			"fcmToken":          initFCMTokenBody.FCMToken,
+			"fcmTokenTimestamp": time.Now(),
 		},
 	})
 	if err != nil {

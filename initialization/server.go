@@ -120,8 +120,7 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 
 	keepAlive := api.NewKeepAlive(logger)
 	homes := api.NewHomes(logger, client, validate)
-	devices := api.NewDevices(logger, client)
-	assignDevices := api.NewAssignDevice(logger, client, validate)
+	devices := api.NewDevices(logger, client, validate)
 	devicesValues := api.NewDevicesValues(logger, client, validate)
 	profiles := api.NewProfiles(logger, client, validate)
 	// FCM = Firebase Cloud Messaging => identify a smartphone on Firebase to send notifications
@@ -165,7 +164,7 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 		private.POST("/profiles/:id/fcmTokens", profiles.PostProfilesFCMToken)
 
 		private.GET("/devices", devices.GetDevices)
-		private.PUT("/devices/:id", assignDevices.PutAssignDeviceToHomeRoom)
+		private.PUT("/devices/:id", devices.PutAssignDeviceToHomeRoom)
 		private.DELETE("/devices/:id", devices.DeleteDevice)
 
 		private.GET("/devices/:id/values", devicesValues.GetValuesDevice)

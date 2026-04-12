@@ -65,3 +65,4 @@ This file tracks significant architectural and behavioural changes made with AI 
 - **New device values implementation**: Supports thermostat and mixed sensor/controller devices.
 - **`poweroutage` renamed to `online`**: Feature name updated throughout the codebase and API.
 - **Proto packages renamed**: Protobuf package names updated; Makefile proto command order corrected.
+- **Device name field**: `PUT /api/devices/:id` (assign device to home/room) now accepts an optional `name` field (string, max 32 characters). If omitted, the device's MAC address is used as the default. The name is persisted on the `Device` document in MongoDB (`name` field). The handler (`PutAssignDeviceToHomeRoom`) has been consolidated into `devices.go`; `assign_device.go` has been removed.

@@ -142,7 +142,43 @@ var _ = Describe("AssignDevices", func() {
 		})
 
 		When("device is still not assigned to any home+room", func() {
-			It("should assign device to home+room successfully", func() {
+			It("should assign device to home+room with a custom name successfully", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				assignDeviceReq := api.AssignDeviceReq{
+					HomeID: home.ID.Hex(),
+					RoomID: home.Rooms[0].ID.Hex(),
+					Name:   "my-controller",
+				}
+				var assignDeviceBug bytes.Buffer
+				err = json.NewEncoder(&assignDeviceBug).Encode(assignDeviceReq)
+				Expect(err).ShouldNot(HaveOccurred())
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/devices/"+deviceController.ID.Hex(), &assignDeviceBug)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"device has been assigned to room"}`))
+
+				homeFromDb, err := testuutils.FindOneById[models.Home](ctx, collHomes, home.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(homeFromDb.Rooms[0].Devices).To(HaveLen(1))
+				Expect(homeFromDb.Rooms[0].Devices[0]).To(Equal(deviceController.ID))
+
+				deviceFromDb, err := testuutils.FindOneById[models.Device](ctx, collDevices, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(deviceFromDb.Name).To(Equal("my-controller"))
+			})
+
+			It("should assign device to home+room using MAC address as default name", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -171,6 +207,37 @@ var _ = Describe("AssignDevices", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(homeFromDb.Rooms[0].Devices).To(HaveLen(1))
 				Expect(homeFromDb.Rooms[0].Devices[0]).To(Equal(deviceController.ID))
+
+				deviceFromDb, err := testuutils.FindOneById[models.Device](ctx, collDevices, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(deviceFromDb.Name).To(Equal(deviceController.Mac))
+			})
+
+			It("should not assign device because name exceeds 32 characters", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				assignDeviceReq := api.AssignDeviceReq{
+					HomeID: home.ID.Hex(),
+					RoomID: home.Rooms[0].ID.Hex(),
+					Name:   "this-name-is-way-too-long-for-a-device",
+				}
+				var assignDeviceBug bytes.Buffer
+				err = json.NewEncoder(&assignDeviceBug).Encode(assignDeviceReq)
+				Expect(err).ShouldNot(HaveOccurred())
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPut, "/api/devices/"+deviceController.ID.Hex(), &assignDeviceBug)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: name"}`))
 			})
 
 			It("should not assign device, because of bad deviceId", func() {

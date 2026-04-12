@@ -31,9 +31,12 @@ type Profile struct {
 	ID         bson.ObjectID   `json:"id" bson:"_id"`
 	Github     GitHub          `json:"github" bson:"github"`
 	APIToken   string          `json:"apiToken" bson:"apiToken"`
-	FCMToken   string          `json:"fcmToken" bson:"fcmToken"`
 	Devices    []bson.ObjectID `json:"devices" bson:"devices"`
 	Homes      []bson.ObjectID `json:"homes" bson:"homes"`
 	CreatedAt  time.Time       `json:"createdAt" bson:"createdAt"`
 	ModifiedAt time.Time       `json:"modifiedAt" bson:"modifiedAt"`
+	// as recommended by official FCM documentation, we save both token and timestamp
+	// More info at https://firebase.google.com/docs/cloud-messaging/manage-tokens
+	FCMToken          string    `json:"fcmToken" bson:"fcmToken"`
+	FCMTokenTimestamp time.Time `json:"fcmTokenTimestamp" bson:"fcmTokenTimestamp"`
 }
