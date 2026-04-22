@@ -8,3 +8,5 @@ tmp
 logs
 coverage
 *.log
+.gocache/
+.gomodcache/

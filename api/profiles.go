@@ -51,8 +51,7 @@ func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *vali
 func (p *Profiles) GetProfile(c *gin.Context) {
 	p.logger.Info("REST - GET - GetProfile called")
 
-	session := sessions.Default(c)
-	profile, err := utils.GetProfileFromSession(&session)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), new(sessions.Default(c)), p.collProfiles)
 	if err != nil {
 		p.logger.Error("REST - GET - GetProfile - Cannot get user profile")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Cannot get user profile"})

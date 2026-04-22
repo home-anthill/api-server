@@ -2,7 +2,9 @@ package initialization
 
 import (
 	"api-server/api"
+	authpkg "api-server/auth"
 	"api-server/utils"
+	"crypto/sha256"
 	"net/http"
 	"os"
 	"path"
@@ -27,17 +29,32 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 	httpOrigin := httpServer + ":" + port
 	logger.Infof("SetupRouter - httpOrigin = %s", httpOrigin)
 
-	// 2. init GIN
+	// 2. init session
+	// - secretKey signs the session cookie, preventing tampering.
+	// - blockKey encrypts the session cookie, preventing the client from reading its contents.
+	//	 Without blockKey, the cookie would still be integrity-protected,
+	//	 but its contents would be readable by the browser/user.
+	secretKey := os.Getenv("COOKIE_SECRET")
+	blockKey := sha256.Sum256([]byte(secretKey))
+	store := cookie.NewStore([]byte(secretKey), blockKey[:])
+	store.Options(sessions.Options{
+		Path: "/",
+		// The session stores short-lived OAuth state/PKCE data and the minimal profile identity used by JWTMiddleware.
+		// Keep its lifetime (MaxAge) aligned with the web accessToken, so a valid access token does not fail
+		// because the session expired first.
+		MaxAge:   int(authpkg.WebTokenTTL.Seconds()),
+		HttpOnly: true,
+		Secure:   os.Getenv("ENV") == "prod",
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	// 3. init GIN
 	// Use gin.New() instead of gin.Default() to avoid Gin's built-in Logger middleware,
 	// which logs full request details (including bodies that may contain credentials).
 	// Recovery() is kept to handle panics gracefully.
 	router := gin.New()
 	router.Use(gin.Recovery())
-	// 3. init session
-	secretKey := os.Getenv("COOKIE_SECRET")
-	store := cookie.NewStore([]byte(secretKey))
-	router.Use(sessions.Sessions("mysession", store))
-	// 4. apply compression
+	router.Use(sessions.Sessions(utils.SessionName, store))
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	// 5. fix a max POST payload size
@@ -106,17 +123,14 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 
 // RegisterRoutes function
 func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
-	oauthCallbackURL := os.Getenv("OAUTH2_CALLBACK")
-	oauthAppCallbackURL := os.Getenv("OAUTH2_APP_CALLBACK")
-	oauthScopes := []string{"repo"} // https://developer.github.com/v3/oauth/#scopes
+	auth := authpkg.NewAuth(logger, client)
 
-	oauthGithub := api.NewLoginGithub(logger, client, "oauth2_state",
-		os.Getenv("OAUTH2_CLIENTID"), os.Getenv("OAUTH2_SECRETID"),
-		oauthCallbackURL, oauthScopes)
-	oauthAppGithub := api.NewLoginGithub(logger, client, "oauth2_app_state",
-		os.Getenv("OAUTH2_APP_CLIENTID"), os.Getenv("OAUTH2_APP_SECRETID"),
-		oauthAppCallbackURL, oauthScopes)
-	auth := api.NewAuth(logger, client)
+	oauthGithub := api.NewGitHubOAuth(auth, logger, client, "oauth2_state",
+		"oauth2_web_pkce_verifier")
+
+	oauthAppGithub := api.NewGitHubOAuthApp(auth, logger, client, "oauth2_app_state",
+		"oauth2_app_pkce_challenge")
+	oauthCommon := api.NewOAuthCommon(logger, client)
 
 	keepAlive := api.NewKeepAlive(logger)
 	homes := api.NewHomes(logger, client, validate)
@@ -127,26 +141,23 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 	fcmToken := api.NewFCMToken(logger, client, validate)
 	online := api.NewOnline(logger, client)
 
-	// 1. Define public APIs
-	// public APIs (keepalive and authentication)
-	router.GET("/api/login", oauthGithub.GetLoginURL)
-	router.GET("/api/login_app", oauthAppGithub.GetLoginURL)
-	router.POST("/api/token/refresh", auth.RefreshToken)
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
+	oauth := router.Group("/api/oauth")
+	{
+		// web app
+		oauth.GET("/login", oauthGithub.GitHubLogin)
+		oauth.GET("/callback", oauthGithub.GitHubCallback)
+		// mobile app
+		oauth.GET("/app/login", oauthAppGithub.GitHubAppLogin)
+		oauth.GET("/app/callback", oauthAppGithub.GitHubAppCallback)
+		oauth.POST("/app/exchange-code", oauthAppGithub.ExchangeAppCode)
+		oauth.POST("/app/refresh", oauthCommon.RefreshAppToken)
+		// common
+		oauth.POST("/refresh", oauthCommon.RefreshToken)
+		oauth.POST("/logout", oauthCommon.Logout)
+	}
 
-	// 2. Define oAuth2 config to register callbacks
-	// Attention: if for some reason you'll receive an error in callbacks warning you that the state code in session is missing,
-	// it's happening because the browser cannot set the session cookie.
-	// I found this problem using a GitHub oAuth2 callback with a local IP address, instead of 'localhost', while testing
-	// oAuth2 flow on Android.
-	oauthGroup := router.Group("/api/callback")
-	oauthGroup.Use(oauthGithub.OauthAuth())
-	oauthGroup.GET("", auth.LoginCallback)
-	oauthAppGroup := router.Group("/api/app_callback")
-	oauthAppGroup.Use(oauthAppGithub.OauthAuth())
-	oauthAppGroup.GET("", auth.LoginMobileAppCallback)
-
-	// 3. Define private APIs (/api group) protected via JWTMiddleware
+	// Define private APIs (/api group) protected via JWTMiddleware
 	private := router.Group("/api")
 	private.Use(auth.JWTMiddleware())
 	{

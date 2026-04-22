@@ -3,19 +3,26 @@ package integration_tests
 import (
 	"api-server/db"
 	"api-server/initialization"
+	"api-server/models"
 	"api-server/testuutils"
 	"api-server/utils"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
@@ -28,22 +35,27 @@ var _ = Describe("LoginGithub", func() {
 	var collProfiles *mongo.Collection
 	var collHomes *mongo.Collection
 	var collDevices *mongo.Collection
+	var collAppLoginCodes *mongo.Collection
+	var collRefreshTokens *mongo.Collection
 
 	BeforeEach(func() {
 		logger, router, client = initialization.Start()
 		ctx = context.Background()
 		defer logger.Sync()
 
-		collProfiles = db.GetCollections(client).Profiles
-		collHomes = db.GetCollections(client).Homes
-		collDevices = db.GetCollections(client).Devices
+		colls := db.GetCollections(client)
+		collProfiles = colls.Profiles
+		collHomes = colls.Homes
+		collDevices = colls.Devices
+		collAppLoginCodes = colls.AppLoginCodes
+		collRefreshTokens = colls.RefreshTokens
 
 		err := os.Setenv("SINGLE_USER_LOGIN_EMAIL", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
-		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
+		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices, collAppLoginCodes, collRefreshTokens)
 	})
 
 	Context("calling protected api", func() {
@@ -118,6 +130,59 @@ var _ = Describe("LoginGithub", func() {
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token cannot be used as access token"}`))
 		})
+
+		It("should reject requests when JWT and session belong to different users", func() {
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+			otherProfile := models.Profile{
+				ID: bson.NewObjectID(),
+				Github: models.GitHub{
+					ID:        profileRes.Github.ID + 1,
+					Login:     "other-user",
+					Name:      "Other User",
+					Email:     "other@test.com",
+					AvatarURL: "https://example.com/avatar.png",
+				},
+				CreatedAt:  time.Now(),
+				ModifiedAt: time.Now(),
+			}
+
+			blockKey := sha256.Sum256([]byte(os.Getenv("COOKIE_SECRET")))
+			store := cookie.NewStore([]byte(os.Getenv("COOKIE_SECRET")), blockKey[:])
+			store.Options(sessions.Options{
+				Path:     "/",
+				HttpOnly: true,
+				Secure:   os.Getenv("ENV") == "prod",
+				SameSite: http.SameSiteLaxMode,
+			})
+			mismatchRouter := gin.New()
+			mismatchRouter.Use(sessions.Sessions(utils.SessionName, store))
+			mismatchRouter.GET("/set", func(c *gin.Context) {
+				session := sessions.Default(c)
+				session.Set("profileID", otherProfile.ID.Hex())
+				session.Set("githubID", otherProfile.Github.ID)
+				err := session.Save()
+				Expect(err).ShouldNot(HaveOccurred())
+				c.Status(http.StatusNoContent)
+			})
+
+			mismatchRecorder := httptest.NewRecorder()
+			mismatchReq := httptest.NewRequest("GET", "/set", nil)
+			mismatchRouter.ServeHTTP(mismatchRecorder, mismatchReq)
+			Expect(mismatchRecorder.Code).To(Equal(http.StatusNoContent))
+			mismatchCookie := mismatchRecorder.Header().Get("Set-Cookie")
+			Expect(mismatchCookie).ToNot(BeEmpty())
+			Expect(mismatchCookie).ToNot(Equal(cookieSession))
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
+			req.Header.Add("Cookie", mismatchCookie)
+			req.Header.Add("Authorization", "Bearer "+jwtToken)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"session does not match token identity"}`))
+		})
 	})
 
 	Context("calling refresh token api", func() {
@@ -125,7 +190,7 @@ var _ = Describe("LoginGithub", func() {
 			_, cookieSession := testuutils.GetJwt(router)
 
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
+			req := httptest.NewRequest("POST", "/api/oauth/refresh", nil)
 			req.Header.Add("Cookie", cookieSession)
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
@@ -136,12 +201,12 @@ var _ = Describe("LoginGithub", func() {
 			Expect(body["token"]).ShouldNot(BeEmpty())
 
 			// refresh token cookie must also be rotated
-			Expect(recorder.Header().Get("Set-Cookie")).To(ContainSubstring("refresh_token="))
+			Expect(strings.Join(recorder.Header().Values("Set-Cookie"), "; ")).To(ContainSubstring(utils.RefreshTokenCookieName + "="))
 		})
 
 		It("should return an error if refresh token cookie is missing", func() {
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
+			req := httptest.NewRequest("POST", "/api/oauth/refresh", nil)
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token not found"}`))
@@ -151,13 +216,23 @@ var _ = Describe("LoginGithub", func() {
 			jwtToken, cookieSession := testuutils.GetJwt(router)
 			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
-			expirationTime := time.Now().Add(-60 * time.Minute)
-			expiredRefreshToken, err := utils.CreateJWT(profileRes, expirationTime, utils.RefreshToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_REFRESH_PASSWORD")))
+			expiredRefreshToken, err := utils.RandomString(64)
+			Expect(err).ShouldNot(HaveOccurred())
+			now := time.Now().UTC()
+			_, err = collRefreshTokens.InsertOne(ctx, models.RefreshToken{
+				ID:         bson.NewObjectID(),
+				ProfileID:  profileRes.ID,
+				TokenHash:  utils.HashToken(expiredRefreshToken),
+				FamilyID:   bson.NewObjectID().Hex(),
+				ClientType: "web",
+				CreatedAt:  now.Add(-2 * time.Hour),
+				ExpiresAt:  now.Add(-1 * time.Hour),
+			})
 			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
-			req.AddCookie(&http.Cookie{Name: "refresh_token", Value: expiredRefreshToken})
+			req := httptest.NewRequest("POST", "/api/oauth/refresh", nil)
+			req.AddCookie(&http.Cookie{Name: utils.RefreshTokenCookieName, Value: expiredRefreshToken})
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token expired"}`))
@@ -172,11 +247,73 @@ var _ = Describe("LoginGithub", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest("POST", "/api/token/refresh", nil)
-			req.AddCookie(&http.Cookie{Name: "refresh_token", Value: accessToken})
+			req := httptest.NewRequest("POST", "/api/oauth/refresh", nil)
+			req.AddCookie(&http.Cookie{Name: utils.RefreshTokenCookieName, Value: accessToken})
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
-			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid token type"}`))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid refresh token"}`))
+		})
+	})
+
+	Context("calling app code exchange api", func() {
+		It("should exchange a valid app code exactly once", func() {
+			codeVerifier, err := utils.RandomString(32)
+			Expect(err).ShouldNot(HaveOccurred())
+			codeChallenge, err := utils.BuildPKCECodeChallenge(codeVerifier)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256, nil)
+			router.ServeHTTP(recorder, req)
+			Expect(http.StatusTemporaryRedirect).To(Equal(recorder.Code))
+
+			resLocation, err := recorder.Result().Location()
+			Expect(err).ShouldNot(HaveOccurred())
+			stateEscapedB64 := resLocation.Query().Get("state")
+			cookieSession := recorder.Header().Get("Set-Cookie")
+
+			recorder = httptest.NewRecorder()
+			req = httptest.NewRequest("GET", "/api/oauth/app/callback?code=ecf9b407c22a56b61ecf&state="+stateEscapedB64, nil)
+			req.Header.Add("Cookie", cookieSession)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusFound))
+
+			locationHeader := recorder.Header().Get("location")
+			callbackURL, err := url.Parse(os.Getenv("OAUTH2_APP_CALLBACK"))
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(locationHeader).To(HavePrefix(callbackURL.Scheme + "://" + callbackURL.Host + "/postlogin?code="))
+			redirectLocation, err := url.Parse(locationHeader)
+			Expect(err).ShouldNot(HaveOccurred())
+			code := redirectLocation.Query().Get("code")
+			Expect(code).ToNot(BeEmpty())
+
+			recorder = httptest.NewRecorder()
+			req = httptest.NewRequest("POST", "/api/oauth/app/exchange-code", strings.NewReader(`{"code":"`+code+`","codeVerifier":"`+codeVerifier+`"}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var body map[string]string
+			err = json.Unmarshal(recorder.Body.Bytes(), &body)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(body["token"]).ShouldNot(BeEmpty())
+			Expect(body["refreshToken"]).ShouldNot(BeEmpty())
+
+			recorder = httptest.NewRecorder()
+			req = httptest.NewRequest("POST", "/api/oauth/app/exchange-code", strings.NewReader(`{"code":"`+code+`","codeVerifier":"`+codeVerifier+`"}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid or expired code"}`))
+		})
+
+		It("should reject app code exchange without a valid PKCE verifier", func() {
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/exchange-code", strings.NewReader(`{"code":"abc"}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
 		})
 	})
 })

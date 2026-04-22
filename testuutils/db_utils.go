@@ -3,6 +3,7 @@ package testuutils
 import (
 	"api-server/models"
 	"context"
+	"os"
 	"time"
 
 	"github.com/onsi/gomega"
@@ -11,14 +12,12 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-func DropAllCollections(ctx context.Context, collProfiles, collHomes, collDevices *mongo.Collection) {
-	var err error
-	err = collProfiles.Drop(ctx)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-	err = collHomes.Drop(ctx)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-	err = collDevices.Drop(ctx)
-	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+func DropAllCollections(ctx context.Context, collections ...*mongo.Collection) {
+	gomega.Expect(os.Getenv("ENV")).To(gomega.Equal("testing"), "refusing to drop collections outside ENV=testing")
+	for _, collection := range collections {
+		err := collection.Drop(ctx)
+		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+	}
 }
 
 func FindAll[T interface{}](ctx context.Context, collection *mongo.Collection) ([]T, error) {

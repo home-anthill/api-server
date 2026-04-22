@@ -29,19 +29,27 @@ type JWTClaims struct {
 	jwt.RegisteredClaims
 }
 
+// CreateJWT builds and signs a local access JWT for an authenticated profile.
+// Callers must pass an explicit expiration, expected token type, approved HMAC
+// signing method, and the correct signing key for that token class. The token
+// includes issuer, audience, subject, issued-at, not-before, and expiry claims
+// so validation can reject tokens from the wrong context or outside their
+// validity window.
 func CreateJWT(profile models.Profile, expirationTime time.Time, tokenType TokenType, signingMethod jwt.SigningMethod, jwtKey []byte) (string, error) {
-	claimsObj := &JWTClaims{
+	claims := &JWTClaims{
 		ID:        profile.Github.ID,
 		Name:      profile.Github.Name,
 		TokenType: tokenType,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			Issuer:    JWTIssuer,
 			Audience:  jwt.ClaimStrings{JWTAudience},
 			Subject:   strconv.FormatInt(profile.Github.ID, 10),
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
+			NotBefore: jwt.NewNumericDate(time.Now().UTC()),
 		},
 	}
-	token := jwt.NewWithClaims(signingMethod, claimsObj)
-	tokenString, err := token.SignedString(jwtKey)
-	return tokenString, err
+	token := jwt.NewWithClaims(signingMethod, claims)
+	signed, err := token.SignedString(jwtKey)
+	return signed, err
 }

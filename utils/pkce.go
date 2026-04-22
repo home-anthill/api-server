@@ -1,0 +1,62 @@
+package utils
+
+import (
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"regexp"
+)
+
+// PKCEChallengeMethodS256 is the only PKCE challenge method accepted by GitHub
+// and by this API. The plain method is intentionally not supported.
+const PKCEChallengeMethodS256 = "S256"
+
+var pkceVerifierPattern = regexp.MustCompile(`^[A-Za-z0-9._~-]{43,128}$`)
+var pkceCodeChallengePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{43,128}$`)
+
+// IsValidPKCEVerifier reports whether verifier matches the RFC 7636 verifier
+// character set and length requirements.
+func IsValidPKCEVerifier(verifier string) bool {
+	return pkceVerifierPattern.MatchString(verifier)
+}
+
+// IsValidPKCECodeChallenge reports whether challenge is a valid base64url PKCE
+// code challenge length and character set.
+func IsValidPKCECodeChallenge(challenge string) bool {
+	return pkceCodeChallengePattern.MatchString(challenge)
+}
+
+// NewPKCEVerifier creates a high-entropy PKCE code verifier suitable for S256.
+// The returned verifier is intentionally longer than the 43-character minimum
+// while staying below the RFC 7636 maximum of 128 characters.
+func NewPKCEVerifier() (string, error) {
+	return RandomString(96)
+}
+
+// BuildPKCECodeChallenge derives the S256 PKCE code challenge from a verifier.
+// The verifier is validated before hashing so invalid values are rejected before
+// they are stored in session or sent through the OAuth flow.
+func BuildPKCECodeChallenge(verifier string) (string, error) {
+	if !IsValidPKCEVerifier(verifier) {
+		return "", fmt.Errorf("invalid PKCE code verifier")
+	}
+
+	sum := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(sum[:]), nil
+}
+
+// HashToken returns a stable SHA-256 base64url hash for opaque tokens that must
+// be looked up server-side without storing the raw secret.
+func HashToken(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+// TruncateString returns input capped at maxLen bytes. Negative maxLen disables
+// truncation.
+func TruncateString(input string, maxLen int) string {
+	if maxLen < 0 || len(input) <= maxLen {
+		return input
+	}
+	return input[:maxLen]
+}

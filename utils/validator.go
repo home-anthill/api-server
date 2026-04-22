@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -17,7 +18,8 @@ func IsValidUUID(s string) bool {
 
 // GetErrorMessage create a list with all wrong fields
 func GetErrorMessage(err error) string {
-	validationErrors, ok := err.(validator.ValidationErrors)
+	var validationErrors validator.ValidationErrors
+	ok := errors.As(err, &validationErrors)
 	if !ok {
 		return err.Error()
 	}

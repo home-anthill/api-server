@@ -48,7 +48,6 @@ func printEnv(logger *zap.SugaredLogger) {
 
 	logger.Infof("ENVIRONMENT = %s", os.Getenv("ENV"))
 	logger.Infof("LOG_FOLDER = %s", os.Getenv("LOG_FOLDER"))
-	logger.Infof("MONGODB_URL = %s", os.Getenv("MONGODB_URL"))
 	logger.Infof("HTTP_SERVER = %s", os.Getenv("HTTP_SERVER"))
 	logger.Infof("HTTP_PORT = %s", os.Getenv("HTTP_PORT"))
 	logger.Infof("OAUTH2_CALLBACK = %s", os.Getenv("OAUTH2_CALLBACK"))
@@ -71,4 +70,10 @@ func printEnv(logger *zap.SugaredLogger) {
 	logger.Infof("CERT_FOLDER_PATH = %s", os.Getenv("CERT_FOLDER_PATH"))
 	logger.Infof("SINGLE_USER_LOGIN_EMAIL = %s", os.Getenv("SINGLE_USER_LOGIN_EMAIL"))
 	logger.Infof("INTERNAL_CLUSTER_PATH = %s", os.Getenv("INTERNAL_CLUSTER_PATH"))
+	logger.Infof("MONGODB_URL = [redacted]")
+	logger.Infof("COOKIE_SECRET = [redacted]")
+	logger.Infof("JWT_PASSWORD = [redacted]")
+	logger.Infof("JWT_REFRESH_PASSWORD = [redacted]")
+	logger.Infof("OAUTH2_SECRETID = [redacted]")
+	logger.Infof("OAUTH2_APP_SECRETID = [redacted]")
 }

@@ -20,12 +20,12 @@ func Start() (*zap.SugaredLogger, *gin.Engine, *mongo.Client) {
 
 	// 3. Init db
 	// Connect to DB
-	client := db.InitDb(logger)
+	mongoDbClient := db.InitDb(logger)
 
 	// 4. Init server
-	router := BuildServer(logger, client)
+	router := BuildServer(logger, mongoDbClient)
 
-	return logger, router, client
+	return logger, router, mongoDbClient
 }
 
 // BuildServer - Exposed only for testing purposes

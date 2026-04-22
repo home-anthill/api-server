@@ -7,9 +7,9 @@ import (
 )
 
 func main() {
-	logger, router, client := initialization.Start()
+	logger, router, mongoDbClient := initialization.Start()
 	defer logger.Sync()
-	defer client.Disconnect(context.TODO())
+	defer mongoDbClient.Disconnect(context.TODO())
 
 	// Start server
 	port := os.Getenv("HTTP_PORT")
