@@ -18,11 +18,11 @@ import (
 )
 
 // web app
-const WebTokenTTL = 2 * time.Minute
+const WebTokenTTL = 15 * time.Minute
 const WebRefreshTokenTTL = 7 * 24 * time.Hour
 
 // mobile app
-const MobileTokenTTL = 2 * time.Minute
+const MobileTokenTTL = 15 * time.Minute
 const MobileRefreshTokenTTL = 7 * 24 * time.Hour
 const MobileAppLoginCodeTTL = 1 * time.Minute
 
