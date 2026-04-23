@@ -76,7 +76,7 @@ func (ft *FCMToken) PostFCMToken(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), &session, ft.collProfiles)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, ft.collProfiles)
 	if err != nil {
 		ft.logger.Error("REST - POST - PostFCMToken - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -113,7 +113,6 @@ func (ft *FCMToken) PostFCMToken(c *gin.Context) {
 	}
 	ft.logger.Infow("AUDIT - FCM token registered",
 		"profileID", profile.ID.Hex(),
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "FCMToken assigned to APIToken"})
 }

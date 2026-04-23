@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -12,8 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var client *mongo.Client
-
 // Collections struct
 type Collections struct {
 	Profiles      *mongo.Collection
@@ -23,49 +22,54 @@ type Collections struct {
 	RefreshTokens *mongo.Collection
 }
 
-// InitDb function
-func InitDb(logger *zap.SugaredLogger) *mongo.Client {
+// InitDb connects to MongoDB and ensures the required indexes.
+func InitDb(ctx context.Context, logger *zap.SugaredLogger) (*mongo.Client, error) {
 	mongoDBUrl := os.Getenv("MONGODB_URL")
 	logger.Info("InitDb - connecting to MongoDB URL = [redacted]")
 
 	// connect to DB
-	var err error
-	client, err = mongo.Connect(options.Client().ApplyURI(mongoDBUrl))
+	client, err := mongo.Connect(options.Client().ApplyURI(mongoDBUrl))
 	if err != nil {
-		logger.Fatalf("Cannot connect to MongoDB: %s", err)
-		panic("Cannot connect to MongoDB")
+		return nil, fmt.Errorf("connect to MongoDB: %w", err)
 	}
 	if os.Getenv("ENV") != "prod" {
-		if err = client.Ping(context.TODO(), readpref.Primary()); err != nil {
-			logger.Fatalf("Cannot ping MongoDB: %s", err)
-			panic("Cannot ping MongoDB")
+		if err = client.Ping(ctx, readpref.Primary()); err != nil {
+			return nil, fmt.Errorf("ping MongoDB: %w", err)
 		}
 	}
 	logger.Info("Connected to MongoDB")
 
-	if err = ensureIndexes(client, logger); err != nil {
-		logger.Fatalf("Cannot ensure MongoDB indexes: %s", err)
-		panic("Cannot ensure MongoDB indexes")
+	if err = ensureIndexes(ctx, client, logger); err != nil {
+		return nil, fmt.Errorf("ensure MongoDB indexes: %w", err)
 	}
 
-	return client
+	return client, nil
 }
 
 // GetCollections function
 func GetCollections(client *mongo.Client) *Collections {
+	database := client.Database(getDbName())
 	return &Collections{
-		Profiles:      client.Database(getDbName()).Collection("profiles"),
-		Homes:         client.Database(getDbName()).Collection("homes"),
-		Devices:       client.Database(getDbName()).Collection("devices"),
-		AppLoginCodes: client.Database(getDbName()).Collection("app_login_codes"),
-		RefreshTokens: client.Database(getDbName()).Collection("refresh_tokens"),
+		Profiles:      database.Collection("profiles"),
+		Homes:         database.Collection("homes"),
+		Devices:       database.Collection("devices"),
+		AppLoginCodes: database.Collection("app_login_codes"),
+		RefreshTokens: database.Collection("refresh_tokens"),
 	}
 }
 
-func ensureIndexes(client *mongo.Client, logger *zap.SugaredLogger) error {
+func ensureIndexes(ctx context.Context, client *mongo.Client, logger *zap.SugaredLogger) error {
 	colls := GetCollections(client)
 
-	_, err := colls.AppLoginCodes.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
+	_, err := colls.Profiles.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "github.id", Value: 1}},
+		Options: options.Index().SetUnique(true).SetName("profile_github_id_unique"),
+	})
+	if err != nil {
+		return fmt.Errorf("cannot create profiles indexes: %w", err)
+	}
+
+	_, err = colls.AppLoginCodes.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "code", Value: 1}},
 			Options: options.Index().SetUnique(true).SetName("app_login_code_code_unique"),
@@ -79,7 +83,14 @@ func ensureIndexes(client *mongo.Client, logger *zap.SugaredLogger) error {
 		return fmt.Errorf("cannot create app_login_codes indexes: %w", err)
 	}
 
-	_, err = colls.RefreshTokens.Indexes().CreateMany(context.TODO(), []mongo.IndexModel{
+	if err = colls.RefreshTokens.Indexes().DropOne(ctx, "refresh_token_expires"); err != nil {
+		var commandErr mongo.CommandError
+		if !errors.As(err, &commandErr) || (commandErr.Code != 26 && commandErr.Code != 27) {
+			return fmt.Errorf("cannot drop old refresh_token_expires index: %w", err)
+		}
+	}
+
+	_, err = colls.RefreshTokens.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{
 			Keys:    bson.D{{Key: "tokenHash", Value: 1}},
 			Options: options.Index().SetUnique(true).SetName("refresh_token_hash_unique"),
@@ -90,7 +101,7 @@ func ensureIndexes(client *mongo.Client, logger *zap.SugaredLogger) error {
 		},
 		{
 			Keys:    bson.D{{Key: "expiresAt", Value: 1}},
-			Options: options.Index().SetName("refresh_token_expires"),
+			Options: options.Index().SetExpireAfterSeconds(0).SetName("refresh_token_expires_ttl"),
 		},
 	})
 	if err != nil {
@@ -105,7 +116,6 @@ func ensureIndexes(client *mongo.Client, logger *zap.SugaredLogger) error {
 func getDbName() string {
 	if os.Getenv("ENV") == "testing" {
 		return "api-server-test"
-	} else {
-		return "api-server"
 	}
+	return "api-server"
 }

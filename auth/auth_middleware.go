@@ -18,11 +18,11 @@ import (
 )
 
 // web app
-const WebTokenTTL = 15 * time.Minute
+const WebTokenTTL = 2 * time.Minute
 const WebRefreshTokenTTL = 7 * 24 * time.Hour
 
 // mobile app
-const MobileTokenTTL = 15 * time.Minute
+const MobileTokenTTL = 2 * time.Minute
 const MobileRefreshTokenTTL = 7 * 24 * time.Hour
 const MobileAppLoginCodeTTL = 1 * time.Minute
 
@@ -85,12 +85,11 @@ func (a *Auth) JWTMiddleware() gin.HandlerFunc {
 		claimsObj := &utils.JWTClaims{}
 
 		// Parse takes the token string and a function for looking up the key. The latter is especially
-		// useful if you use multiple keys for your application.  The standard is to use 'kid' in the
+		// useful if you use multiple keys for your application. The standard is to use 'kid' in the
 		// head of the token to identify which key to use, but the parsed token (head and claims) is provided
 		// to the callback, providing flexibility.
 		token, err := jwt.ParseWithClaims(tokenString, claimsObj, func(token *jwt.Token) (interface{}, error) {
-			// Remember to validate the alg is what you expect:
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			if token.Method != jwt.SigningMethodHS512 {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
 			// jwtKey is injected in Auth struct
@@ -121,10 +120,10 @@ func (a *Auth) JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Reject refresh tokens used as access tokens
-		if claimsObj.TokenType == utils.RefreshToken {
-			a.Logger.Error("JWTMiddleware - refresh token cannot be used as access token")
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "refresh token cannot be used as access token"})
+		// Reject non access tokens used as access tokens
+		if claimsObj.TokenType != utils.AccessToken {
+			a.Logger.Errorw("JWTMiddleware - token is not an access token", "tokenType", claimsObj.TokenType)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token is not an access token"})
 			c.Abort()
 			return
 		}
@@ -133,15 +132,17 @@ func (a *Auth) JWTMiddleware() gin.HandlerFunc {
 		// session identity matches the already-validated JWT, so callers cannot
 		// mix one user's bearer token with another user's session cookie.
 		session := sessions.Default(c)
-		profileSession, err := utils.GetProfileFromSession(&session)
+		profileSession, err := utils.GetProfileFromSession(session)
 		if err != nil {
 			a.Logger.Error("JWTMiddleware - profile not found in session")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 			c.Abort()
 			return
 		}
-		if profileSession.GithubID != claimsObj.ID {
+		if profileSession.ID.Hex() != claimsObj.ProfileID || profileSession.GithubID != claimsObj.ID {
 			a.Logger.Errorw("JWTMiddleware - session/JWT identity mismatch",
+				"sessionProfileID", profileSession.ID.Hex(),
+				"jwtProfileID", claimsObj.ProfileID,
 				"sessionGithubID", profileSession.GithubID,
 				"jwtGithubID", claimsObj.ID,
 			)

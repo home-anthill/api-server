@@ -71,7 +71,7 @@ func (h *Homes) GetHomes(c *gin.Context) {
 
 	// retrieve current profile object from session
 	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(&session)
+	profileSession, err := utils.GetProfileFromSession(session)
 	if err != nil {
 		h.logger.Error("REST - GET - GetHomes - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -119,7 +119,7 @@ func (h *Homes) PostHome(c *gin.Context) {
 
 	// retrieve current profile object from session
 	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(&session)
+	profileSession, err := utils.GetProfileFromSession(session)
 	if err != nil {
 		h.logger.Error("REST - POST - PostHome - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -198,7 +198,6 @@ func (h *Homes) PostHome(c *gin.Context) {
 	h.logger.Infow("AUDIT - home created",
 		"profileID", profileSession.ID.Hex(),
 		"homeID", home.ID.Hex(),
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, home)
 }
@@ -278,7 +277,7 @@ func (h *Homes) DeleteHome(c *gin.Context) {
 	}
 
 	// retrieve current profile object from session
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), &session, h.collProfiles)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, h.collProfiles)
 	if err != nil {
 		h.logger.Error("REST - DELETE - DeleteHome - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -332,7 +331,6 @@ func (h *Homes) DeleteHome(c *gin.Context) {
 	h.logger.Infow("AUDIT - home deleted",
 		"profileID", profile.ID.Hex(),
 		"homeID", objectID.Hex(),
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "home has been deleted"})
 }
@@ -594,7 +592,7 @@ func (h *Homes) isHomeOwnedBy(ctx context.Context, session sessions.Session, obj
 	// you can update a home only if you are the owner of that home
 	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
 
-	profile, err := utils.GetLoggedProfile(ctx, &session, h.collProfiles)
+	profile, err := utils.GetLoggedProfile(ctx, session, h.collProfiles)
 	if err != nil {
 		h.logger.Error("isHomeOwnedBy - cannot find profile in session")
 		return false

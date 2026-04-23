@@ -64,7 +64,7 @@ func (d *Devices) GetDevices(c *gin.Context) {
 
 	// retrieve current profile object from session
 	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(&session)
+	profileSession, err := utils.GetProfileFromSession(session)
 	if err != nil {
 		d.logger.Error("REST - GET - GetDevices - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -118,7 +118,7 @@ func (d *Devices) DeleteDevice(c *gin.Context) {
 
 	// retrieve current profile object from session
 	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(&session)
+	profileSession, err := utils.GetProfileFromSession(session)
 	if err != nil {
 		d.logger.Error("REST - GET - DeleteDevice - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -232,7 +232,6 @@ func (d *Devices) DeleteDevice(c *gin.Context) {
 		"profileID", profileSession.ID.Hex(),
 		"deviceID", objectID.Hex(),
 		"deviceUUID", device.UUID,
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "device has been deleted"})
 }
@@ -270,7 +269,7 @@ func (d *Devices) PutAssignDeviceToHomeRoom(c *gin.Context) {
 
 	// retrieve current profile object from session
 	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(&session)
+	profileSession, err := utils.GetProfileFromSession(session)
 	if err != nil {
 		d.logger.Error("REST - GET - PutAssignDeviceToHomeRoom - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -410,7 +409,6 @@ func (d *Devices) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		"homeID", homeObjID.Hex(),
 		"roomID", roomObjID.Hex(),
 		"deviceName", deviceName,
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "device has been assigned to room"})
 }

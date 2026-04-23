@@ -63,7 +63,7 @@ func (o *Online) GetOnline(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), &session, o.collProfiles)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, o.collProfiles)
 	if err != nil {
 		o.logger.Error("REST - GET - GetOnline - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})

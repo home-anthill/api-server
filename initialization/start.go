@@ -2,7 +2,10 @@ package initialization
 
 import (
 	"api-server/db"
+	"context"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -10,21 +13,37 @@ import (
 	"go.uber.org/zap"
 )
 
-// Start function
-func Start() (*zap.SugaredLogger, *gin.Engine, *mongo.Client) {
+// Start initializes logger, environment, database, and router.
+func Start() (*zap.SugaredLogger, *gin.Engine, *mongo.Client, error) {
 	// 1. Init logger
 	logger := InitLogger()
 
 	// 2. Init env
-	InitEnv(logger)
+	if err := InitEnv(logger); err != nil {
+		return logger, nil, nil, fmt.Errorf("init env: %w", err)
+	}
 
 	// 3. Init db
 	// Connect to DB
-	mongoDbClient := db.InitDb(logger)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	mongoDbClient, err := db.InitDb(ctx, logger)
+	if err != nil {
+		return logger, nil, nil, fmt.Errorf("init db: %w", err)
+	}
 
 	// 4. Init server
 	router := BuildServer(logger, mongoDbClient)
 
+	return logger, router, mongoDbClient, nil
+}
+
+// MustStart initializes the application and panics on error. It is intended for tests.
+func MustStart() (*zap.SugaredLogger, *gin.Engine, *mongo.Client) {
+	logger, router, mongoDbClient, err := Start()
+	if err != nil {
+		panic(err)
+	}
 	return logger, router, mongoDbClient
 }
 

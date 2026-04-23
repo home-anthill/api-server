@@ -12,7 +12,6 @@ type RefreshToken struct {
 	TokenHash      string        `bson:"tokenHash"`
 	FamilyID       string        `bson:"familyId"`
 	ClientType     string        `bson:"clientType"`
-	UserAgent      string        `bson:"userAgent,omitempty"`
 	CreatedAt      time.Time     `bson:"createdAt"`
 	ExpiresAt      time.Time     `bson:"expiresAt"`
 	RevokedAt      *time.Time    `bson:"revokedAt,omitempty"`

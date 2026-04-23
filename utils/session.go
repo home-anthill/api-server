@@ -20,8 +20,8 @@ type SessionProfile struct {
 
 // GetProfileFromSession returns the minimal logged-in profile identity stored
 // in the current session.
-func GetProfileFromSession(session *sessions.Session) (SessionProfile, error) {
-	profileIDHex, ok := (*session).Get("profileID").(string)
+func GetProfileFromSession(session sessions.Session) (SessionProfile, error) {
+	profileIDHex, ok := session.Get("profileID").(string)
 	if !ok || profileIDHex == "" {
 		return SessionProfile{}, fmt.Errorf("cannot find profile in session")
 	}
@@ -31,7 +31,7 @@ func GetProfileFromSession(session *sessions.Session) (SessionProfile, error) {
 		return SessionProfile{}, fmt.Errorf("invalid profile in session: %w", err)
 	}
 
-	githubID, ok := (*session).Get("githubID").(int64)
+	githubID, ok := session.Get("githubID").(int64)
 	if !ok || githubID == 0 {
 		return SessionProfile{}, fmt.Errorf("cannot find profile in session")
 	}
@@ -44,7 +44,7 @@ func GetProfileFromSession(session *sessions.Session) (SessionProfile, error) {
 
 // GetLoggedProfile loads the current profile from MongoDB using the profile ID
 // stored in session, ensuring handlers use fresh server-side profile data.
-func GetLoggedProfile(ctx context.Context, session *sessions.Session, collection *mongo.Collection) (models.Profile, error) {
+func GetLoggedProfile(ctx context.Context, session sessions.Session, collection *mongo.Collection) (models.Profile, error) {
 	profileSession, err := GetProfileFromSession(session)
 	if err != nil {
 		return models.Profile{}, err
@@ -61,7 +61,7 @@ func GetLoggedProfile(ctx context.Context, session *sessions.Session, collection
 // Contains reports whether s ObjectID list contains objToFind ObjectID.
 func Contains(s []bson.ObjectID, objToFind bson.ObjectID) bool {
 	for _, v := range s {
-		if v.Hex() == objToFind.Hex() {
+		if v == objToFind {
 			return true
 		}
 	}

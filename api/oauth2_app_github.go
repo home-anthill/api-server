@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type GitHubOAuthApp struct {
+type GitHubAppHandler struct {
 	collProfiles                *mongo.Collection
 	auth                        *authpkg.Auth
 	logger                      *zap.SugaredLogger
@@ -43,8 +43,8 @@ type AppExchangeCodeResp struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
-func NewGitHubOAuthApp(auth *authpkg.Auth, logger *zap.SugaredLogger, client *mongo.Client, sessionStateName, sessionAppCodeChallengeName string) *GitHubOAuthApp {
-	return &GitHubOAuthApp{
+func NewGitHubAppHandler(auth *authpkg.Auth, logger *zap.SugaredLogger, client *mongo.Client, sessionStateName, sessionAppCodeChallengeName string) *GitHubAppHandler {
+	return &GitHubAppHandler{
 		collProfiles:                db.GetCollections(client).Profiles,
 		auth:                        auth,
 		logger:                      logger,
@@ -57,7 +57,7 @@ func NewGitHubOAuthApp(auth *authpkg.Auth, logger *zap.SugaredLogger, client *mo
 	}
 }
 
-func (gh *GitHubOAuthApp) GitHubAppLogin(c *gin.Context) {
+func (gh *GitHubAppHandler) GitHubAppLogin(c *gin.Context) {
 	gh.logger.Info("REST - GET - GitHubAppLogin called")
 
 	// ---------------------- MOBILE APP SPECIFIC ----------------------
@@ -130,7 +130,7 @@ func (gh *GitHubOAuthApp) GitHubAppLogin(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, authURL)
 }
 
-func (gh *GitHubOAuthApp) GitHubAppCallback(c *gin.Context) {
+func (gh *GitHubAppHandler) GitHubAppCallback(c *gin.Context) {
 	gh.auth.Logger.Info("REST - GET - GitHubAppCallback called")
 
 	session := sessions.Default(c)
@@ -200,7 +200,7 @@ func (gh *GitHubOAuthApp) GitHubAppCallback(c *gin.Context) {
 	}
 
 	// find existing local profile or create a new one
-	profile, err := authpkg.FindOrCreateGitHubProfile(ctx, gh.logger, gh.collProfiles, githubProfile, c.ClientIP())
+	profile, err := authpkg.FindOrCreateGitHubProfile(ctx, gh.logger, gh.collProfiles, githubProfile)
 	if err != nil {
 		gh.logger.Errorw("REST - GET - GitHubAppCallback - could not persist user", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not persist user"})
@@ -228,7 +228,6 @@ func (gh *GitHubOAuthApp) GitHubAppCallback(c *gin.Context) {
 
 	gh.auth.Logger.Infow("AUDIT - app login code issued",
 		"profileID", profile.ID.Hex(),
-		"clientIP", c.ClientIP(),
 		"expiry", expiry,
 	)
 
@@ -244,7 +243,7 @@ func (gh *GitHubOAuthApp) GitHubAppCallback(c *gin.Context) {
 	c.Redirect(http.StatusFound, location)
 }
 
-func (gh *GitHubOAuthApp) ExchangeAppCode(c *gin.Context) {
+func (gh *GitHubAppHandler) ExchangeAppCode(c *gin.Context) {
 	gh.auth.Logger.Info("REST - POST - ExchangeAppCode called")
 
 	var req AppExchangeCodeReq
@@ -272,7 +271,7 @@ func (gh *GitHubOAuthApp) ExchangeAppCode(c *gin.Context) {
 		return
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	filter := bson.M{
 		"code":                code,
 		"pkceCodeChallenge":   appCodeChallenge,
@@ -321,7 +320,6 @@ func (gh *GitHubOAuthApp) ExchangeAppCode(c *gin.Context) {
 		authpkg.MobileTokenTTL,
 		authpkg.MobileRefreshTokenTTL,
 		authpkg.RefreshTokenClientMobile,
-		c.GetHeader("User-Agent"),
 	)
 	if err != nil {
 		gh.auth.Logger.Errorw("REST - POST - ExchangeAppCode - cannot create tokens", "error", err)
@@ -331,7 +329,6 @@ func (gh *GitHubOAuthApp) ExchangeAppCode(c *gin.Context) {
 
 	gh.auth.Logger.Infow("AUDIT - mobile tokens issued via app code exchange",
 		"profileID", profile.ID.Hex(),
-		"clientIP", c.ClientIP(),
 		"expiry", expirationTime,
 	)
 	c.JSON(http.StatusOK, AppExchangeCodeResp{
@@ -340,13 +337,13 @@ func (gh *GitHubOAuthApp) ExchangeAppCode(c *gin.Context) {
 	})
 }
 
-func (gh *GitHubOAuthApp) issueAppLoginResult(ctx context.Context, profile models.Profile, appCodeChallenge string) (string, time.Time, error) {
+func (gh *GitHubAppHandler) issueAppLoginResult(ctx context.Context, profile models.Profile, appCodeChallenge string) (string, time.Time, error) {
 	code, err := utils.RandomString(32)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("create app login code: %w", err)
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	expiry := now.Add(authpkg.MobileAppLoginCodeTTL)
 	appLoginCode := models.AppLoginCode{
 		ID:                  bson.NewObjectID(),
@@ -364,7 +361,7 @@ func (gh *GitHubOAuthApp) issueAppLoginResult(ctx context.Context, profile model
 	return code, expiry, nil
 }
 
-func (gh *GitHubOAuthApp) buildMobileAppRedirectURL(queryParams url.Values) (string, error) {
+func (gh *GitHubAppHandler) buildMobileAppRedirectURL(queryParams url.Values) (string, error) {
 	callbackURL := strings.TrimSpace(os.Getenv("OAUTH2_APP_CALLBACK"))
 	parsed, err := url.Parse(callbackURL)
 	if err != nil {

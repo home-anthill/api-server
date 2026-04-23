@@ -67,7 +67,7 @@ func (dv *DevicesValues) GetValuesDevice(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), &session, dv.collProfiles)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, dv.collProfiles)
 	if err != nil {
 		dv.logger.Error("REST - GET - GetValuesDevice - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -165,7 +165,7 @@ func (dv *DevicesValues) PostValuesDevice(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), &session, dv.collProfiles)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, dv.collProfiles)
 	if err != nil {
 		dv.logger.Errorf("REST - GET - PostValuesDevice - cannot find profile in session, err %#v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -196,7 +196,6 @@ func (dv *DevicesValues) PostValuesDevice(c *gin.Context) {
 	dv.logger.Infow("AUDIT - device values set",
 		"profileID", profile.ID.Hex(),
 		"deviceID", objectID.Hex(),
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "set values success"})
 }

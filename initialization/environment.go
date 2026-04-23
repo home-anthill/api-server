@@ -13,16 +13,16 @@ import (
 
 const projectDirName = "api-server"
 
-// InitEnv function
-func InitEnv(logger *zap.SugaredLogger) {
+// InitEnv loads the .env file and validates the minimum required environment.
+func InitEnv(logger *zap.SugaredLogger) error {
 	// Load .env file and print variables
 	envFile, err := readEnv()
 	logger.Debugf("BuildConfig - envFile = %s", envFile)
 	if err != nil {
 		logger.Error("BuildConfig - failed to load the env file")
-		panic(fmt.Sprintf("InitEnv - failed to load the env file at %s: %v", envFile, err))
+		return fmt.Errorf("load env file at %s: %w", envFile, err)
 	}
-	printEnv(logger)
+	return printEnv(logger)
 }
 
 func readEnv() (string, error) {
@@ -38,12 +38,12 @@ func readEnv() (string, error) {
 	return envFilePath, err
 }
 
-func printEnv(logger *zap.SugaredLogger) {
+func printEnv(logger *zap.SugaredLogger) error {
 	if os.Getenv("JWT_PASSWORD") == "" {
-		panic(errors.New("'JWT_PASSWORD' environment variable is mandatory"))
+		return errors.New("'JWT_PASSWORD' environment variable is mandatory")
 	}
 	if os.Getenv("JWT_REFRESH_PASSWORD") == "" {
-		panic(errors.New("'JWT_REFRESH_PASSWORD' environment variable is mandatory"))
+		return errors.New("'JWT_REFRESH_PASSWORD' environment variable is mandatory")
 	}
 
 	logger.Infof("ENVIRONMENT = %s", os.Getenv("ENV"))
@@ -76,4 +76,5 @@ func printEnv(logger *zap.SugaredLogger) {
 	logger.Infof("JWT_REFRESH_PASSWORD = [redacted]")
 	logger.Infof("OAUTH2_SECRETID = [redacted]")
 	logger.Infof("OAUTH2_APP_SECRETID = [redacted]")
+	return nil
 }

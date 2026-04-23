@@ -125,12 +125,12 @@ func SetupRouter(logger *zap.SugaredLogger) *gin.Engine {
 func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *validator.Validate, client *mongo.Client) {
 	auth := authpkg.NewAuth(logger, client)
 
-	oauthGithub := api.NewGitHubOAuth(auth, logger, client, "oauth2_state",
+	oauthGithub := api.NewGitHubWebHandler(auth, logger, client, "oauth2_state",
 		"oauth2_web_pkce_verifier")
 
-	oauthAppGithub := api.NewGitHubOAuthApp(auth, logger, client, "oauth2_app_state",
+	oauthAppGithub := api.NewGitHubAppHandler(auth, logger, client, "oauth2_app_state",
 		"oauth2_app_pkce_challenge")
-	oauthCommon := api.NewOAuthCommon(logger, client)
+	oauthHandler := api.NewOAuthHandler(logger, client)
 
 	keepAlive := api.NewKeepAlive(logger)
 	homes := api.NewHomes(logger, client, validate)
@@ -151,10 +151,11 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 		oauth.GET("/app/login", oauthAppGithub.GitHubAppLogin)
 		oauth.GET("/app/callback", oauthAppGithub.GitHubAppCallback)
 		oauth.POST("/app/exchange-code", oauthAppGithub.ExchangeAppCode)
-		oauth.POST("/app/refresh", oauthCommon.RefreshAppToken)
+		oauth.POST("/app/refresh", oauthHandler.RefreshMobileToken)
+		oauth.POST("/app/logout", oauthHandler.LogoutApp)
 		// common
-		oauth.POST("/refresh", oauthCommon.RefreshToken)
-		oauth.POST("/logout", oauthCommon.Logout)
+		oauth.POST("/refresh", oauthHandler.RefreshToken)
+		oauth.POST("/logout", oauthHandler.Logout)
 	}
 
 	// Define private APIs (/api group) protected via JWTMiddleware
@@ -171,7 +172,7 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 		private.DELETE("/homes/:id/rooms/:rid", homes.DeleteRoom)
 
 		private.GET("/profile", profiles.GetProfile)
-		private.POST("/profiles/:id/tokens", profiles.PostProfilesAPIToken)
+		private.POST("/profiles/:id/tokens", profiles.PostRotateAPIToken)
 		private.POST("/profiles/:id/fcmTokens", profiles.PostProfilesFCMToken)
 
 		private.GET("/devices", devices.GetDevices)

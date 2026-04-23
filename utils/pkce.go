@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"regexp"
 )
 
@@ -45,11 +47,24 @@ func BuildPKCECodeChallenge(verifier string) (string, error) {
 	return base64.RawURLEncoding.EncodeToString(sum[:]), nil
 }
 
-// HashToken returns a stable SHA-256 base64url hash for opaque tokens that must
-// be looked up server-side without storing the raw secret.
+// HashToken returns a stable HMAC-SHA-256 base64url hash for opaque tokens that
+// must be looked up server-side without storing the raw secret. The HMAC key
+// acts as a server-side pepper, so a database leak alone is not enough to verify
+// guessed tokens offline.
 func HashToken(token string) string {
-	sum := sha256.Sum256([]byte(token))
-	return base64.RawURLEncoding.EncodeToString(sum[:])
+	mac := hmac.New(sha256.New, []byte(refreshTokenHashSecret()))
+	_, _ = mac.Write([]byte(token))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func refreshTokenHashSecret() string {
+	if secret := os.Getenv("REFRESH_TOKEN_HASH_SECRET"); secret != "" {
+		return secret
+	}
+	if secret := os.Getenv("JWT_REFRESH_PASSWORD"); secret != "" {
+		return secret
+	}
+	return os.Getenv("JWT_PASSWORD")
 }
 
 // TruncateString returns input capped at maxLen bytes. Negative maxLen disables

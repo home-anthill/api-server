@@ -51,7 +51,7 @@ func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *vali
 func (p *Profiles) GetProfile(c *gin.Context) {
 	p.logger.Info("REST - GET - GetProfile called")
 
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), new(sessions.Default(c)), p.collProfiles)
+	profile, err := utils.GetLoggedProfile(c.Request.Context(), sessions.Default(c), p.collProfiles)
 	if err != nil {
 		p.logger.Error("REST - GET - GetProfile - Cannot get user profile")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Cannot get user profile"})
@@ -67,30 +67,30 @@ func (p *Profiles) GetProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, &profileRes)
 }
 
-// PostProfilesAPIToken function to regenerate the API Token
-func (p *Profiles) PostProfilesAPIToken(c *gin.Context) {
-	p.logger.Info("REST - POST - PostProfilesAPIToken called")
+// PostRotateAPIToken regenerates the API token for the logged-in profile.
+func (p *Profiles) PostRotateAPIToken(c *gin.Context) {
+	p.logger.Info("REST - POST - PostRotateAPIToken called")
 
 	// get profileID from path params
 	profileID, errID := bson.ObjectIDFromHex(c.Param("id"))
 	if errID != nil {
-		p.logger.Error("REST - POST - PostProfilesAPIToken - wrong format of the path param 'id'")
+		p.logger.Error("REST - POST - PostRotateAPIToken - wrong format of the path param 'id'")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of the path param 'id'"})
 		return
 	}
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(&session)
+	profileSession, err := utils.GetProfileFromSession(session)
 	if err != nil {
-		p.logger.Error("REST - POST - PostProfilesAPIToken - cannot find profile in session")
+		p.logger.Error("REST - POST - PostRotateAPIToken - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
 		return
 	}
 
 	// check if the profile you are trying to update (path param) is your profile (session profile)
 	if profileSession.ID != profileID {
-		p.logger.Error("REST - POST - PostProfilesAPIToken - Current profileID is different than profileID in session")
+		p.logger.Error("REST - POST - PostRotateAPIToken - Current profileID is different than profileID in session")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot re-generate APIToken for a different profile then yours"})
 		return
 	}
@@ -106,13 +106,12 @@ func (p *Profiles) PostProfilesAPIToken(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		p.logger.Error("REST - POST - PostProfilesAPIToken - Cannot update profile with the new apiToken")
+		p.logger.Error("REST - POST - PostRotateAPIToken - Cannot update profile with the new apiToken")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
 	p.logger.Infow("AUDIT - API token regenerated",
 		"profileID", profileSession.ID.Hex(),
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, gin.H{"apiToken": apiToken})
 }
@@ -132,7 +131,7 @@ func (p *Profiles) PostProfilesFCMToken(c *gin.Context) {
 
 	// retrieve current profile object from database (using session profile as input)
 	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(&session)
+	profileSession, err := utils.GetProfileFromSession(session)
 	if err != nil {
 		p.logger.Error("REST - POST - PostProfilesFCMToken - cannot find profile in session")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
@@ -176,7 +175,6 @@ func (p *Profiles) PostProfilesFCMToken(c *gin.Context) {
 	}
 	p.logger.Infow("AUDIT - FCM token updated on profile",
 		"profileID", profileSession.ID.Hex(),
-		"clientIP", c.ClientIP(),
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "Profile update with FCM Token"})
 }

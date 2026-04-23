@@ -19,7 +19,6 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -39,7 +38,7 @@ var _ = Describe("LoginGithub", func() {
 	var collRefreshTokens *mongo.Collection
 
 	BeforeEach(func() {
-		logger, router, client = initialization.Start()
+		logger, router, client = initialization.MustStart()
 		ctx = context.Background()
 		defer logger.Sync()
 
@@ -101,7 +100,7 @@ var _ = Describe("LoginGithub", func() {
 
 			// create an expired JWT
 			expirationTime := time.Now().Add(-60 * time.Minute)
-			tokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_PASSWORD")))
+			tokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, []byte(os.Getenv("JWT_PASSWORD")))
 			Expect(err).ShouldNot(HaveOccurred())
 			logger.Infof("tokenString = %s", tokenString)
 
@@ -119,7 +118,7 @@ var _ = Describe("LoginGithub", func() {
 			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
 			expirationTime := time.Now().Add(60 * time.Minute)
-			refreshTokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.RefreshToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_PASSWORD")))
+			refreshTokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.RefreshToken, []byte(os.Getenv("JWT_PASSWORD")))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()
@@ -128,7 +127,7 @@ var _ = Describe("LoginGithub", func() {
 			req.Header.Add("Authorization", "Bearer "+refreshTokenString)
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
-			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token cannot be used as access token"}`))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"token is not an access token"}`))
 		})
 
 		It("should reject requests when JWT and session belong to different users", func() {
@@ -243,7 +242,7 @@ var _ = Describe("LoginGithub", func() {
 			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
 			expirationTime := time.Now().Add(60 * time.Minute)
-			accessToken, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, jwt.SigningMethodHS256, []byte(os.Getenv("JWT_REFRESH_PASSWORD")))
+			accessToken, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, []byte(os.Getenv("JWT_REFRESH_PASSWORD")))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()

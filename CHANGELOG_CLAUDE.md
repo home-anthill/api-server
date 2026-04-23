@@ -1,68 +1,109 @@
 # CHANGELOG_CLAUDE.md
 
-This file tracks significant architectural and behavioural changes made with AI assistance, grouped by category.
+This file summarizes significant architectural and behavioural changes made with AI assistance. Entries are grouped by change type, not by date or code location.
 
 ---
 
-## Security
+## OAuth, PKCE, And Login Flows
 
-- **Separate JWT signing keys**: Access tokens are signed with `JWT_PASSWORD`; refresh tokens with `JWT_REFRESH_PASSWORD`. Both are mandatory env vars validated at startup. The `Auth` struct carries a dedicated `jwtRefreshKey` field.
-- **JWT standard claims**: All issued tokens carry `iss`, `aud` (`home-anthill-api`), and `sub` (GitHub ID) claims, validated on every parse with `jwt.WithIssuer` / `jwt.WithAudience` to prevent cross-deployment token replay.
-- **Validated JWT claims stored in Gin context**: After a successful middleware check, `*utils.JWTClaims` are stored under key `"jwt_claims"` so downstream handlers have access without re-parsing.
-- **Bearer prefix validated before slicing**: `JWTMiddleware` previously sliced the `Authorization` header at a fixed offset. It now uses `strings.HasPrefix` + `strings.TrimPrefix` to guard against malformed headers.
-- **Refresh token cookie `SameSite=Lax`**: `SameSite=Strict` was initially used but caused Chrome to silently discard the cookie during the GitHub OAuth2 callback (a cross-site top-level navigation from `github.com`). `SameSite=Lax` still blocks cross-site sub-resource/POST requests (CSRF protection) while allowing storage during top-level cross-site navigations.
-- **Refresh token cookie scoped to `Path=/api/token/refresh`**: The browser only sends the `refresh_token` cookie to that specific endpoint. Note: Chrome DevTools Application → Cookies filters by the current browser URL, so the cookie appears invisible on `/main` or `/postlogin` — this is a DevTools display behaviour, not a storage failure.
-- **OAuth web login token delivered via URL fragment**: `LoginCallback` redirects to `/postlogin#token=…` instead of a query parameter. Fragments are never forwarded to the server, so the access token no longer appears in server or proxy access logs. Mobile deep-link callbacks retain a query parameter as required by the Android scheme.
-
----
-
-## Bug Fixes
-
-- **`LoginMobileAppCallback` stale session on first install**: On first install, `OauthAuth` middleware calls `session.Save()` which writes the updated session to the HTTP *response* headers — not back into the request. Reading the request cookie at that point returned an empty-profile value, causing all subsequent API calls to fail with 401. The fix reads `Set-Cookie` response headers first and falls back to the request cookie only when `session.Save()` was not called (repeat-login path).
-- **Shadow variable declarations**: In `assign_device.go` and `homes.go`, `if err :=` shadowed the outer `err` variable inside `ShouldBindJSON` and `validate.Struct` calls. Changed to `if err =` to propagate errors correctly.
-- **Unsafe type assertions**: Type assertions in `api/auth.go` and `utils/validator.go` are now guarded with comma-ok checks.
-- **Silently ignored errors**: `io.ReadAll` errors in `utils/http.go`, `api/online.go`, and `api/devices.go`; `os.Getwd` error in `initialization/environment.go`; and `cur.Decode` errors in `api/devices.go` — all now propagated or logged.
-- **`defer cur.Close()` before nil check**: In `api/homes.go`, `defer cur.Close()` was placed before the cursor error check, risking a nil dereference. Moved after the error check and removed the associated `//lint:ignore SA5001` suppression.
-- **`gin.Context` passed to MongoDB**: In `login_github.go`, `gin.Context` was passed directly to MongoDB calls. Replaced with `c.Request.Context()` as required by the driver.
-- **API token logged in plaintext**: The raw API token was logged in `devices_values.go`. Removed from log output.
-- **`GetOnlineFeature` returning loop variable pointer**: `utils/features.go` returned `&feature` (loop variable address) instead of `&features[i]` (slice element address), causing all returned pointers to alias the same memory. Fixed to use index-based addressing.
-- **`defer` resource accumulation in device value loop**: `defer conn.Close()` and `defer cancel()` inside a for-loop in `devices_values.go` accumulated deferred calls until the function returned. Extracted into a `getControllerValue` helper so resources are released on each iteration.
-- **External HTTP call inside MongoDB transaction**: In `DeleteDevice`, an external HTTP call was made inside the MongoDB transaction, breaking idempotency on retry and mixing side effects with transactional operations. Moved outside the transaction.
-- **Stale `context.Context` field in handlers**: All 10 API handler structs stored a `context.Context` field set at construction time. Per-request context (`c.Request.Context()`) is now used instead, preventing context leaks and cancellation mismatches.
-- **New home created without rooms array**: Creating a new home now initialises `rooms` as an empty array, preventing downstream errors when the field is absent.
-- **`apiToken` and `uuid` exposed via online API**: These internal fields are no longer returned in the online API response.
-- **FCM service missing `apiToken`**: The FCM service now forwards `apiToken` when calling the online service.
+- **GitHub OAuth was split by client type**: Web and mobile app login now use separate handlers, routes, OAuth client configuration, session keys, and callback flows.
+- **OAuth routes were simplified**: Login, callback, refresh, logout, and mobile app exchange endpoints are grouped under `/api/oauth`.
+- **`golang.org/x/oauth2` was removed**: GitHub authorization URLs and token exchange are implemented explicitly while preserving standard OAuth2 authorization-code + PKCE semantics.
+- **PKCE is enforced with S256**: Web login uses a server-generated GitHub PKCE verifier/challenge. Mobile login uses both a server-generated GitHub PKCE pair and an app-generated PKCE challenge for the app-code exchange.
+- **OAuth state and PKCE values are stored in the session**: Callback handlers validate state with constant-time comparison and clear temporary OAuth session values after callback processing.
+- **Mobile login uses a one-time app code**: The browser/OS callback returns only a short-lived app code. The app must redeem it with the original PKCE verifier before receiving local JWTs.
+- **GitHub OAuth helpers were centralized**: Authorization URL building, GitHub token exchange, GitHub user fetching, profile creation, and login-result issuance were moved into shared auth utilities where appropriate.
 
 ---
 
-## Idiomatic & Code Quality
+## JWT And Session Security
 
-- **JWT secret read once at init**: `JWT_PASSWORD` is now read and stored in the `Auth` struct at construction time rather than calling `os.Getenv` on every request.
-- **`logger.Sync()` placement**: Moved to `main.go` so the logger is flushed on process exit rather than being deferred inside a deeper call.
-- **Unused `ctx` parameters removed**: `RegisterRoutes`, `BuildServer`, and `Start` no longer accept an unused `context.Context` parameter. All 10 integration test files updated accordingly.
-- **Unused imports cleaned up**: Removed unused `"context"` imports from `server.go`, `start.go`, `profiles.go`, `fcm_token.go`, `login_github.go`, and `keepalive.go`.
-- **Dead Makefile target removed**: Removed the unused `fmt` target from the Makefile.
-- **`-race` and `-count=1` added to `go test`**: The `test` Makefile target now runs with the race detector enabled and caching disabled.
-- **`test` target depends on `proto vet lint`**: Ensures generated code and static checks are up to date before running tests.
-
----
-
-## Infrastructure & Dependencies
-
-- **Go 1.26 upgrade**.
-- **MongoDB driver upgraded to v2**.
-- **Hardened Docker runtime image**: Final image is based on `dhi.io/alpine-base:3.23` with no shell or Go toolchain. The container runs as unprivileged user `nobody` (UID 65534) with correct ownership on all copied files and a pre-created writable `/logs` directory.
-- **Configurable log folder**: Log output directory is now controlled via the `LOG_FOLDER` environment variable.
+- **JWTs use standard validation claims**: Issuer, audience, subject, issued-at, not-before, and expiry are included and validated.
+- **JWT signing is fixed to HS512**: Callers cannot choose weaker or inconsistent signing algorithms.
+- **Access-token type is enforced**: Protected APIs reject tokens unless the JWT explicitly has `tokenType=access`.
+- **JWT and session identity must match**: Protected APIs require the session `profileID` and `githubID` to match the validated JWT identity.
+- **Session storage was simplified**: The session stores primitive `profileID` and `githubID` values instead of gob-encoded structs.
+- **Session cookies are signed and encrypted**: Cookie sessions use an authentication key and derived block key so session contents are tamper-protected and not readable by the client.
+- **Session lifetime is bounded**: Session `MaxAge` is aligned with the web access-token TTL to avoid accepting stale profile identity longer than the access token.
 
 ---
 
-## Features
+## Refresh Tokens
 
-- **Refresh token rotation**: `POST /api/token/refresh` issues a new `refresh_token` cookie on each call, replacing the previous one.
-- **Multiple OAuth2 app support**: Separate GitHub OAuth2 clients for web and Android/mobile login flows.
-- **FCM token storage**: New `POST /api/fcm_token` endpoint stores a Firebase Cloud Messaging token for a profile.
-- **Online service integration**: Calling DELETE on a device now notifies the online service; response includes a `current_time` field.
-- **New device values implementation**: Supports thermostat and mixed sensor/controller devices.
-- **`poweroutage` renamed to `online`**: Feature name updated throughout the codebase and API.
-- **Proto packages renamed**: Protobuf package names updated; Makefile proto command order corrected.
-- **Device name field**: `PUT /api/devices/:id` (assign device to home/room) now accepts an optional `name` field (string, max 32 characters). If omitted, the device's MAC address is used as the default. The name is persisted on the `Device` document in MongoDB (`name` field). The handler (`PutAssignDeviceToHomeRoom`) has been consolidated into `devices.go`; `assign_device.go` has been removed.
+- **Refresh tokens are opaque random secrets**: Local refresh tokens are no longer JWTs and are never stored in plaintext.
+- **Refresh-token hashes use HMAC-SHA-256**: Stored hashes are peppered with a server secret so a database leak alone is not enough to verify guessed tokens offline.
+- **Refresh-token records are persisted**: Refresh tokens are stored with profile, family, client type, creation, expiry, revocation, replacement, and last-use metadata.
+- **Refresh-token rotation is enforced**: Each refresh call revokes the old token and issues a new one.
+- **Refresh-token reuse triggers family revocation**: Reusing an already-revoked token revokes the full token family.
+- **Refresh-token rotation is transactional**: Old-token revocation and new-token insertion happen atomically with majority write concern.
+- **Web and mobile refresh flows are separated**: Web uses an HttpOnly refresh cookie; mobile uses an explicit refresh token in JSON.
+- **Refresh-token cookie path was corrected**: The web refresh cookie is scoped to `/api/oauth/refresh`.
+- **User-Agent binding was removed**: Refresh tokens are no longer checked against or stored with `User-Agent`, because it is not a reliable security boundary and caused brittle client behaviour.
+- **Refresh/logout endpoints revoke stored tokens**: Logout revokes the refresh-token family for the presented token and clears session state.
+
+---
+
+## Database And Indexes
+
+- **Refresh-token indexes were added**: Unique token hash, family lookup, and expiry TTL indexes are ensured.
+- **App login code indexes were added**: App login codes have a unique code index and TTL expiry index.
+- **Profile uniqueness was hardened**: GitHub profile identity is protected with a unique index.
+- **Old refresh-token indexes are cleaned up**: Legacy refresh-token expiry index naming is handled during startup.
+- **MongoDB startup uses explicit contexts**: Database connection validation and index setup use a startup context with timeout instead of `context.TODO`.
+- **Test execution is isolated**: Tests run with `ENV=testing` and use the testing database name.
+
+---
+
+## API And Authorization Behaviour
+
+- **Protected API authorization was tightened**: Requests must provide a valid bearer access token and a matching authenticated session.
+- **Audit logs were reduced**: `clientIP` was removed from audit logs.
+- **Sensitive logs were cleaned up**: API tokens and other sensitive values are no longer logged in plaintext.
+- **Request size limiting is configured**: The API enforces a maximum request body size.
+- **Gin default request logging was avoided**: The router uses explicit middleware instead of Gin's default logger to avoid logging full request details.
+
+---
+
+## Bug Fixes And Reliability
+
+- **Mobile refresh flow was fixed**: Mobile now uses `/api/oauth/app/refresh`, sends the raw refresh token in JSON, and receives rotated mobile tokens in JSON.
+- **Web refresh cookie handling was fixed**: Cookie path and refresh endpoint now match.
+- **OAuth callback session cleanup was made explicit**: Temporary OAuth state and PKCE values are cleared in callback handlers.
+- **MongoDB transaction boundaries were improved**: External side effects are kept outside transactions where possible, and refresh-token rotation is atomic.
+- **Context usage was corrected**: Per-request contexts are used for request-scoped database and network operations instead of stale stored contexts.
+- **Startup error handling was made idiomatic**: Environment and database initialization now return errors through startup instead of mixing fatal logs and panics.
+- **Timestamp handling was normalized**: Token and OAuth operations now capture `time.Now().UTC()` once per logical operation and derive related timestamps from it.
+- **Common Go correctness issues were fixed**: Shadowed errors, unsafe type assertions, ignored errors, nil cursor cleanup, loop-variable pointer aliasing, and deferred resource accumulation were corrected.
+- **Data shape issues were fixed**: New homes initialize rooms properly, internal online API fields are hidden, and FCM forwarding includes the required API token.
+
+---
+
+## Code Organization
+
+- **Auth middleware was moved out of `/api`**: Authentication middleware now lives in the auth module.
+- **OAuth common behaviour was separated**: Common refresh/logout code is separated from GitHub web and mobile login handlers.
+- **Utilities were split by responsibility**: Cookie, JWT, PKCE, random string, and session helpers live in dedicated utility files.
+- **GitHub OAuth files were renamed and split**: Web and mobile GitHub OAuth flows are in separate files with consistent naming.
+- **Internal handler naming was simplified**: OAuth handler types and methods now use clearer names such as `GitHubWebHandler`, `GitHubAppHandler`, `OAuthHandler`, `RefreshMobileToken`, and `RotateAPIToken`.
+- **Duplicate helper logic was removed**: Shared OAuth helpers were centralized; small session cleanup helpers were inlined where that made handlers clearer.
+- **Duplicate response models were removed**: GitHub OAuth response structs are defined only in the models package.
+- **Session helpers were made more idiomatic**: Session helpers accept the `sessions.Session` interface directly instead of a pointer to an interface.
+- **ObjectID comparisons were simplified**: ObjectIDs are compared directly instead of converting both sides to hex strings.
+
+---
+
+## Testing, Tooling, And Infrastructure
+
+- **Test target was hardened**: `make test` runs protobuf generation, vet, shadow checks, staticcheck, race-enabled tests, and coverage generation.
+- **Go and MongoDB dependencies were updated**: The project was moved to newer Go and MongoDB driver versions.
+- **Docker runtime was hardened**: The runtime image is minimal, runs without the Go toolchain, and uses an unprivileged user.
+- **Configuration and logging were cleaned up**: Log folder configuration, logger flushing, explicit startup error propagation, unused imports, unused parameters, and obsolete Makefile targets were cleaned up.
+- **Device and online features evolved**: Device assignment, device values, online status, protobuf naming, and feature naming were updated and consolidated.
+
+---
+
+## Known Remaining Security Work
+
+- **Startup configuration validation should be stricter**: Secrets, OAuth client IDs/secrets, callback URLs, and cookie security mode should fail closed if missing, weak, or unsafe.
+- **CORS should be environment-specific**: Credentialed CORS should use an explicit production allowlist and avoid broad localhost/internal defaults in production.
+- **Web access-token delivery can be improved**: `/postlogin#token=...` avoids server logs but still exposes the access token to browser JavaScript; a BFF or secure-cookie design would reduce that exposure.

@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type GitHubOAuth struct {
+type GitHubWebHandler struct {
 	collProfiles              *mongo.Collection
 	auth                      *authpkg.Auth
 	logger                    *zap.SugaredLogger
@@ -27,8 +27,8 @@ type GitHubOAuth struct {
 	httpClient                *http.Client
 }
 
-func NewGitHubOAuth(auth *authpkg.Auth, logger *zap.SugaredLogger, client *mongo.Client, sessionStateName, sessionPKCEName string) *GitHubOAuth {
-	return &GitHubOAuth{
+func NewGitHubWebHandler(auth *authpkg.Auth, logger *zap.SugaredLogger, client *mongo.Client, sessionStateName, sessionPKCEName string) *GitHubWebHandler {
+	return &GitHubWebHandler{
 		collProfiles:              db.GetCollections(client).Profiles,
 		auth:                      auth,
 		logger:                    logger,
@@ -40,7 +40,7 @@ func NewGitHubOAuth(auth *authpkg.Auth, logger *zap.SugaredLogger, client *mongo
 	}
 }
 
-func (gh *GitHubOAuth) GitHubLogin(c *gin.Context) {
+func (gh *GitHubWebHandler) GitHubLogin(c *gin.Context) {
 	gh.logger.Info("REST - GET - GitHubLogin called")
 
 	session := sessions.Default(c)
@@ -92,7 +92,7 @@ func (gh *GitHubOAuth) GitHubLogin(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, authURL)
 }
 
-func (gh *GitHubOAuth) GitHubCallback(c *gin.Context) {
+func (gh *GitHubWebHandler) GitHubCallback(c *gin.Context) {
 	gh.auth.Logger.Info("REST - GET - GitHubCallback called")
 
 	session := sessions.Default(c)
@@ -160,7 +160,7 @@ func (gh *GitHubOAuth) GitHubCallback(c *gin.Context) {
 	}
 
 	// find existing local profile or create a new one
-	profile, err := authpkg.FindOrCreateGitHubProfile(ctx, gh.logger, gh.collProfiles, githubProfile, c.ClientIP())
+	profile, err := authpkg.FindOrCreateGitHubProfile(ctx, gh.logger, gh.collProfiles, githubProfile)
 	if err != nil {
 		gh.logger.Errorw("REST - GET - GitHubCallback - could not persist user", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not persist user"})
@@ -184,7 +184,6 @@ func (gh *GitHubOAuth) GitHubCallback(c *gin.Context) {
 		authpkg.WebTokenTTL,
 		authpkg.WebRefreshTokenTTL,
 		authpkg.RefreshTokenClientWeb,
-		c.GetHeader("User-Agent"),
 	)
 	if err != nil {
 		gh.auth.Logger.Errorw("REST - GET - GitHubCallback - could not issue web login result", "error", err)
@@ -197,7 +196,6 @@ func (gh *GitHubOAuth) GitHubCallback(c *gin.Context) {
 
 	gh.auth.Logger.Infow("AUDIT - JWT issued (web)",
 		"profileID", profile.ID.Hex(),
-		"clientIP", c.ClientIP(),
 		"expiry", expirationTime,
 	)
 

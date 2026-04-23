@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -66,10 +65,7 @@ func BuildGitHubAuthorizationURL(clientType GitHubOAuthClient, state, codeChalle
 // FetchGitHubUser loads the current GitHub user profile with a GitHub OAuth
 // access token and maps the response into the local GitHub profile model.
 func FetchGitHubUser(ctx context.Context, httpClient *http.Client, accessToken string) (models.GitHub, error) {
-	currentUserURL := strings.TrimSpace(os.Getenv("GITHUB_CURRENT_USER_URL"))
-	if currentUserURL == "" {
-		currentUserURL = GitHubCurrentUserURL
-	}
+	currentUserURL := githubEndpointURL(GitHubCurrentUserURL, "GITHUB_CURRENT_USER_URL")
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, currentUserURL, nil)
 	if err != nil {
@@ -108,10 +104,7 @@ func ExchangeGitHubCodeForAccessToken(ctx context.Context, httpClient *http.Clie
 		return "", err
 	}
 
-	accessTokenURL := strings.TrimSpace(os.Getenv("GITHUB_OAUTH_ACCESS_TOKEN_URL"))
-	if accessTokenURL == "" {
-		accessTokenURL = GitHubAccessTokenURL
-	}
+	accessTokenURL := githubEndpointURL(GitHubAccessTokenURL, "GITHUB_OAUTH_ACCESS_TOKEN_URL")
 
 	form := url.Values{}
 	form.Set("client_id", clientID)
@@ -165,9 +158,18 @@ func resolveGitHubOAuthConfig(clientType GitHubOAuthClient) (string, string, str
 	}
 }
 
+func githubEndpointURL(defaultURL, envName string) string {
+	if os.Getenv("ENV") == "testing" {
+		if override := strings.TrimSpace(os.Getenv(envName)); override != "" {
+			return override
+		}
+	}
+	return defaultURL
+}
+
 // FindOrCreateGitHubProfile returns the local profile for a GitHub identity,
 // creating one when this is the first successful login for that GitHub user.
-func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, collProfiles *mongo.Collection, githubProfile models.GitHub, clientIP string) (models.Profile, error) {
+func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, collProfiles *mongo.Collection, githubProfile models.GitHub) (models.Profile, error) {
 	singleUserLoginEmail := os.Getenv("SINGLE_USER_LOGIN_EMAIL")
 	if singleUserLoginEmail != "" {
 		if githubProfile.Email == "" || githubProfile.Email != singleUserLoginEmail {
@@ -181,7 +183,6 @@ func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, c
 		logger.Infow("AUDIT - user login",
 			"profileID", profile.ID.Hex(),
 			"githubLogin", githubProfile.Login,
-			"clientIP", clientIP,
 		)
 		return profile, nil
 	}
@@ -189,7 +190,7 @@ func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, c
 		return models.Profile{}, err
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	profile = models.Profile{
 		ID:         bson.NewObjectID(),
 		Github:     githubProfile,
@@ -207,16 +208,16 @@ func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, c
 	logger.Infow("AUDIT - user created",
 		"profileID", profile.ID.Hex(),
 		"githubLogin", githubProfile.Login,
-		"clientIP", clientIP,
 	)
 	return profile, nil
 }
 
 // IssueGitHubLoginResult creates a local access JWT and an opaque refresh token
 // for a successful GitHub login. Only the refresh-token hash is stored.
-func IssueGitHubLoginResult(ctx context.Context, collRefreshTokens *mongo.Collection, profile models.Profile, jwtKey []byte, accessTokenTTL, refreshTokenTTL time.Duration, refreshTokenClientType, userAgent string) (string, string, time.Time, error) {
-	accessTokenExpTime := time.Now().Add(accessTokenTTL)
-	accessToken, err := utils.CreateJWT(profile, accessTokenExpTime, utils.AccessToken, jwt.SigningMethodHS512, jwtKey)
+func IssueGitHubLoginResult(ctx context.Context, collRefreshTokens *mongo.Collection, profile models.Profile, jwtKey []byte, accessTokenTTL, refreshTokenTTL time.Duration, refreshTokenClientType string) (string, string, time.Time, error) {
+	now := time.Now().UTC()
+	accessTokenExpTime := now.Add(accessTokenTTL)
+	accessToken, err := utils.CreateJWT(profile, accessTokenExpTime, utils.AccessToken, jwtKey)
 	if err != nil {
 		return "", "", time.Time{}, fmt.Errorf("create access token: %w", err)
 	}
@@ -226,14 +227,12 @@ func IssueGitHubLoginResult(ctx context.Context, collRefreshTokens *mongo.Collec
 		return "", "", time.Time{}, fmt.Errorf("create refresh token: %w", err)
 	}
 
-	now := time.Now().UTC()
 	refreshTokenRecord := models.RefreshToken{
 		ID:         bson.NewObjectID(),
 		ProfileID:  profile.ID,
 		TokenHash:  utils.HashToken(refreshToken),
 		FamilyID:   bson.NewObjectID().Hex(),
 		ClientType: refreshTokenClientType,
-		UserAgent:  utils.TruncateString(userAgent, 512),
 		CreatedAt:  now,
 		ExpiresAt:  now.Add(refreshTokenTTL),
 	}
