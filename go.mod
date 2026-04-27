@@ -1,6 +1,6 @@
 module api-server
 
-go 1.26.0
+go 1.26.2
 
 require (
 	github.com/gin-contrib/cors v1.7.7
@@ -12,7 +12,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
-	github.com/onsi/ginkgo/v2 v2.28.1
+	github.com/onsi/ginkgo/v2 v2.28.2
 	github.com/onsi/gomega v1.39.1
 	go.mongodb.org/mongo-driver/v2 v2.5.1
 	go.uber.org/zap v1.27.1

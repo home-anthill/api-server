@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ── Stage 1: Builder ────────────────────────────────────────────────
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.2-alpine AS builder
 RUN apk update && apk add --no-cache \
     protoc \
     make gcc musl-dev
