@@ -64,6 +64,9 @@ public/                    # SPA static assets (served in non-prod environments)
 - **OAuth web login redirect**: `GitHubCallback` redirects to `/postlogin` with the access token as a URL fragment (`#token=...`) so the token is never sent to the server in subsequent requests and does not appear in access logs.
 - **OAuth mobile login**: Mobile login uses a separate GitHub OAuth client and a one-time app code. The browser/OS callback returns only `/postlogin?code=...`; the app must redeem that code with its original PKCE verifier through `/api/oauth/app/exchange-code` before local JWTs and mobile refresh tokens are issued.
 - **PKCE**: Web login uses a server-generated GitHub PKCE verifier/challenge. Mobile login uses that same server-generated GitHub PKCE pair plus an app-generated PKCE challenge that binds the later app-code exchange to the app instance that started login.
+- **Internal HTTP calls**: Use the shared helpers in `utils/http.go` for calls to sensor/online services. They apply a bounded timeout, return non-2xx responses as errors, and centralize response-body handling.
+- **Internal service URLs**: Device UUIDs, feature UUIDs, and feature names must be escaped with `url.PathEscape` before being appended as path segments for sensor/online service URLs.
+- **Device value authorization**: `POST /api/devices/:id/values` validates each requested feature against the owned device's enabled controller features before forwarding to gRPC. Do not trust caller-provided feature UUID/name/type alone.
 
 ## Testing
 

@@ -528,6 +528,33 @@ var _ = Describe("DevicesValues", func() {
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: type name"}`))
 			})
+
+			It("should return an error, because the feature is not a controller feature of that device", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				devStates := []*models.DeviceFeatureState{{
+					FeatureUUID: uuid.NewString(),
+					Type:        models.Controller,
+					Name:        deviceController.Features[0].Name,
+					Value:       float32(22.45),
+				}}
+				var deviceStates bytes.Buffer
+				err = json.NewEncoder(&deviceStates).Encode(devStates)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/devices/"+deviceController.ID.Hex()+"/values", &deviceStates)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid device feature"}`))
+			})
 		})
 
 		When("profile don't own any device", func() {

@@ -57,7 +57,9 @@ var _ = Describe("FCMToken", func() {
 		//registerResponse := `[{"id": 123412341234123412341234, "code": 200}]`
 		mux := http.NewServeMux()
 		mux.HandleFunc("/keepalive", keepAliveHandler)
+		mux.HandleFunc("/keepalive/", keepAliveHandler)
 		mux.HandleFunc("/fcmtoken", fcmTokenHandler)
+		mux.HandleFunc("/fcmtoken/", fcmTokenHandler)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
 		logger.Infof("fcmtoken_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())

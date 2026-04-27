@@ -188,6 +188,15 @@ func (oc *OAuthHandler) RefreshMobileToken(c *gin.Context) {
 		}
 	}
 
+	session := sessions.Default(c)
+	session.Set("profileID", profile.ID.Hex())
+	session.Set("githubID", profile.Github.ID)
+	if err = session.Save(); err != nil {
+		oc.logger.Errorw("REST - POST - RefreshMobileToken - cannot save session", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot refresh session"})
+		return
+	}
+
 	now := time.Now().UTC()
 	expirationTime := now.Add(authpkg.MobileTokenTTL)
 	accessTokenString, err := utils.CreateJWT(profile, expirationTime, utils.AccessToken, oc.jwtKey)

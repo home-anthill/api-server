@@ -8,7 +8,9 @@ import (
 	"api-server/utils"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -106,7 +108,7 @@ func (dv *DevicesValues) GetValuesDevice(c *gin.Context) {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get sensor value"})
 				return
 			}
-			path := dv.sensorGetValueURL + device.UUID + "/features/" + feature.UUID + "/" + feature.Name
+			path := dv.sensorGetValueURL + url.PathEscape(device.UUID) + "/features/" + url.PathEscape(feature.UUID) + "/" + url.PathEscape(feature.Name)
 			dv.logger.Debugf("REST - GetValuesDevice - path = %s\n", path)
 			_, result, err := utils.Get(path)
 			if err != nil {
@@ -183,6 +185,11 @@ func (dv *DevicesValues) PostValuesDevice(c *gin.Context) {
 	if err != nil {
 		dv.logger.Errorf("REST - POST - PostValuesDevice - cannot find device, err %#v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
+		return
+	}
+	if err = dv.validateFeatureStatesForDevice(&device, featureStates); err != nil {
+		dv.logger.Errorf("REST - POST - PostValuesDevice - unauthorized feature state, err %#v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid device feature"})
 		return
 	}
 	// send via gRPC
@@ -298,6 +305,34 @@ func (dv *DevicesValues) sendViaGrpc(device *models.Device, featureStates []mode
 	}
 
 	dv.logger.Debugf("gRPC - sendViaGrpc - Device set value response %#v", response)
+	return nil
+}
+
+func (dv *DevicesValues) validateFeatureStatesForDevice(device *models.Device, featureStates []models.DeviceFeatureState) error {
+	if len(featureStates) == 0 {
+		return fmt.Errorf("feature state list is empty")
+	}
+
+	controllerFeatures := make(map[string]models.Feature, len(device.Features))
+	for _, feature := range device.Features {
+		if feature.Type != models.Controller {
+			continue
+		}
+		controllerFeatures[feature.UUID] = feature
+	}
+
+	for _, featureState := range featureStates {
+		feature, found := controllerFeatures[featureState.FeatureUUID]
+		if !found {
+			return fmt.Errorf("feature %s is not a controller feature on device %s", featureState.FeatureUUID, device.ID.Hex())
+		}
+		if !feature.Enable {
+			return fmt.Errorf("feature %s is disabled on device %s", featureState.FeatureUUID, device.ID.Hex())
+		}
+		if featureState.Type != models.Controller || featureState.Name != feature.Name {
+			return fmt.Errorf("feature %s does not match device feature metadata", featureState.FeatureUUID)
+		}
+	}
 	return nil
 }
 

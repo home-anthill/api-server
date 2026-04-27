@@ -57,6 +57,7 @@ This file summarizes significant architectural and behavioural changes made with
 ## API And Authorization Behaviour
 
 - **Protected API authorization was tightened**: Requests must provide a valid bearer access token and a matching authenticated session.
+- **Device value writes validate feature ownership and type**: `POST /api/devices/:id/values` now rejects feature states unless they match enabled controller features on the caller-owned device.
 - **Audit logs were reduced**: `clientIP` was removed from audit logs.
 - **Sensitive logs were cleaned up**: API tokens and other sensitive values are no longer logged in plaintext.
 - **Request size limiting is configured**: The API enforces a maximum request body size.
@@ -66,6 +67,8 @@ This file summarizes significant architectural and behavioural changes made with
 
 ## Bug Fixes And Reliability
 
+- **Internal HTTP calls are bounded and status-aware**: Sensor/online helper calls now use a shared client timeout and treat non-2xx downstream responses as errors.
+- **Internal service URL path segments are escaped**: Device UUIDs, feature UUIDs, and feature names are path-escaped before calls to sensor/online services.
 - **Mobile refresh flow was fixed**: Mobile now uses `/api/oauth/app/refresh`, sends the raw refresh token in JSON, and receives rotated mobile tokens in JSON.
 - **Web refresh cookie handling was fixed**: Cookie path and refresh endpoint now match.
 - **OAuth callback session cleanup was made explicit**: Temporary OAuth state and PKCE values are cleared in callback handlers.

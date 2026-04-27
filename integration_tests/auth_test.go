@@ -252,6 +252,26 @@ var _ = Describe("LoginGithub", func() {
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid refresh token"}`))
 		})
+
+		It("should return rotated mobile tokens and renew the session cookie", func() {
+			_, refreshToken := testuutils.GetJwtMobileApp(router)
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/refresh", strings.NewReader(`{"refreshToken":"`+refreshToken+`"}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+
+			var body map[string]string
+			err := json.Unmarshal(recorder.Body.Bytes(), &body)
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(body["token"]).ShouldNot(BeEmpty())
+			Expect(body["refreshToken"]).ShouldNot(BeEmpty())
+
+			sessionCookie := recorder.Header().Get("Set-Cookie")
+			Expect(sessionCookie).To(ContainSubstring(utils.SessionName + "="))
+			testuutils.GetLoggedProfile(router, body["token"], sessionCookie)
+		})
 	})
 
 	Context("calling app code exchange api", func() {

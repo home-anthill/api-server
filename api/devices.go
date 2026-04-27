@@ -6,8 +6,8 @@ import (
 	"api-server/models"
 	"api-server/utils"
 	"context"
-	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -216,7 +216,10 @@ func (d *Devices) DeleteDevice(c *gin.Context) {
 	// break idempotency if the transaction needs to retry.
 	if utils.HasOnlineFeature(device.Features) {
 		d.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from online service")
-		_, result, err := d.deleteOnlineByUUIDService(d.onlineByUUIDURL + device.UUID)
+		if !utils.IsValidUUID(device.UUID) {
+			d.logger.Errorf("REST - DELETE - DeleteDevices - invalid UUID format: device=%s", device.UUID)
+		}
+		_, result, err := d.deleteOnlineByUUIDService(d.onlineByUUIDURL + url.PathEscape(device.UUID))
 		if err != nil {
 			d.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete online from remote service = %#v", err)
 			if re, ok := err.(*customerrors.ErrorWrapper); ok {
@@ -414,19 +417,5 @@ func (d *Devices) PutAssignDeviceToHomeRoom(c *gin.Context) {
 }
 
 func (d *Devices) deleteOnlineByUUIDService(urlOnline string) (int, string, error) {
-	req, err := http.NewRequest(http.MethodDelete, urlOnline, nil)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create HTTP request for online service")
-	}
-	client := &http.Client{}
-	response, err := client.Do(req)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot call online service via HTTP")
-	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return response.StatusCode, "", customerrors.Wrap(response.StatusCode, err, "Cannot read response body from online service")
-	}
-	return response.StatusCode, string(body), nil
+	return utils.Delete(urlOnline)
 }

@@ -7,8 +7,8 @@ import (
 	"api-server/utils"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -96,7 +96,7 @@ func (o *Online) GetOnline(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
 		return
 	}
-	path := o.onlineByUUIDURL + device.UUID + "/features/" + onlineFeature.UUID
+	path := o.onlineByUUIDURL + url.PathEscape(device.UUID) + "/features/" + url.PathEscape(onlineFeature.UUID)
 	o.logger.Debugf("REST - GET - GetOnline - calling external 'online' service = %s", path)
 	_, result, err := o.onlineByUUIDService(path)
 	if err != nil {
@@ -136,14 +136,5 @@ func (o *Online) getDevice(ctx context.Context, deviceID bson.ObjectID) (models.
 }
 
 func (o *Online) onlineByUUIDService(urlOnline string) (int, string, error) {
-	response, err := http.Get(urlOnline)
-	if err != nil {
-		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot call online service via HTTP")
-	}
-	defer response.Body.Close()
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return response.StatusCode, "", customerrors.Wrap(response.StatusCode, err, "Cannot read response body from online service")
-	}
-	return response.StatusCode, string(body), nil
+	return utils.Get(urlOnline)
 }
