@@ -302,15 +302,6 @@ func (gh *GitHubAppHandler) ExchangeAppCode(c *gin.Context) {
 		return
 	}
 
-	session := sessions.Default(c)
-	session.Set("profileID", profile.ID.Hex())
-	session.Set("githubID", profile.Github.ID)
-	if err = session.Save(); err != nil {
-		gh.auth.Logger.Errorw("REST - POST - ExchangeAppCode - cannot save session", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot create session"})
-		return
-	}
-
 	// issue the local access JWT and store a hashed refresh token server-side.
 	accessToken, refreshToken, expirationTime, err := authpkg.IssueGitHubLoginResult(
 		c.Request.Context(),

@@ -110,7 +110,7 @@ func (oc *OAuthHandler) RefreshToken(c *gin.Context) {
 
 	now := time.Now().UTC()
 	expirationTime := now.Add(authpkg.WebTokenTTL)
-	accessTokenString, err := utils.CreateJWT(profile, expirationTime, utils.AccessToken, oc.jwtKey)
+	accessTokenString, err := utils.CreateJWT(profile, expirationTime, utils.AccessToken, authpkg.RefreshTokenClientWeb, oc.jwtKey)
 	if err != nil {
 		oc.logger.Error("REST - POST - RefreshToken - cannot generate access JWT")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot generate access token"})
@@ -188,18 +188,9 @@ func (oc *OAuthHandler) RefreshMobileToken(c *gin.Context) {
 		}
 	}
 
-	session := sessions.Default(c)
-	session.Set("profileID", profile.ID.Hex())
-	session.Set("githubID", profile.Github.ID)
-	if err = session.Save(); err != nil {
-		oc.logger.Errorw("REST - POST - RefreshMobileToken - cannot save session", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot refresh session"})
-		return
-	}
-
 	now := time.Now().UTC()
 	expirationTime := now.Add(authpkg.MobileTokenTTL)
-	accessTokenString, err := utils.CreateJWT(profile, expirationTime, utils.AccessToken, oc.jwtKey)
+	accessTokenString, err := utils.CreateJWT(profile, expirationTime, utils.AccessToken, authpkg.RefreshTokenClientMobile, oc.jwtKey)
 	if err != nil {
 		oc.logger.Error("REST - POST - RefreshMobileToken - cannot generate access JWT")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot generate access token"})

@@ -217,7 +217,7 @@ func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, c
 func IssueGitHubLoginResult(ctx context.Context, collRefreshTokens *mongo.Collection, profile models.Profile, jwtKey []byte, accessTokenTTL, refreshTokenTTL time.Duration, refreshTokenClientType string) (string, string, time.Time, error) {
 	now := time.Now().UTC()
 	accessTokenExpTime := now.Add(accessTokenTTL)
-	accessToken, err := utils.CreateJWT(profile, accessTokenExpTime, utils.AccessToken, jwtKey)
+	accessToken, err := utils.CreateJWT(profile, accessTokenExpTime, utils.AccessToken, refreshTokenClientType, jwtKey)
 	if err != nil {
 		return "", "", time.Time{}, fmt.Errorf("create access token: %w", err)
 	}

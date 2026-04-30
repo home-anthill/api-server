@@ -23,10 +23,11 @@ const JWTAudience = "home-anthill-api"
 // JWTClaims creates a struct that will be encoded to a JWT.
 // We add jwt.RegisteredClaims as an embedded type, to provide fields like expiry time
 type JWTClaims struct {
-	ID        int64     `json:"id"`
-	ProfileID string    `json:"profileId"`
-	Name      string    `json:"name"`
-	TokenType TokenType `json:"tokenType"`
+	ID         int64     `json:"id"`
+	ProfileID  string    `json:"profileId"`
+	Name       string    `json:"name"`
+	TokenType  TokenType `json:"tokenType"`
+	ClientType string    `json:"clientType"`
 	jwt.RegisteredClaims
 }
 
@@ -36,13 +37,14 @@ type JWTClaims struct {
 // issuer, audience, subject, issued-at, not-before, and expiry claims so
 // validation can reject tokens from the wrong context or outside their validity
 // window.
-func CreateJWT(profile models.Profile, expirationTime time.Time, tokenType TokenType, jwtKey []byte) (string, error) {
+func CreateJWT(profile models.Profile, expirationTime time.Time, tokenType TokenType, clientType string, jwtKey []byte) (string, error) {
 	now := time.Now().UTC()
 	claims := &JWTClaims{
-		ID:        profile.Github.ID,
-		ProfileID: profile.ID.Hex(),
-		Name:      profile.Github.Name,
-		TokenType: tokenType,
+		ID:         profile.Github.ID,
+		ProfileID:  profile.ID.Hex(),
+		Name:       profile.Github.Name,
+		TokenType:  tokenType,
+		ClientType: clientType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    JWTIssuer,
 			Audience:  jwt.ClaimStrings{JWTAudience},

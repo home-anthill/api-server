@@ -100,7 +100,7 @@ var _ = Describe("LoginGithub", func() {
 
 			// create an expired JWT
 			expirationTime := time.Now().Add(-60 * time.Minute)
-			tokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, []byte(os.Getenv("JWT_PASSWORD")))
+			tokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, "web", []byte(os.Getenv("JWT_PASSWORD")))
 			Expect(err).ShouldNot(HaveOccurred())
 			logger.Infof("tokenString = %s", tokenString)
 
@@ -118,7 +118,7 @@ var _ = Describe("LoginGithub", func() {
 			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
 			expirationTime := time.Now().Add(60 * time.Minute)
-			refreshTokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.RefreshToken, []byte(os.Getenv("JWT_PASSWORD")))
+			refreshTokenString, err := utils.CreateJWT(profileRes, expirationTime, utils.RefreshToken, "web", []byte(os.Getenv("JWT_PASSWORD")))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()
@@ -182,6 +182,17 @@ var _ = Describe("LoginGithub", func() {
 			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"session does not match token identity"}`))
 		})
+
+		It("should allow mobile JWT requests without a session cookie", func() {
+			jwtToken, _ := testuutils.GetJwtMobileApp(router)
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("GET", "/api/profile", nil)
+			req.Header.Add("Authorization", "Bearer "+jwtToken)
+			router.ServeHTTP(recorder, req)
+
+			Expect(recorder.Code).To(Equal(http.StatusOK))
+		})
 	})
 
 	Context("calling refresh token api", func() {
@@ -242,7 +253,7 @@ var _ = Describe("LoginGithub", func() {
 			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
 			expirationTime := time.Now().Add(60 * time.Minute)
-			accessToken, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, []byte(os.Getenv("JWT_REFRESH_PASSWORD")))
+			accessToken, err := utils.CreateJWT(profileRes, expirationTime, utils.AccessToken, "web", []byte(os.Getenv("JWT_REFRESH_PASSWORD")))
 			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()
@@ -253,7 +264,7 @@ var _ = Describe("LoginGithub", func() {
 			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid refresh token"}`))
 		})
 
-		It("should return rotated mobile tokens and renew the session cookie", func() {
+		It("should return rotated mobile tokens without renewing the session cookie", func() {
 			_, refreshToken := testuutils.GetJwtMobileApp(router)
 
 			recorder := httptest.NewRecorder()
@@ -268,9 +279,13 @@ var _ = Describe("LoginGithub", func() {
 			Expect(body["token"]).ShouldNot(BeEmpty())
 			Expect(body["refreshToken"]).ShouldNot(BeEmpty())
 
-			sessionCookie := recorder.Header().Get("Set-Cookie")
-			Expect(sessionCookie).To(ContainSubstring(utils.SessionName + "="))
-			testuutils.GetLoggedProfile(router, body["token"], sessionCookie)
+			Expect(strings.Join(recorder.Header().Values("Set-Cookie"), "; ")).ToNot(ContainSubstring(utils.SessionName + "="))
+
+			recorder = httptest.NewRecorder()
+			req = httptest.NewRequest("GET", "/api/profile", nil)
+			req.Header.Add("Authorization", "Bearer "+body["token"])
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusOK))
 		})
 	})
 
@@ -317,6 +332,7 @@ var _ = Describe("LoginGithub", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			Expect(body["token"]).ShouldNot(BeEmpty())
 			Expect(body["refreshToken"]).ShouldNot(BeEmpty())
+			Expect(strings.Join(recorder.Header().Values("Set-Cookie"), "; ")).ToNot(ContainSubstring(utils.SessionName + "="))
 
 			recorder = httptest.NewRecorder()
 			req = httptest.NewRequest("POST", "/api/oauth/app/exchange-code", strings.NewReader(`{"code":"`+code+`","codeVerifier":"`+codeVerifier+`"}`))
