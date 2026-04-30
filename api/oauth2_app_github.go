@@ -29,6 +29,7 @@ type GitHubAppHandler struct {
 	logger                      *zap.SugaredLogger
 	sessionStateName            string
 	sessionAppCodeChallengeName string
+	sessionAppStateName         string
 	sessionGitHubVerifierName   string
 	httpClient                  *http.Client
 }
@@ -50,6 +51,7 @@ func NewGitHubAppHandler(auth *authpkg.Auth, logger *zap.SugaredLogger, client *
 		logger:                      logger,
 		sessionStateName:            sessionStateName,
 		sessionAppCodeChallengeName: sessionAppCodeChallengeName,
+		sessionAppStateName:         sessionAppCodeChallengeName + "_app_state",
 		sessionGitHubVerifierName:   sessionAppCodeChallengeName + "_github_verifier",
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
@@ -73,11 +75,19 @@ func (gh *GitHubAppHandler) GitHubAppLogin(c *gin.Context) {
 		return
 	}
 	// -----------------------------------------------------------------
+	appState := strings.TrimSpace(c.Query("app_state"))
+	if !utils.IsValidPKCEVerifier(appState) {
+		gh.logger.Error("REST - GET - GitHubAppLogin - invalid app state")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing or invalid app state"})
+		return
+	}
 
 	session := sessions.Default(c)
 
-	// build state for CSRF protection
-	state, err := utils.RandomString(36)
+	// build state for CSRF protection. Use the RFC 7636 PKCE verifier
+	// maximum length because the value has the same unguessable bearer-secret
+	// property and GitHub echoes it through the OAuth redirect.
+	state, err := utils.NewPKCEVerifier()
 	if err != nil {
 		gh.logger.Error("REST - GET - GitHubAppLogin - cannot create random state token")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not initialize oauth flow"})
@@ -108,8 +118,9 @@ func (gh *GitHubAppHandler) GitHubAppLogin(c *gin.Context) {
 	session.Set(gh.sessionGitHubVerifierName, githubVerifier)
 
 	// ---------------------- MOBILE APP SPECIFIC ----------------------
-	// save also PKCE challenge in session, we will need this later
+	// save also PKCE challenge and state in session, we will need these later
 	session.Set(gh.sessionAppCodeChallengeName, appCodeChallenge)
+	session.Set(gh.sessionAppStateName, appState)
 	// -----------------------------------------------------------------
 
 	if err = session.Save(); err != nil {
@@ -138,6 +149,7 @@ func (gh *GitHubAppHandler) GitHubAppCallback(c *gin.Context) {
 		session.Delete(gh.sessionStateName)
 		session.Delete(gh.sessionGitHubVerifierName)
 		session.Delete(gh.sessionAppCodeChallengeName)
+		session.Delete(gh.sessionAppStateName)
 		if err := session.Save(); err != nil {
 			gh.logger.Warnw("GitHubAppCallback - cannot clear oauth session", "error", err)
 		}
@@ -157,7 +169,9 @@ func (gh *GitHubAppHandler) GitHubAppCallback(c *gin.Context) {
 	sessionState, _ := session.Get(gh.sessionStateName).(string)
 	githubVerifier, _ := session.Get(gh.sessionGitHubVerifierName).(string)
 	appCodeChallenge, _ := session.Get(gh.sessionAppCodeChallengeName).(string)
-	if sessionState == "" || !utils.IsValidPKCEVerifier(githubVerifier) || !utils.IsValidPKCECodeChallenge(appCodeChallenge) {
+	appState, _ := session.Get(gh.sessionAppStateName).(string)
+	if sessionState == "" || !utils.IsValidPKCEVerifier(githubVerifier) ||
+		!utils.IsValidPKCECodeChallenge(appCodeChallenge) || !utils.IsValidPKCEVerifier(appState) {
 		gh.logger.Error("REST - GET - GitHubAppCallback - oauth session is missing or expired")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "oauth session is missing or expired"})
 		return
@@ -207,14 +221,6 @@ func (gh *GitHubAppHandler) GitHubAppCallback(c *gin.Context) {
 		return
 	}
 
-	session.Set("profileID", profile.ID.Hex())
-	session.Set("githubID", profile.Github.ID)
-	if err = session.Save(); err != nil {
-		gh.auth.Logger.Errorw("REST - GET - GitHubAppCallback - failed to save profile in session", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not persist user"})
-		return
-	}
-
 	// App login cannot safely issue JWTs in the browser callback because the
 	// callback crosses the OS/browser/app-link boundary. Instead, issue a
 	// short-lived one-time app_code bound to the app PKCE challenge. The app
@@ -233,6 +239,7 @@ func (gh *GitHubAppHandler) GitHubAppCallback(c *gin.Context) {
 
 	queryParams := url.Values{}
 	queryParams.Set("code", appLoginCode)
+	queryParams.Set("state", appState)
 	location, err := gh.buildMobileAppRedirectURL(queryParams)
 	if err != nil {
 		gh.auth.Logger.Errorw("REST - GET - GitHubAppCallback - invalid app callback URL configuration", "error", err)
@@ -255,8 +262,8 @@ func (gh *GitHubAppHandler) ExchangeAppCode(c *gin.Context) {
 
 	code := strings.TrimSpace(req.Code)
 	codeVerifier := strings.TrimSpace(req.CodeVerifier)
-	if code == "" {
-		gh.auth.Logger.Error("REST - POST - ExchangeAppCode - code is missing")
+	if !utils.IsValidAppLoginCode(code) {
+		gh.auth.Logger.Error("REST - POST - ExchangeAppCode - app login code is invalid")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
 		return
 	}
@@ -329,7 +336,7 @@ func (gh *GitHubAppHandler) ExchangeAppCode(c *gin.Context) {
 }
 
 func (gh *GitHubAppHandler) issueAppLoginResult(ctx context.Context, profile models.Profile, appCodeChallenge string) (string, time.Time, error) {
-	code, err := utils.RandomString(32)
+	code, err := utils.RandomString(96)
 	if err != nil {
 		return "", time.Time{}, fmt.Errorf("create app login code: %w", err)
 	}

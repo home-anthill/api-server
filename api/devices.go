@@ -11,7 +11,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -62,12 +61,11 @@ func NewDevices(logger *zap.SugaredLogger, client *mongo.Client, validate *valid
 func (d *Devices) GetDevices(c *gin.Context) {
 	d.logger.Info("REST - GET - GetDevices called")
 
-	// retrieve current profile object from session
-	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(session)
+	// retrieve current profile identity from the authenticated context
+	profileSession, err := utils.GetProfileFromContext(c)
 	if err != nil {
-		d.logger.Error("REST - GET - GetDevices - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		d.logger.Error("REST - GET - GetDevices - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
@@ -116,12 +114,11 @@ func (d *Devices) DeleteDevice(c *gin.Context) {
 		return
 	}
 
-	// retrieve current profile object from session
-	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(session)
+	// retrieve current profile identity from the authenticated context
+	profileSession, err := utils.GetProfileFromContext(c)
 	if err != nil {
-		d.logger.Error("REST - GET - DeleteDevice - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		d.logger.Error("REST - GET - DeleteDevice - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
@@ -270,12 +267,11 @@ func (d *Devices) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		return
 	}
 
-	// retrieve current profile object from session
-	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(session)
+	// retrieve current profile identity from the authenticated context
+	profileSession, err := utils.GetProfileFromContext(c)
 	if err != nil {
-		d.logger.Error("REST - GET - PutAssignDeviceToHomeRoom - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		d.logger.Error("REST - GET - PutAssignDeviceToHomeRoom - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 	// get the profile from db

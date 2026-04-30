@@ -2,10 +2,10 @@ package utils
 
 import (
 	"api-server/models"
-	"context"
 	"fmt"
 
 	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
@@ -42,17 +42,44 @@ func GetProfileFromSession(session sessions.Session) (SessionProfile, error) {
 	}, nil
 }
 
-// GetLoggedProfile loads the current profile from MongoDB using the profile ID
-// stored in session, ensuring handlers use fresh server-side profile data.
-func GetLoggedProfile(ctx context.Context, session sessions.Session, collection *mongo.Collection) (models.Profile, error) {
-	profileSession, err := GetProfileFromSession(session)
+// GetProfileFromContext returns the authenticated identity for JWT-protected
+// handlers. These routes must pass through JWTMiddleware, which stores the
+// already-validated claims in the Gin context.
+func GetProfileFromContext(c *gin.Context) (SessionProfile, error) {
+	value, exists := c.Get("jwt_claims")
+	if !exists {
+		return SessionProfile{}, fmt.Errorf("jwt claims not found in context")
+	}
+
+	claims, ok := value.(*JWTClaims)
+	if !ok || claims == nil {
+		return SessionProfile{}, fmt.Errorf("invalid jwt claims in context")
+	}
+
+	profileID, err := bson.ObjectIDFromHex(claims.ProfileID)
+	if err != nil {
+		return SessionProfile{}, fmt.Errorf("invalid profile in jwt claims: %w", err)
+	}
+	if claims.ID == 0 {
+		return SessionProfile{}, fmt.Errorf("missing github id in jwt claims")
+	}
+
+	return SessionProfile{
+		ID:       profileID,
+		GithubID: claims.ID,
+	}, nil
+}
+
+// GetLoggedProfileFromContext loads the current profile from MongoDB using the
+// identity stored in JWT claims.
+func GetLoggedProfileFromContext(c *gin.Context, collection *mongo.Collection) (models.Profile, error) {
+	profileSession, err := GetProfileFromContext(c)
 	if err != nil {
 		return models.Profile{}, err
 	}
-	// search the current profile in DB
-	// This is required to get fresh data from db, because data in session could be outdated
+
 	var profile models.Profile
-	err = collection.FindOne(ctx, bson.M{
+	err = collection.FindOne(c.Request.Context(), bson.M{
 		"_id": profileSession.ID,
 	}).Decode(&profile)
 	return profile, err

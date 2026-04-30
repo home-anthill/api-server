@@ -12,7 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -61,12 +60,11 @@ func (o *Online) GetOnline(c *gin.Context) {
 		return
 	}
 
-	// retrieve current profile object from database (using session profile as input)
-	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, o.collProfiles)
+	// retrieve current profile object from database using the authenticated context
+	profile, err := utils.GetLoggedProfileFromContext(c, o.collProfiles)
 	if err != nil {
-		o.logger.Error("REST - GET - GetOnline - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		o.logger.Error("REST - GET - GetOnline - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 

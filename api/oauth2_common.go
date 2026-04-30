@@ -271,21 +271,6 @@ func (oc *OAuthHandler) LogoutApp(c *gin.Context) {
 		oc.logger.Warnw("REST - POST - LogoutApp - cannot revoke refresh token family", "error", err)
 	}
 
-	session := sessions.Default(c)
-	session.Clear()
-	session.Options(sessions.Options{
-		Path:     "/",
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   os.Getenv("ENV") == "prod",
-		SameSite: http.SameSiteLaxMode,
-	})
-	if err := session.Save(); err != nil {
-		oc.logger.Errorw("REST - POST - LogoutApp - cannot clear session", "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot logout"})
-		return
-	}
-
 	c.Status(http.StatusNoContent)
 }
 

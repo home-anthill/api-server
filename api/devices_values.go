@@ -14,7 +14,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -67,12 +66,11 @@ func (dv *DevicesValues) GetValuesDevice(c *gin.Context) {
 		return
 	}
 
-	// retrieve current profile object from database (using session profile as input)
-	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, dv.collProfiles)
+	// retrieve current profile object from database using the authenticated context
+	profile, err := utils.GetLoggedProfileFromContext(c, dv.collProfiles)
 	if err != nil {
-		dv.logger.Error("REST - GET - GetValuesDevice - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		dv.logger.Error("REST - GET - GetValuesDevice - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
@@ -165,12 +163,11 @@ func (dv *DevicesValues) PostValuesDevice(c *gin.Context) {
 		}
 	}
 
-	// retrieve current profile object from database (using session profile as input)
-	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, dv.collProfiles)
+	// retrieve current profile object from database using the authenticated context
+	profile, err := utils.GetLoggedProfileFromContext(c, dv.collProfiles)
 	if err != nil {
-		dv.logger.Errorf("REST - GET - PostValuesDevice - cannot find profile in session, err %#v", err)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		dv.logger.Errorf("REST - GET - PostValuesDevice - cannot find profile, err %#v", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 

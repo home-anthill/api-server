@@ -43,20 +43,22 @@ var _ = Describe("LoginGithub", func() {
 			Expect(utils.IsValidPKCECodeChallenge(query.Get("code_challenge"))).To(BeTrue())
 
 			state := query.Get("state")
-			Expect(state).To(HaveLen(48))
+			Expect(state).To(HaveLen(128))
 			decodeBytes, err := base64.RawURLEncoding.DecodeString(state)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(decodeBytes).To(HaveLen(36))
+			Expect(decodeBytes).To(HaveLen(96))
 		})
 
 		It("should return login oauth mobile app URL", func() {
-			codeVerifier, err := utils.RandomString(32)
+			codeVerifier, err := utils.NewPKCEVerifier()
 			Expect(err).ShouldNot(HaveOccurred())
 			codeChallenge, err := utils.BuildPKCECodeChallenge(codeVerifier)
 			Expect(err).ShouldNot(HaveOccurred())
+			appState, err := utils.NewPKCEVerifier()
+			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256, nil)
+			req, _ := http.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256+"&app_state="+url.QueryEscape(appState), nil)
 			router.ServeHTTP(recorder, req)
 			Expect(http.StatusTemporaryRedirect).To(Equal(recorder.Code))
 
@@ -71,10 +73,10 @@ var _ = Describe("LoginGithub", func() {
 			Expect(utils.IsValidPKCECodeChallenge(query.Get("code_challenge"))).To(BeTrue())
 
 			state := query.Get("state")
-			Expect(state).To(HaveLen(48))
+			Expect(state).To(HaveLen(128))
 			decodeBytes, err := base64.RawURLEncoding.DecodeString(state)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(decodeBytes).To(HaveLen(36))
+			Expect(decodeBytes).To(HaveLen(96))
 		})
 
 		It("should reject mobile app login without PKCE parameters", func() {
@@ -83,6 +85,19 @@ var _ = Describe("LoginGithub", func() {
 			router.ServeHTTP(recorder, req)
 			Expect(http.StatusBadRequest).To(Equal(recorder.Code))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"missing or invalid PKCE parameters"}`))
+		})
+
+		It("should reject mobile app login without app state", func() {
+			codeVerifier, err := utils.NewPKCEVerifier()
+			Expect(err).ShouldNot(HaveOccurred())
+			codeChallenge, err := utils.BuildPKCECodeChallenge(codeVerifier)
+			Expect(err).ShouldNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256, nil)
+			router.ServeHTTP(recorder, req)
+			Expect(http.StatusBadRequest).To(Equal(recorder.Code))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"missing or invalid app state"}`))
 		})
 
 		It("should complete web oauth callback and redirect to postlogin with a token", func() {

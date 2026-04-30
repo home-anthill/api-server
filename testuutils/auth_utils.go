@@ -43,13 +43,15 @@ func GetJwt(router *gin.Engine) (string, string) {
 }
 
 func GetJwtMobileApp(router *gin.Engine) (string, string) {
-	codeVerifier, err := utils.RandomString(32)
+	codeVerifier, err := utils.NewPKCEVerifier()
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	codeChallenge, err := utils.BuildPKCECodeChallenge(codeVerifier)
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+	appState, err := utils.NewPKCEVerifier()
+	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 	recorder := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256, nil)
+	req := httptest.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256+"&app_state="+url.QueryEscape(appState), nil)
 	router.ServeHTTP(recorder, req)
 	gomega.Expect(http.StatusTemporaryRedirect).To(gomega.Equal(recorder.Code))
 	resLocation, err := recorder.Result().Location()
@@ -71,6 +73,7 @@ func GetJwtMobileApp(router *gin.Engine) (string, string) {
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	code := redirectLocation.Query().Get("code")
 	gomega.Expect(code).ToNot(gomega.BeEmpty())
+	gomega.Expect(redirectLocation.Query().Get("state")).To(gomega.Equal(appState))
 
 	exchangeBody := `{"code":"` + code + `","codeVerifier":"` + codeVerifier + `"}`
 	recorder = httptest.NewRecorder()

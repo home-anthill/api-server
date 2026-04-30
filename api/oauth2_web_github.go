@@ -45,8 +45,10 @@ func (gh *GitHubWebHandler) GitHubLogin(c *gin.Context) {
 
 	session := sessions.Default(c)
 
-	// build state for CSRF protection
-	state, err := utils.RandomString(36)
+	// build state for CSRF protection. Use the RFC 7636 PKCE verifier
+	// maximum length because the value has the same unguessable bearer-secret
+	// property and GitHub echoes it through the OAuth redirect.
+	state, err := utils.NewPKCEVerifier()
 	if err != nil {
 		gh.logger.Error("REST - GET - GitHubLogin - cannot create random state token")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not initialize oauth flow"})

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -69,12 +68,11 @@ func NewHomes(logger *zap.SugaredLogger, client *mongo.Client, validate *validat
 func (h *Homes) GetHomes(c *gin.Context) {
 	h.logger.Info("REST - GET - GetHomes called")
 
-	// retrieve current profile object from session
-	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(session)
+	// retrieve current profile identity from the authenticated context
+	profileSession, err := utils.GetProfileFromContext(c)
 	if err != nil {
-		h.logger.Error("REST - GET - GetHomes - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		h.logger.Error("REST - GET - GetHomes - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
@@ -117,12 +115,11 @@ func (h *Homes) GetHomes(c *gin.Context) {
 func (h *Homes) PostHome(c *gin.Context) {
 	h.logger.Info("REST - POST - PostHome called")
 
-	// retrieve current profile object from session
-	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(session)
+	// retrieve current profile identity from the authenticated context
+	profileSession, err := utils.GetProfileFromContext(c)
 	if err != nil {
-		h.logger.Error("REST - POST - PostHome - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		h.logger.Error("REST - POST - PostHome - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
@@ -229,8 +226,7 @@ func (h *Homes) PutHome(c *gin.Context) {
 	}
 
 	// you can update a home only if you are the owner of that home
-	session := sessions.Default(c)
-	isOwned := h.isHomeOwnedBy(c.Request.Context(), session, objectID)
+	isOwned := h.isHomeOwnedBy(c, objectID)
 	if !isOwned {
 		h.logger.Error("REST - PUT - PutHome - Request payload cannot contain Rooms. This API is made to change only the home object.")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot update a home that is not in your profile"})
@@ -267,8 +263,7 @@ func (h *Homes) DeleteHome(c *gin.Context) {
 	}
 
 	// you can update a home only if you are the owner of that home
-	session := sessions.Default(c)
-	isOwned := h.isHomeOwnedBy(c.Request.Context(), session, objectID)
+	isOwned := h.isHomeOwnedBy(c, objectID)
 
 	if !isOwned {
 		h.logger.Error("REST - DELETE - DeleteHome - Cannot delete a home that is not in your profile")
@@ -277,10 +272,10 @@ func (h *Homes) DeleteHome(c *gin.Context) {
 	}
 
 	// retrieve current profile object from session
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, h.collProfiles)
+	profile, err := utils.GetLoggedProfileFromContext(c, h.collProfiles)
 	if err != nil {
-		h.logger.Error("REST - DELETE - DeleteHome - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		h.logger.Error("REST - DELETE - DeleteHome - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 	var newHomes []bson.ObjectID
@@ -347,8 +342,7 @@ func (h *Homes) GetRooms(c *gin.Context) {
 	}
 
 	// you can update a home only if you are the owner of that home
-	session := sessions.Default(c)
-	isOwned := h.isHomeOwnedBy(c.Request.Context(), session, objectID)
+	isOwned := h.isHomeOwnedBy(c, objectID)
 
 	if !isOwned {
 		h.logger.Error("REST - GET - GetRooms - Cannot get rooms, because you aren't the owner of that house")
@@ -395,8 +389,7 @@ func (h *Homes) PostRoom(c *gin.Context) {
 	}
 
 	// you can update a home only if you are the owner of that home
-	session := sessions.Default(c)
-	isOwned := h.isHomeOwnedBy(c.Request.Context(), session, objectID)
+	isOwned := h.isHomeOwnedBy(c, objectID)
 
 	if !isOwned {
 		h.logger.Error("REST - POST - PostRoom - Cannot create a room in an home that is not in session profile")
@@ -470,8 +463,7 @@ func (h *Homes) PutRoom(c *gin.Context) {
 	}
 
 	// you can update a home only if you are the owner of that home
-	session := sessions.Default(c)
-	isOwned := h.isHomeOwnedBy(c.Request.Context(), session, homeID)
+	isOwned := h.isHomeOwnedBy(c, homeID)
 
 	if !isOwned {
 		h.logger.Error("REST - PUT - PutRoom - Cannot update a room in an home that is not in session profile")
@@ -539,8 +531,7 @@ func (h *Homes) DeleteRoom(c *gin.Context) {
 	}
 
 	// you can update a home only if you are the owner of that home
-	session := sessions.Default(c)
-	isOwned := h.isHomeOwnedBy(c.Request.Context(), session, objectID)
+	isOwned := h.isHomeOwnedBy(c, objectID)
 
 	if !isOwned {
 		h.logger.Error("REST - DELETE - DeleteRoom - Cannot delete a room in an home that is not in session profile")
@@ -588,13 +579,13 @@ func (h *Homes) DeleteRoom(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "room has been deleted"})
 }
 
-func (h *Homes) isHomeOwnedBy(ctx context.Context, session sessions.Session, objectID bson.ObjectID) bool {
+func (h *Homes) isHomeOwnedBy(c *gin.Context, objectID bson.ObjectID) bool {
 	// you can update a home only if you are the owner of that home
-	// read profile from db. This is required to get fresh data from db, because data in session could be outdated
+	// read profile from db. This is required to get fresh data from db.
 
-	profile, err := utils.GetLoggedProfile(ctx, session, h.collProfiles)
+	profile, err := utils.GetLoggedProfileFromContext(c, h.collProfiles)
 	if err != nil {
-		h.logger.Error("isHomeOwnedBy - cannot find profile in session")
+		h.logger.Error("isHomeOwnedBy - cannot find profile")
 		return false
 	}
 

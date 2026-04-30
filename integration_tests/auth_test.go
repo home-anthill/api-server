@@ -287,17 +287,30 @@ var _ = Describe("LoginGithub", func() {
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 		})
+
+		It("should logout mobile app without clearing or renewing a session cookie", func() {
+			_, refreshToken := testuutils.GetJwtMobileApp(router)
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/logout", strings.NewReader(`{"refreshToken":"`+refreshToken+`"}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+			Expect(strings.Join(recorder.Header().Values("Set-Cookie"), "; ")).ToNot(ContainSubstring(utils.SessionName + "="))
+		})
 	})
 
 	Context("calling app code exchange api", func() {
 		It("should exchange a valid app code exactly once", func() {
-			codeVerifier, err := utils.RandomString(32)
+			codeVerifier, err := utils.NewPKCEVerifier()
 			Expect(err).ShouldNot(HaveOccurred())
 			codeChallenge, err := utils.BuildPKCECodeChallenge(codeVerifier)
 			Expect(err).ShouldNot(HaveOccurred())
+			appState, err := utils.NewPKCEVerifier()
+			Expect(err).ShouldNot(HaveOccurred())
 
 			recorder := httptest.NewRecorder()
-			req := httptest.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256, nil)
+			req := httptest.NewRequest("GET", "/api/oauth/app/login?code_challenge="+url.QueryEscape(codeChallenge)+"&code_challenge_method="+utils.PKCEChallengeMethodS256+"&app_state="+url.QueryEscape(appState), nil)
 			router.ServeHTTP(recorder, req)
 			Expect(http.StatusTemporaryRedirect).To(Equal(recorder.Code))
 
@@ -320,6 +333,7 @@ var _ = Describe("LoginGithub", func() {
 			Expect(err).ShouldNot(HaveOccurred())
 			code := redirectLocation.Query().Get("code")
 			Expect(code).ToNot(BeEmpty())
+			Expect(redirectLocation.Query().Get("state")).To(Equal(appState))
 
 			recorder = httptest.NewRecorder()
 			req = httptest.NewRequest("POST", "/api/oauth/app/exchange-code", strings.NewReader(`{"code":"`+code+`","codeVerifier":"`+codeVerifier+`"}`))
@@ -345,6 +359,18 @@ var _ = Describe("LoginGithub", func() {
 		It("should reject app code exchange without a valid PKCE verifier", func() {
 			recorder := httptest.NewRecorder()
 			req := httptest.NewRequest("POST", "/api/oauth/app/exchange-code", strings.NewReader(`{"code":"abc"}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+		})
+
+		It("should reject app code exchange with a malformed app login code", func() {
+			codeVerifier, err := utils.NewPKCEVerifier()
+			Expect(err).ShouldNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/exchange-code", strings.NewReader(`{"code":"abc","codeVerifier":"`+codeVerifier+`"}`))
 			req.Header.Add("Content-Type", "application/json")
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusBadRequest))

@@ -11,7 +11,10 @@ This file summarizes significant architectural and behavioural changes made with
 - **`golang.org/x/oauth2` was removed**: GitHub authorization URLs and token exchange are implemented explicitly while preserving standard OAuth2 authorization-code + PKCE semantics.
 - **PKCE is enforced with S256**: Web login uses a server-generated GitHub PKCE verifier/challenge. Mobile login uses both a server-generated GitHub PKCE pair and an app-generated PKCE challenge for the app-code exchange.
 - **OAuth state and PKCE values are stored in the session**: Callback handlers validate state with constant-time comparison and clear temporary OAuth session values after callback processing.
+- **OAuth state entropy was increased**: Web and mobile GitHub OAuth `state` values now use the same 128-character high-entropy format as generated PKCE verifiers.
 - **Mobile login uses a one-time app code**: The browser/OS callback returns only a short-lived app code. The app must redeem it with the original PKCE verifier before receiving local JWTs.
+- **Mobile login now round-trips app state**: Mobile app login requires an app-provided `app_state`; the callback includes that value alongside the one-time code so the app can validate that the redirect belongs to the login it started.
+- **Mobile app login code validation was tightened**: App-code exchange rejects malformed one-time codes before database lookup, and generated app codes use 128-character base64url entropy.
 - **GitHub OAuth helpers were centralized**: Authorization URL building, GitHub token exchange, GitHub user fetching, profile creation, and login-result issuance were moved into shared auth utilities where appropriate.
 
 ---
@@ -21,8 +24,9 @@ This file summarizes significant architectural and behavioural changes made with
 - **JWTs use standard validation claims**: Issuer, audience, subject, issued-at, not-before, and expiry are included and validated.
 - **JWT signing is fixed to HS512**: Callers cannot choose weaker or inconsistent signing algorithms.
 - **Access-token type is enforced**: Protected APIs reject tokens unless the JWT explicitly has `tokenType=access`.
-- **JWT and session identity must match**: Protected APIs require the session `profileID` and `githubID` to match the validated JWT identity.
+- **JWT and session identity must match for web tokens**: Web protected APIs require the session `profileID` and `githubID` to match the validated JWT identity.
 - **Session storage was simplified**: The session stores primitive `profileID` and `githubID` values instead of gob-encoded structs.
+- **Mobile app auth avoids browser session identity**: Mobile callback, protected API calls, and logout flows do not create, require, clear, or renew browser session identity; mobile clients rely on app-code exchange, bearer JWTs, and explicit refresh-token JSON.
 - **Session cookies are signed and encrypted**: Cookie sessions use an authentication key and derived block key so session contents are tamper-protected and not readable by the client.
 - **Session lifetime is bounded**: Session `MaxAge` is aligned with the web access-token TTL to avoid accepting stale profile identity longer than the access token.
 
@@ -56,7 +60,8 @@ This file summarizes significant architectural and behavioural changes made with
 
 ## API And Authorization Behaviour
 
-- **Protected API authorization was tightened**: Requests must provide a valid bearer access token and a matching authenticated session.
+- **Protected API authorization was tightened**: Requests must provide a valid bearer access token; web requests also require a matching authenticated session.
+- **Protected handlers now read validated JWT claims**: JWT-protected handlers use `utils.GetProfileFromContext()` / `utils.GetLoggedProfileFromContext()` instead of reading profile identity directly from the browser session, allowing mobile bearer-token requests to stay session-free.
 - **Device value writes validate feature ownership and type**: `POST /api/devices/:id/values` now rejects feature states unless they match enabled controller features on the caller-owned device.
 - **Audit logs were reduced**: `clientIP` was removed from audit logs.
 - **Sensitive logs were cleaned up**: API tokens and other sensitive values are no longer logged in plaintext.

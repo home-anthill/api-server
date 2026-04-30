@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -51,7 +50,7 @@ func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *vali
 func (p *Profiles) GetProfile(c *gin.Context) {
 	p.logger.Info("REST - GET - GetProfile called")
 
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), sessions.Default(c), p.collProfiles)
+	profile, err := utils.GetLoggedProfileFromContext(c, p.collProfiles)
 	if err != nil {
 		p.logger.Error("REST - GET - GetProfile - Cannot get user profile")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Cannot get user profile"})
@@ -79,12 +78,11 @@ func (p *Profiles) PostRotateAPIToken(c *gin.Context) {
 		return
 	}
 
-	// retrieve current profile object from database (using session profile as input)
-	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(session)
+	// retrieve current profile identity from the authenticated context
+	profileSession, err := utils.GetProfileFromContext(c)
 	if err != nil {
-		p.logger.Error("REST - POST - PostRotateAPIToken - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		p.logger.Error("REST - POST - PostRotateAPIToken - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
@@ -129,12 +127,11 @@ func (p *Profiles) PostProfilesFCMToken(c *gin.Context) {
 		return
 	}
 
-	// retrieve current profile object from database (using session profile as input)
-	session := sessions.Default(c)
-	profileSession, err := utils.GetProfileFromSession(session)
+	// retrieve current profile identity from the authenticated context
+	profileSession, err := utils.GetProfileFromContext(c)
 	if err != nil {
-		p.logger.Error("REST - POST - PostProfilesFCMToken - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		p.logger.Error("REST - POST - PostProfilesFCMToken - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 

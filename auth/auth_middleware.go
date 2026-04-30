@@ -128,15 +128,8 @@ func (a *Auth) JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// TODO The cleaner final design is to remove this bridge by refactoring handlers to read identity
-		//  from c.Get("jwt_claims") or a helper like utils.GetLoggedProfileFromContext(c, collProfiles).
-		//  Then mobile auth would be truly session-free end-to-end, while web
-		//  could still keep the session-check-in middleware.
+		c.Set("jwt_claims", claimsObj)
 		if claimsObj.ClientType == RefreshTokenClientMobile {
-			session := sessions.Default(c)
-			session.Set("profileID", claimsObj.ProfileID)
-			session.Set("githubID", claimsObj.ID)
-			c.Set("jwt_claims", claimsObj)
 			c.Next()
 			return
 		}
@@ -164,7 +157,6 @@ func (a *Auth) JWTMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("jwt_claims", claimsObj)
 		c.Next()
 	}
 }

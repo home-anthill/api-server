@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -74,12 +73,11 @@ func (ft *FCMToken) PostFCMToken(c *gin.Context) {
 		return
 	}
 
-	// retrieve current profile object from database (using session profile as input)
-	session := sessions.Default(c)
-	profile, err := utils.GetLoggedProfile(c.Request.Context(), session, ft.collProfiles)
+	// retrieve current profile object from database using the authenticated context
+	profile, err := utils.GetLoggedProfileFromContext(c, ft.collProfiles)
 	if err != nil {
-		ft.logger.Error("REST - POST - PostFCMToken - cannot find profile in session")
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile in session"})
+		ft.logger.Error("REST - POST - PostFCMToken - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
 		return
 	}
 
