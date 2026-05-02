@@ -45,6 +45,9 @@ func printEnv(logger *zap.SugaredLogger) error {
 	if os.Getenv("JWT_REFRESH_PASSWORD") == "" {
 		return errors.New("'JWT_REFRESH_PASSWORD' environment variable is mandatory")
 	}
+	if len(os.Getenv("COOKIE_SECRET")) < 32 {
+		return errors.New("'COOKIE_SECRET' environment variable is mandatory and must be at least 32 characters")
+	}
 
 	logger.Infof("ENVIRONMENT = %s", os.Getenv("ENV"))
 	logger.Infof("LOG_FOLDER = %s", os.Getenv("LOG_FOLDER"))

@@ -15,6 +15,8 @@ import (
 func DropAllCollections(ctx context.Context, collections ...*mongo.Collection) {
 	gomega.Expect(os.Getenv("ENV")).To(gomega.Equal("testing"), "refusing to drop collections outside ENV=testing")
 	for _, collection := range collections {
+		dbName := collection.Database().Name()
+		gomega.Expect(dbName).To(gomega.Equal("api-server-test"), "refusing to drop non-test database")
 		err := collection.Drop(ctx)
 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	}
