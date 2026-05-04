@@ -372,7 +372,7 @@ func (gh *GitHubAppHandler) buildMobileAppRedirectURL(queryParams url.Values) (s
 	location := url.URL{
 		Scheme:   parsed.Scheme,
 		Host:     parsed.Host,
-		Path:     "/postlogin",
+		Path:     "/app/postlogin",
 		RawQuery: queryParams.Encode(),
 	}
 	return location.String(), nil

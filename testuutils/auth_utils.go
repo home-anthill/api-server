@@ -67,7 +67,7 @@ func GetJwtMobileApp(router *gin.Engine) (string, string) {
 	redirectUrl := recorder.Header().Get("location")
 	callbackURL, err := url.Parse(os.Getenv("OAUTH2_APP_CALLBACK"))
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-	gomega.Expect(redirectUrl).To(gomega.HavePrefix(callbackURL.Scheme + "://" + callbackURL.Host + "/postlogin?code="))
+	gomega.Expect(redirectUrl).To(gomega.HavePrefix(callbackURL.Scheme + "://" + callbackURL.Host + "/app/postlogin?code="))
 
 	redirectLocation, err := url.Parse(redirectUrl)
 	gomega.Expect(err).ShouldNot(gomega.HaveOccurred())

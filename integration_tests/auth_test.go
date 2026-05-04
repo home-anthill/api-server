@@ -328,7 +328,7 @@ var _ = Describe("LoginGithub", func() {
 			locationHeader := recorder.Header().Get("location")
 			callbackURL, err := url.Parse(os.Getenv("OAUTH2_APP_CALLBACK"))
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(locationHeader).To(HavePrefix(callbackURL.Scheme + "://" + callbackURL.Host + "/postlogin?code="))
+			Expect(locationHeader).To(HavePrefix(callbackURL.Scheme + "://" + callbackURL.Host + "/app/postlogin?code="))
 			redirectLocation, err := url.Parse(locationHeader)
 			Expect(err).ShouldNot(HaveOccurred())
 			code := redirectLocation.Query().Get("code")
