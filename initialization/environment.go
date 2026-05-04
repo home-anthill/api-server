@@ -3,9 +3,11 @@ package initialization
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
@@ -39,14 +41,54 @@ func readEnv() (string, error) {
 }
 
 func printEnv(logger *zap.SugaredLogger) error {
-	if os.Getenv("JWT_PASSWORD") == "" {
-		return errors.New("'JWT_PASSWORD' environment variable is mandatory")
+	required := []string{
+		"JWT_PASSWORD",
+		"JWT_REFRESH_PASSWORD",
+		"REFRESH_TOKEN_HASH_SECRET",
+		"COOKIE_SECRET",
+		"OAUTH2_CLIENTID",
+		"OAUTH2_SECRETID",
+		"OAUTH2_APP_CLIENTID",
+		"OAUTH2_APP_SECRETID",
+		"OAUTH2_CALLBACK",
+		"OAUTH2_APP_CALLBACK",
 	}
-	if os.Getenv("JWT_REFRESH_PASSWORD") == "" {
-		return errors.New("'JWT_REFRESH_PASSWORD' environment variable is mandatory")
+	for _, name := range required {
+		if strings.TrimSpace(os.Getenv(name)) == "" {
+			return fmt.Errorf("'%s' environment variable is mandatory", name)
+		}
+	}
+	if len(os.Getenv("JWT_PASSWORD")) < 32 {
+		return errors.New("'JWT_PASSWORD' environment variable must be at least 32 characters")
+	}
+	if len(os.Getenv("JWT_REFRESH_PASSWORD")) < 32 {
+		return errors.New("'JWT_REFRESH_PASSWORD' environment variable must be at least 32 characters")
+	}
+	if len(os.Getenv("REFRESH_TOKEN_HASH_SECRET")) < 32 {
+		return errors.New("'REFRESH_TOKEN_HASH_SECRET' environment variable must be at least 32 characters")
 	}
 	if len(os.Getenv("COOKIE_SECRET")) < 32 {
 		return errors.New("'COOKIE_SECRET' environment variable is mandatory and must be at least 32 characters")
+	}
+	validateOAuthURL := func(name string) error {
+		raw := strings.TrimSpace(os.Getenv(name))
+		parsed, err := url.Parse(raw)
+		if err != nil {
+			return fmt.Errorf("'%s' environment variable must be a valid URL: %w", name, err)
+		}
+		if parsed.Scheme == "" || parsed.Host == "" {
+			return fmt.Errorf("'%s' environment variable must include scheme and host", name)
+		}
+		return nil
+	}
+	if err := validateOAuthURL("OAUTH2_CALLBACK"); err != nil {
+		return err
+	}
+	if err := validateOAuthURL("OAUTH2_APP_CALLBACK"); err != nil {
+		return err
+	}
+	if os.Getenv("ENV") == "prod" && os.Getenv("HTTP_CORS") == "true" {
+		return errors.New("'HTTP_CORS' must be false in production")
 	}
 
 	logger.Infof("ENVIRONMENT = %s", os.Getenv("ENV"))
