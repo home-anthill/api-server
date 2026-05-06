@@ -16,6 +16,7 @@ This file summarizes significant architectural and behavioural changes made with
 - **Mobile login now round-trips app state**: Mobile app login requires an app-provided `app_state`; the callback includes that value alongside the one-time code so the app can validate that the redirect belongs to the login it started.
 - **Mobile app login code validation was tightened**: App-code exchange rejects malformed one-time codes before database lookup, and generated app codes use 128-character base64url entropy.
 - **GitHub OAuth helpers were centralized**: Authorization URL building, GitHub token exchange, GitHub user fetching, profile creation, and login-result issuance were moved into shared auth utilities where appropriate.
+- Hardened `api-server` startup validation to fail closed on missing or weak auth config: JWT secrets, refresh-token hash secret, cookie secret, OAuth client IDs/secrets, OAuth callback URLs, and production `HTTP_CORS=true`
 
 ---
 
@@ -107,6 +108,7 @@ This file summarizes significant architectural and behavioural changes made with
 - **Docker runtime was hardened**: The runtime image is minimal, runs without the Go toolchain, and uses an unprivileged user.
 - **Configuration and logging were cleaned up**: Log folder configuration, logger flushing, explicit startup error propagation, unused imports, unused parameters, and obsolete Makefile targets were cleaned up.
 - **Device and online features evolved**: Device assignment, device values, online status, protobuf naming, and feature naming were updated and consolidated.
+- Added unit tests for the startup validator to cover valid config, missing OAuth secrets, short cookie secret, and production CORS refusal
 
 ---
 
