@@ -68,6 +68,13 @@ func ensureIndexes(ctx context.Context, client *mongo.Client, logger *zap.Sugare
 	if err != nil {
 		return fmt.Errorf("cannot create profiles indexes: %w", err)
 	}
+	_, err = colls.Profiles.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys:    bson.D{{Key: "apiTokenHash", Value: 1}},
+		Options: options.Index().SetUnique(true).SetSparse(true).SetName("profile_apiTokenHash_unique"),
+	})
+	if err != nil {
+		return fmt.Errorf("cannot create profiles apiTokenHash index: %w", err)
+	}
 
 	_, err = colls.AppLoginCodes.Indexes().CreateMany(ctx, []mongo.IndexModel{
 		{

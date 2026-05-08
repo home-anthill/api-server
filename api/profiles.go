@@ -1,10 +1,14 @@
 package api
 
 import (
+	"api-server/customerrors"
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
+	"context"
+	"encoding/json"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -20,6 +24,17 @@ type ProfileUpdateFCMTokenReq struct {
 	FCMToken string `json:"fcmToken" validate:"required,max=512"`
 }
 
+type rotateOnlineAPITokenReq struct {
+	OldAPIToken    string                   `json:"oldApiToken"`
+	NewAPIToken    string                   `json:"newApiToken"`
+	DeviceFeatures []rotateOnlineDeviceFeat `json:"deviceFeatures"`
+}
+
+type rotateOnlineDeviceFeat struct {
+	DeviceUUID  string `json:"deviceUuid"`
+	FeatureUUID string `json:"featureUuid"`
+}
+
 // GithubResponse is the GitHub user data returned in a profile response.
 type GithubResponse struct {
 	Login     string `json:"login"`
@@ -30,19 +45,30 @@ type GithubResponse struct {
 
 // Profiles handles user profile retrieval and token management.
 type Profiles struct {
-	client       *mongo.Client
-	collProfiles *mongo.Collection
-	logger       *zap.SugaredLogger
-	validate     *validator.Validate
+	client                  *mongo.Client
+	collProfiles            *mongo.Collection
+	collDevices             *mongo.Collection
+	collSensors             *mongo.Collection
+	collControls            *mongo.Collection
+	onlineKeepAliveURL      string
+	onlineRotateAPITokenURL string
+	logger                  *zap.SugaredLogger
+	validate                *validator.Validate
 }
 
 // NewProfiles constructs a Profiles handler with the given dependencies.
 func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Profiles {
+	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
 	return &Profiles{
-		client:       client,
-		collProfiles: db.GetCollections(client).Profiles,
-		logger:       logger,
-		validate:     validate,
+		client:                  client,
+		collProfiles:            db.GetCollections(client).Profiles,
+		collDevices:             db.GetCollections(client).Devices,
+		collSensors:             client.Database(sensorDbName()).Collection("sensors"),
+		collControls:            client.Database(controllerDbName()).Collection("controllers"),
+		onlineKeepAliveURL:      onlineServerURL + os.Getenv("HTTP_ONLINE_KEEPALIVE_API"),
+		onlineRotateAPITokenURL: onlineServerURL + os.Getenv("HTTP_ONLINE_ROTATE_APITOKEN_API"),
+		logger:                  logger,
+		validate:                validate,
 	}
 }
 
@@ -92,26 +118,157 @@ func (p *Profiles) PostRotateAPIToken(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot re-generate APIToken for a different profile then yours"})
 		return
 	}
-
-	apiToken := uuid.NewString()
-
-	_, err = p.collProfiles.UpdateOne(c.Request.Context(), bson.M{
-		"_id": profileSession.ID,
-	}, bson.M{
-		"$set": bson.M{
-			"apiToken":   apiToken,
-			"modifiedAt": time.Now(),
-		},
-	})
+	var profile models.Profile
+	if findErr := p.collProfiles.FindOne(c.Request.Context(), bson.M{"_id": profileSession.ID}).Decode(&profile); findErr != nil {
+		p.logger.Error("REST - POST - PostRotateAPIToken - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
+		return
+	}
+	oldAPIToken, err := decryptProfileAPIToken(&profile)
 	if err != nil {
+		p.logger.Error("REST - POST - PostRotateAPIToken - Cannot decrypt current apiToken")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
+		return
+	}
+
+	newAPIToken := uuid.NewString()
+	newAPITokenEncrypted, err := utils.EncryptAPIToken(newAPIToken)
+	if err != nil {
+		p.logger.Error("REST - POST - PostRotateAPIToken - Cannot encrypt new apiToken")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
+		return
+	}
+	newAPITokenHash, err := utils.HashAPIToken(newAPIToken)
+	if err != nil {
+		p.logger.Error("REST - POST - PostRotateAPIToken - Cannot hash newAPIToken")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
+		return
+	}
+
+	if err = p.rotateProfileAndDeviceTokens(c.Request.Context(), profileSession.ID, newAPITokenHash, newAPITokenEncrypted); err != nil {
 		p.logger.Error("REST - POST - PostRotateAPIToken - Cannot update profile with the new apiToken")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
+		return
+	}
+	onlineDeviceFeatures, err := p.getProfileOnlineDeviceFeatures(c.Request.Context(), profile)
+	if err != nil {
+		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot build online apiToken rotation targets", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
+		return
+	}
+	if err = p.rotateOnlineAPIToken(oldAPIToken, newAPIToken, onlineDeviceFeatures); err != nil {
+		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot rotate apiToken in online service", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
 	p.logger.Infow("AUDIT - API token regenerated",
 		"profileID", profileSession.ID.Hex(),
 	)
-	c.JSON(http.StatusOK, gin.H{"apiToken": apiToken})
+	c.JSON(http.StatusOK, gin.H{"apiToken": newAPIToken})
+}
+
+func (p *Profiles) rotateProfileAndDeviceTokens(ctx context.Context, profileID bson.ObjectID, apiTokenHash, newAPITokenEncrypted string) error {
+	dbSession, err := p.client.StartSession()
+	if err != nil {
+		return err
+	}
+	defer dbSession.EndSession(ctx)
+
+	now := time.Now().UTC()
+	_, err = dbSession.WithTransaction(ctx, func(sessionCtx context.Context) (interface{}, error) {
+		credentialUpdate := bson.M{
+			"$set": bson.M{
+				"apiTokenHash":      apiTokenHash,
+				"apiTokenEncrypted": newAPITokenEncrypted,
+			},
+		}
+		if _, updateErr := p.collSensors.UpdateMany(sessionCtx, bson.M{"profileOwnerId": profileID}, credentialUpdate); updateErr != nil {
+			p.logger.Errorw("PostRotateAPIToken - Cannot update sensor apiToken credentials", "error", updateErr)
+			return nil, updateErr
+		}
+		if _, updateErr := p.collControls.UpdateMany(sessionCtx, bson.M{"profileOwnerId": profileID}, credentialUpdate); updateErr != nil {
+			p.logger.Errorw("PostRotateAPIToken - Cannot update controller apiToken credentials", "error", updateErr)
+			return nil, updateErr
+		}
+		if _, updateErr := p.collProfiles.UpdateOne(sessionCtx, bson.M{
+			"_id": profileID,
+		}, bson.M{
+			"$set": bson.M{
+				"apiTokenHash":      apiTokenHash,
+				"apiTokenEncrypted": newAPITokenEncrypted,
+				"modifiedAt":        now,
+			},
+		}); updateErr != nil {
+			p.logger.Errorw("PostRotateAPIToken - Cannot update profile apiToken credentials", "error", updateErr)
+			return nil, updateErr
+		}
+		return nil, nil
+	})
+	return err
+}
+
+func (p *Profiles) getProfileOnlineDeviceFeatures(ctx context.Context, profile models.Profile) ([]rotateOnlineDeviceFeat, error) {
+	if len(profile.Devices) == 0 {
+		return []rotateOnlineDeviceFeat{}, nil
+	}
+
+	cursor, err := p.collDevices.Find(ctx, bson.M{"_id": bson.M{"$in": profile.Devices}})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var devices []models.Device
+	if err = cursor.All(ctx, &devices); err != nil {
+		return nil, err
+	}
+
+	deviceFeatures := make([]rotateOnlineDeviceFeat, 0)
+	for _, device := range devices {
+		for _, feature := range device.Features {
+			deviceFeatures = append(deviceFeatures, rotateOnlineDeviceFeat{
+				DeviceUUID:  device.UUID,
+				FeatureUUID: feature.UUID,
+			})
+		}
+	}
+	return deviceFeatures, nil
+}
+
+func (p *Profiles) rotateOnlineAPIToken(oldAPIToken, newAPIToken string, deviceFeatures []rotateOnlineDeviceFeat) error {
+	_, _, keepAliveErr := utils.Get(p.onlineKeepAliveURL)
+	if keepAliveErr != nil {
+		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote online service")
+	}
+
+	payloadJSON, err := json.Marshal(rotateOnlineAPITokenReq{
+		OldAPIToken:    oldAPIToken,
+		NewAPIToken:    newAPIToken,
+		DeviceFeatures: deviceFeatures,
+	})
+	if err != nil {
+		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create payload to rotate online apiToken")
+	}
+
+	_, _, err = utils.Post(p.onlineRotateAPITokenURL, payloadJSON)
+	if err != nil {
+		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot rotate online apiToken")
+	}
+	return nil
+}
+
+func sensorDbName() string {
+	if os.Getenv("ENV") == "testing" {
+		return "sensors_test"
+	}
+	return "sensors"
+}
+
+func controllerDbName() string {
+	if os.Getenv("ENV") == "testing" {
+		return "controllers-test"
+	}
+	return "controllers"
 }
 
 // PostProfilesFCMToken function to store the Firebase Cloud Messaging Token

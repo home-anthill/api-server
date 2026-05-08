@@ -2,6 +2,7 @@ package testuutils
 
 import (
 	"api-server/models"
+	"api-server/utils"
 	"context"
 	"os"
 	"time"
@@ -69,10 +70,21 @@ func AssignDeviceToProfile(ctx context.Context, collectionProfiles *mongo.Collec
 }
 
 func SetAPITokenToProfile(ctx context.Context, collectionProfiles *mongo.Collection, profileId bson.ObjectID, apiToken string) error {
-	_, err := collectionProfiles.UpdateOne(
+	apiTokenEncrypted, err := utils.EncryptAPIToken(apiToken)
+	if err != nil {
+		return err
+	}
+	apiTokenHash, err := utils.HashAPIToken(apiToken)
+	if err != nil {
+		return err
+	}
+	_, err = collectionProfiles.UpdateOne(
 		ctx,
 		bson.M{"_id": profileId},
-		bson.M{"$set": bson.M{"apiToken": apiToken}},
+		bson.M{"$set": bson.M{
+			"apiTokenHash":      apiTokenHash,
+			"apiTokenEncrypted": apiTokenEncrypted,
+		}},
 	)
 	return err
 }

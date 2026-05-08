@@ -96,8 +96,15 @@ func (ft *FCMToken) PostFCMToken(c *gin.Context) {
 		return
 	}
 
+	apiToken, err := decryptProfileAPIToken(&profile)
+	if err != nil {
+		ft.logger.Error("REST - POST - PostFCMToken - cannot load profile api token")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot initialize FCM Token"})
+		return
+	}
+
 	var onlineFCMReq = OnlineFCMReq{
-		APIToken: profile.APIToken,
+		APIToken: apiToken,
 		FCMToken: initFCMTokenBody.FCMToken,
 	}
 	err = ft.initFCMTokenViaHTTP(&onlineFCMReq)

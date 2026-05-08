@@ -53,6 +53,7 @@ This file summarizes significant architectural and behavioural changes made with
 - **Refresh-token indexes were added**: Unique token hash, family lookup, and expiry TTL indexes are ensured.
 - **App login code indexes were added**: App login codes have a unique code index and TTL expiry index.
 - **Profile uniqueness was hardened**: GitHub profile identity is protected with a unique index.
+- **Profile API token storage was hardened**: Profiles store `apiTokenHash` plus AES-GCM `apiTokenEncrypted` instead of plaintext `apiToken`; lookup hashes require `API_TOKEN_HASH_SECRET`, and encryption requires `API_TOKEN_ENCRYPTION_KEY`.
 - **Old refresh-token indexes are cleaned up**: Legacy refresh-token expiry index naming is handled during startup.
 - **MongoDB startup uses explicit contexts**: Database connection validation and index setup use a startup context with timeout instead of `context.TODO`.
 - **Test execution is isolated**: Tests run with `ENV=testing` and use the testing database name.
@@ -68,6 +69,7 @@ This file summarizes significant architectural and behavioural changes made with
 - **Sensitive logs were cleaned up**: API tokens and other sensitive values are no longer logged in plaintext.
 - **Request size limiting is configured**: The API enforces a maximum request body size.
 - **Gin default request logging was avoided**: The router uses explicit middleware instead of Gin's default logger to avoid logging full request details.
+- **GitHub login allowlist supports multiple emails**: `SINGLE_USER_LOGIN_EMAIL` was replaced by `LIMIT_TO_USER_EMAILS`, a comma-separated case-insensitive allowlist. Empty means unrestricted login.
 
 ---
 
@@ -84,6 +86,7 @@ This file summarizes significant architectural and behavioural changes made with
 - **Timestamp handling was normalized**: Token and OAuth operations now capture `time.Now().UTC()` once per logical operation and derive related timestamps from it.
 - **Common Go correctness issues were fixed**: Shadowed errors, unsafe type assertions, ignored errors, nil cursor cleanup, loop-variable pointer aliasing, and deferred resource accumulation were corrected.
 - **Data shape issues were fixed**: New homes initialize rooms properly, internal online API fields are hidden, and FCM forwarding includes the required API token.
+- **Profile token rotation now propagates credentials**: Regenerating a profile API token updates the profile, registered sensors, and registered controllers, then calls `online` `POST /api-token/rotate` with the profile's device/feature UUIDs so Redis online state and `fcm_by_api_token` do not keep stale plaintext tokens, including cases where Redis was already stale from an earlier partial rotation.
 
 ---
 

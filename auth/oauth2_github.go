@@ -170,11 +170,8 @@ func githubEndpointURL(defaultURL, envName string) string {
 // FindOrCreateGitHubProfile returns the local profile for a GitHub identity,
 // creating one when this is the first successful login for that GitHub user.
 func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, collProfiles *mongo.Collection, githubProfile models.GitHub) (models.Profile, error) {
-	singleUserLoginEmail := os.Getenv("SINGLE_USER_LOGIN_EMAIL")
-	if singleUserLoginEmail != "" {
-		if githubProfile.Email == "" || githubProfile.Email != singleUserLoginEmail {
-			return models.Profile{}, fmt.Errorf("login not permitted")
-		}
+	if !isGitHubEmailAllowed(githubProfile.Email, os.Getenv("LIMIT_TO_USER_EMAILS")) {
+		return models.Profile{}, fmt.Errorf("login not permitted")
 	}
 
 	var profile models.Profile
@@ -191,14 +188,24 @@ func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, c
 	}
 
 	now := time.Now().UTC()
+	apiToken := uuid.NewString()
+	apiTokenEncrypted, err := utils.EncryptAPIToken(apiToken)
+	if err != nil {
+		return models.Profile{}, err
+	}
+	apiTokenHash, err := utils.HashAPIToken(apiToken)
+	if err != nil {
+		return models.Profile{}, err
+	}
 	profile = models.Profile{
-		ID:         bson.NewObjectID(),
-		Github:     githubProfile,
-		APIToken:   uuid.NewString(),
-		Homes:      []bson.ObjectID{},
-		Devices:    []bson.ObjectID{},
-		CreatedAt:  now,
-		ModifiedAt: now,
+		ID:                bson.NewObjectID(),
+		Github:            githubProfile,
+		APITokenHash:      apiTokenHash,
+		APITokenEncrypted: apiTokenEncrypted,
+		Homes:             []bson.ObjectID{},
+		Devices:           []bson.ObjectID{},
+		CreatedAt:         now,
+		ModifiedAt:        now,
 	}
 
 	if _, err = collProfiles.InsertOne(ctx, profile); err != nil {
@@ -209,7 +216,25 @@ func FindOrCreateGitHubProfile(ctx context.Context, logger *zap.SugaredLogger, c
 		"profileID", profile.ID.Hex(),
 		"githubLogin", githubProfile.Login,
 	)
+	profile.APIToken = apiToken
 	return profile, nil
+}
+
+func isGitHubEmailAllowed(email, allowedEmails string) bool {
+	allowedEmails = strings.TrimSpace(allowedEmails)
+	if allowedEmails == "" {
+		return true
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
+		return false
+	}
+	for _, allowedEmail := range strings.Split(allowedEmails, ",") {
+		if email == strings.ToLower(strings.TrimSpace(allowedEmail)) {
+			return true
+		}
+	}
+	return false
 }
 
 // IssueGitHubLoginResult creates a local access JWT and an opaque refresh token

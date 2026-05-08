@@ -227,7 +227,7 @@ var _ = Describe("DevicesValues", func() {
 		collHomes = db.GetCollections(client).Homes
 		collDevices = db.GetCollections(client).Devices
 
-		err := os.Setenv("SINGLE_USER_LOGIN_EMAIL", "test@test.com")
+		err := os.Setenv("LIMIT_TO_USER_EMAILS", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())
 
 		// --------- start a gRPC server ---------

@@ -35,6 +35,13 @@ type DevicesValues struct {
 	validate          *validator.Validate
 }
 
+func decryptProfileAPIToken(profile *models.Profile) (string, error) {
+	if profile.APITokenEncrypted != "" {
+		return utils.DecryptAPIToken(profile.APITokenEncrypted)
+	}
+	return "", fmt.Errorf("profile has no usable api token")
+}
+
 // NewDevicesValues constructs a DevicesValues handler with the given dependencies.
 func NewDevicesValues(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *DevicesValues {
 	grpcURL := os.Getenv("GRPC_URL")
@@ -93,7 +100,13 @@ func (dv *DevicesValues) GetValuesDevice(c *gin.Context) {
 	for _, feature := range device.Features {
 		dv.logger.Debugf("REST - GET - GetValuesDevice - feature = %v", feature)
 		if feature.Type == models.Controller {
-			state, err := dv.getControllerValue(&device, &feature, profile.APIToken)
+			apiToken, err := decryptProfileAPIToken(&profile)
+			if err != nil {
+				dv.logger.Error("REST - GET - GetValuesDevice - cannot load profile api token")
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get device values"})
+				return
+			}
+			state, err := dv.getControllerValue(&device, &feature, apiToken)
 			if err != nil {
 				dv.logger.Errorf("REST - GET - GetValuesDevice - cannot get values via gRPC, err = %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot get values"})
@@ -189,8 +202,16 @@ func (dv *DevicesValues) PostValuesDevice(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid device feature"})
 		return
 	}
+
+	apiToken, err := decryptProfileAPIToken(&profile)
+	if err != nil {
+		dv.logger.Error("REST - POST - SetValuesDevice - cannot load profile api token")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set device values"})
+		return
+	}
+
 	// send via gRPC
-	err = dv.sendViaGrpc(&device, featureStates, profile.APIToken)
+	err = dv.sendViaGrpc(&device, featureStates, apiToken)
 	if err != nil {
 		dv.logger.Errorf("REST - POST - PostValuesDevice - cannot set values via gRPC, err %#v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})

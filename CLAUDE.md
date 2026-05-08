@@ -62,6 +62,7 @@ public/                    # SPA static assets (served in non-prod environments)
 - **Refresh token cookie — `SameSite=Lax` vs `Strict`**: `SameSite=Strict` causes Chrome to silently drop the cookie during the GitHub OAuth2 callback redirect (a cross-site top-level navigation from `github.com`). `SameSite=Lax` is the correct value: it still blocks the cookie from being sent in cross-site sub-resource requests (CSRF protection), while allowing it to be stored during top-level cross-site navigations such as the OAuth2 redirect.
 - **OAuth routes**: OAuth endpoints are grouped under `/api/oauth`: web uses `GET /login`, `GET /callback`, `POST /refresh`, `POST /logout`; mobile uses `GET /app/login`, `GET /app/callback`, `POST /app/exchange-code`, `POST /app/refresh`, `POST /app/logout`.
 - **OAuth web login redirect**: `GitHubCallback` redirects to `/postlogin` with the access token as a URL fragment (`#token=...`) so the token is never sent to the server in subsequent requests and does not appear in access logs.
+- **Login email allowlist**: `LIMIT_TO_USER_EMAILS` is an optional comma-separated GitHub email allowlist. Empty means unrestricted login; non-empty requires the GitHub email to match one of the trimmed case-insensitive entries.
 - **OAuth state values**: Web and mobile GitHub OAuth `state` values are generated with `utils.NewPKCEVerifier()` (128 URL-safe characters from 96 random bytes) and validated with constant-time comparison.
 - **OAuth mobile login**: Mobile login uses a separate GitHub OAuth client and a one-time app code. `GET /api/oauth/app/login` requires app PKCE parameters plus an `app_state` value that satisfies PKCE verifier syntax. The browser/OS callback returns `/app/postlogin?code=...&state=...`; the app must verify the returned state and redeem the code with its original PKCE verifier through `/api/oauth/app/exchange-code` before local JWTs and mobile refresh tokens are issued.
 - **Mobile app login codes**: App login codes are opaque 128-character base64url strings generated from 96 random bytes. `/api/oauth/app/exchange-code` rejects malformed codes before database lookup.
@@ -69,6 +70,8 @@ public/                    # SPA static assets (served in non-prod environments)
 - **Internal HTTP calls**: Use the shared helpers in `utils/http.go` for calls to sensor/online services. They apply a bounded timeout, return non-2xx responses as errors, and centralize response-body handling.
 - **Internal service URLs**: Device UUIDs, feature UUIDs, and feature names must be escaped with `url.PathEscape` before being appended as path segments for sensor/online service URLs.
 - **Device value authorization**: `POST /api/devices/:id/values` validates each requested feature against the owned device's enabled controller features before forwarding to gRPC. Do not trust caller-provided feature UUID/name/type alone.
+- **API token storage**: Profile API tokens are never stored plaintext. `apiTokenHash` is an HMAC-SHA-256 lookup value using `API_TOKEN_HASH_SECRET`; `apiTokenEncrypted` is AES-GCM encrypted using `API_TOKEN_ENCRYPTION_KEY`. Both env vars are mandatory and have no fallback to JWT/refresh secrets.
+- **API token rotation**: `POST /api/profiles/:id/tokens` updates the profile, registered sensors, and registered controllers with the new token hash/encrypted token, then calls the `online` service `POST /api-token/rotate` endpoint with the profile's device/feature UUIDs so Redis online hashes and the FCM lookup move to the new plaintext token even if Redis still contains a stale older token.
 
 ## Testing
 
@@ -95,7 +98,10 @@ Copy `.env_template` to `.env` and fill in GitHub OAuth credentials. Key variabl
 - `GRPC_TLS` / `CERT_FOLDER_PATH` - gRPC TLS toggle and certificate path
 - `HTTP_SERVER` / `HTTP_PORT` / `HTTP_CORS` - Server bind config
 - `HTTP_SENSOR_*` / `HTTP_ONLINE_*` - External service endpoints
-- `SINGLE_USER_LOGIN_EMAIL` - Restrict login to a single GitHub email (optional)
+- `HTTP_ONLINE_ROTATE_APITOKEN_API` - Internal online-service endpoint used during profile API token rotation
+- `LIMIT_TO_USER_EMAILS` - Optional comma-separated GitHub email allowlist for login
+- `API_TOKEN_HASH_SECRET` - Mandatory HMAC secret/pepper for profile/device API token lookup hashes
+- `API_TOKEN_ENCRYPTION_KEY` - Mandatory 32-byte raw or base64/base64url AES-GCM key for encrypted API token storage
 - `INTERNAL_CLUSTER_PATH` - Kubernetes internal service address
 - `LOG_FOLDER` - Log file directory
 
