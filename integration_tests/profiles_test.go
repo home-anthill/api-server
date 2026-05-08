@@ -9,9 +9,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"net"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -43,47 +43,33 @@ var _ = Describe("Profiles", func() {
 	var collProfiles *mongo.Collection
 	var collHomes *mongo.Collection
 	var collDevices *mongo.Collection
-	var onlineMockServer *httptest.Server
-	var oldOnlineServer string
-	var oldOnlinePort string
-	var oldOnlineServerSet bool
-	var oldOnlinePortSet bool
+	var httpMockServer *httptest.Server
+
+	keepAliveOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	apiTokenRotateOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var payload rotateOnlineAPITokenPayload
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		if payload.OldAPIToken == "" || payload.NewAPIToken == "" {
+			http.Error(w, "missing api token", http.StatusBadRequest)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	})
 
 	BeforeEach(func() {
-		mux := http.NewServeMux()
-		mux.HandleFunc("/keepalive/", func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodGet {
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-		})
-		mux.HandleFunc("/api-token/rotate", func(w http.ResponseWriter, r *http.Request) {
-			if r.Method != http.MethodPost {
-				http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-				return
-			}
-			var payload rotateOnlineAPITokenPayload
-			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-				http.Error(w, "invalid json", http.StatusBadRequest)
-				return
-			}
-			if payload.OldAPIToken == "" || payload.NewAPIToken == "" {
-				http.Error(w, "missing api token", http.StatusBadRequest)
-				return
-			}
-			w.WriteHeader(http.StatusOK)
-		})
-		onlineMockServer = httptest.NewServer(mux)
-		onlineMockURL, err := url.Parse(onlineMockServer.URL)
-		Expect(err).ShouldNot(HaveOccurred())
-		oldOnlineServer, oldOnlineServerSet = os.LookupEnv("HTTP_ONLINE_SERVER")
-		oldOnlinePort, oldOnlinePortSet = os.LookupEnv("HTTP_ONLINE_PORT")
-		err = os.Setenv("HTTP_ONLINE_SERVER", onlineMockURL.Scheme+"://"+onlineMockURL.Hostname())
-		Expect(err).ShouldNot(HaveOccurred())
-		err = os.Setenv("HTTP_ONLINE_PORT", onlineMockURL.Port())
-		Expect(err).ShouldNot(HaveOccurred())
-
 		logger, router, client = initialization.MustStart()
 		ctx = context.Background()
 		defer logger.Sync()
@@ -92,27 +78,29 @@ var _ = Describe("Profiles", func() {
 		collHomes = db.GetCollections(client).Homes
 		collDevices = db.GetCollections(client).Devices
 
-		err = os.Setenv("LIMIT_TO_USER_EMAILS", "test@test.com")
+		err := os.Setenv("LIMIT_TO_USER_EMAILS", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())
+
+		// --------- start an HTTP server ---------
+		mux := http.NewServeMux()
+		mux.HandleFunc("/keepalive/", keepAliveOnlineHandler)
+		mux.HandleFunc("/api-token/rotate/", apiTokenRotateOnlineHandler)
+		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
+		logger.Infof("online_test - HTTP client listening at %s", httpListener.Addr().String())
+		Expect(errHTTP).ShouldNot(HaveOccurred())
+		httpMockServer = httptest.NewUnstartedServer(mux)
+		// NewUnstartedServer creates an httpListener, so we need to Close that
+		// httpListener and replace it with the one we created.
+		httpMockServer.Listener.Close()
+		httpMockServer.Listener = httpListener
+		go func() {
+			httpMockServer.Start()
+		}()
 	})
 
 	AfterEach(func() {
+		httpMockServer.Close()
 		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
-		onlineMockServer.Close()
-		if oldOnlineServerSet {
-			err := os.Setenv("HTTP_ONLINE_SERVER", oldOnlineServer)
-			Expect(err).ShouldNot(HaveOccurred())
-		} else {
-			err := os.Unsetenv("HTTP_ONLINE_SERVER")
-			Expect(err).ShouldNot(HaveOccurred())
-		}
-		if oldOnlinePortSet {
-			err := os.Setenv("HTTP_ONLINE_PORT", oldOnlinePort)
-			Expect(err).ShouldNot(HaveOccurred())
-		} else {
-			err := os.Unsetenv("HTTP_ONLINE_PORT")
-			Expect(err).ShouldNot(HaveOccurred())
-		}
 	})
 
 	Context("calling profiles api GET", func() {
