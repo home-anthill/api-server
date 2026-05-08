@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +22,10 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
+
+const setValuesGRPCTimeout = time.Second
 
 // DevicesValues handles reading and writing feature values for devices.
 type DevicesValues struct {
@@ -213,7 +217,7 @@ func (dv *DevicesValues) PostValuesDevice(c *gin.Context) {
 	// send via gRPC
 	err = dv.sendViaGrpc(&device, featureStates, apiToken)
 	if err != nil {
-		dv.logger.Errorf("REST - POST - PostValuesDevice - cannot set values via gRPC, err %#v", err)
+		dv.logger.Errorf("REST - POST - PostValuesDevice - cannot set values via gRPC, err %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot set value"})
 		return
 	}
@@ -294,12 +298,7 @@ func (dv *DevicesValues) sendViaGrpc(device *models.Device, featureStates []mode
 	// -------------------------------------------------------
 	dv.logger.Info("gRPC - sendViaGrpc - gRPC server connected")
 
-	const grpcClientDeadline = 200 * time.Millisecond
-	const grpcContextTimeout = 5 * time.Second
-	clientDeadline := time.Now().Add(grpcClientDeadline)
-	contextBg, cancelBg := context.WithTimeout(context.Background(), grpcContextTimeout)
-	defer cancelBg()
-	ctx, cancel := context.WithDeadline(contextBg, clientDeadline)
+	ctx, cancel := context.WithTimeout(context.Background(), setValuesGRPCTimeout)
 	defer cancel()
 
 	requests := utils.MapSlice(featureStates, func(featureState models.DeviceFeatureState) *pb.SetValueRequest {
@@ -319,11 +318,33 @@ func (dv *DevicesValues) sendViaGrpc(device *models.Device, featureStates []mode
 		FeatureValues: requests,
 	})
 	if errSend != nil {
+		if grpcStatus, ok := status.FromError(errSend); ok {
+			dv.logger.Errorw("gRPC - sendViaGrpc - SetValues failed",
+				"code", grpcStatus.Code().String(),
+				"message", grpcStatus.Message(),
+				"target", dv.grpcTarget,
+				"timeout", setValuesGRPCTimeout.String(),
+			)
+		} else {
+			dv.logger.Errorf("gRPC - sendViaGrpc - SetValues failed, err %v", errSend)
+		}
 		return errSend
+	}
+
+	if !isSuccessfulSetValueResponseStatus(response.GetStatus()) {
+		return fmt.Errorf("gRPC SetValues returned status %s: %s", response.GetStatus(), response.GetMessage())
 	}
 
 	dv.logger.Debugf("gRPC - sendViaGrpc - Device set value response %#v", response)
 	return nil
+}
+
+func isSuccessfulSetValueResponseStatus(status string) bool {
+	normalizedStatus := strings.TrimSpace(status)
+	return normalizedStatus == "" ||
+		normalizedStatus == "200" ||
+		strings.EqualFold(normalizedStatus, "ok") ||
+		strings.EqualFold(normalizedStatus, "success")
 }
 
 func (dv *DevicesValues) validateFeatureStatesForDevice(device *models.Device, featureStates []models.DeviceFeatureState) error {
