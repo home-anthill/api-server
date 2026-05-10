@@ -14,6 +14,8 @@ func setValidEnv(t *testing.T) {
 	t.Setenv("JWT_REFRESH_PASSWORD", "fedcba9876543210fedcba9876543210")
 	t.Setenv("REFRESH_TOKEN_HASH_SECRET", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
 	t.Setenv("COOKIE_SECRET", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+	t.Setenv("API_TOKEN_HASH_SECRET", "cccccccccccccccccccccccccccccccc")
+	t.Setenv("API_TOKEN_ENCRYPTION_KEY", "dddddddddddddddddddddddddddddddd")
 	t.Setenv("OAUTH2_CLIENTID", "web-client-id")
 	t.Setenv("OAUTH2_SECRETID", "web-client-secret")
 	t.Setenv("OAUTH2_APP_CLIENTID", "app-client-id")
@@ -46,6 +48,24 @@ func TestPrintEnvRejectsShortCookieSecret(t *testing.T) {
 
 	if err := printEnv(zap.NewNop().Sugar()); err == nil {
 		t.Fatal("expected error for short COOKIE_SECRET")
+	}
+}
+
+func TestPrintEnvRejectsMissingAPITokenHashSecret(t *testing.T) {
+	setValidEnv(t)
+	t.Setenv("API_TOKEN_HASH_SECRET", "")
+
+	if err := printEnv(zap.NewNop().Sugar()); err == nil {
+		t.Fatal("expected error for missing API_TOKEN_HASH_SECRET")
+	}
+}
+
+func TestPrintEnvRejectsShortAPITokenHashSecret(t *testing.T) {
+	setValidEnv(t)
+	t.Setenv("API_TOKEN_HASH_SECRET", "short")
+
+	if err := printEnv(zap.NewNop().Sugar()); err == nil {
+		t.Fatal("expected error for short API_TOKEN_HASH_SECRET")
 	}
 }
 

@@ -46,6 +46,8 @@ func printEnv(logger *zap.SugaredLogger) error {
 		"JWT_REFRESH_PASSWORD",
 		"REFRESH_TOKEN_HASH_SECRET",
 		"COOKIE_SECRET",
+		"API_TOKEN_HASH_SECRET",
+		"API_TOKEN_ENCRYPTION_KEY",
 		"OAUTH2_CLIENTID",
 		"OAUTH2_SECRETID",
 		"OAUTH2_APP_CLIENTID",
@@ -69,6 +71,9 @@ func printEnv(logger *zap.SugaredLogger) error {
 	}
 	if len(os.Getenv("COOKIE_SECRET")) < 32 {
 		return errors.New("'COOKIE_SECRET' environment variable is mandatory and must be at least 32 characters")
+	}
+	if len(os.Getenv("API_TOKEN_HASH_SECRET")) < 32 {
+		return errors.New("'API_TOKEN_HASH_SECRET' environment variable must be at least 32 characters")
 	}
 	validateOAuthURL := func(name string) error {
 		raw := strings.TrimSpace(os.Getenv(name))
@@ -120,6 +125,8 @@ func printEnv(logger *zap.SugaredLogger) error {
 	logger.Infof("COOKIE_SECRET = [redacted]")
 	logger.Infof("JWT_PASSWORD = [redacted]")
 	logger.Infof("JWT_REFRESH_PASSWORD = [redacted]")
+	logger.Infof("API_TOKEN_HASH_SECRET = [redacted]")
+	logger.Infof("API_TOKEN_ENCRYPTION_KEY = [redacted]")
 	logger.Infof("OAUTH2_SECRETID = [redacted]")
 	logger.Infof("OAUTH2_APP_SECRETID = [redacted]")
 	return nil

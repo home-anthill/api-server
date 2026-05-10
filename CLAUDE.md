@@ -100,7 +100,7 @@ Copy `.env_template` to `.env` and fill in GitHub OAuth credentials. Key variabl
 - `HTTP_SENSOR_*` / `HTTP_ONLINE_*` - External service endpoints
 - `HTTP_ONLINE_ROTATE_APITOKEN_API` - Internal online-service endpoint used during profile API token rotation
 - `LIMIT_TO_USER_EMAILS` - Optional comma-separated GitHub email allowlist for login
-- `API_TOKEN_HASH_SECRET` - Mandatory HMAC secret/pepper for profile/device API token lookup hashes
+- `API_TOKEN_HASH_SECRET` - Mandatory HMAC secret/pepper for profile/device API token lookup hashes; startup rejects values shorter than 32 characters
 - `API_TOKEN_ENCRYPTION_KEY` - Mandatory 32-byte raw or base64/base64url AES-GCM key for encrypted API token storage
 - `INTERNAL_CLUSTER_PATH` - Kubernetes internal service address
 - `LOG_FOLDER` - Log file directory

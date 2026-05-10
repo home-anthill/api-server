@@ -17,6 +17,7 @@ This file summarizes significant architectural and behavioural changes made with
 - **Mobile app login code validation was tightened**: App-code exchange rejects malformed one-time codes before database lookup, and generated app codes use 128-character base64url entropy.
 - **GitHub OAuth helpers were centralized**: Authorization URL building, GitHub token exchange, GitHub user fetching, profile creation, and login-result issuance were moved into shared auth utilities where appropriate.
 - Hardened `api-server` startup validation to fail closed on missing or weak auth config: JWT secrets, refresh-token hash secret, cookie secret, OAuth client IDs/secrets, OAuth callback URLs, and production `HTTP_CORS=true`
+- Startup validation now also requires `API_TOKEN_HASH_SECRET` / `API_TOKEN_ENCRYPTION_KEY`; `API_TOKEN_HASH_SECRET` must be at least 32 characters.
 
 ---
 
