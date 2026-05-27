@@ -10,3 +10,4 @@ coverage
 *.log
 .gocache/
 .gomodcache/
+build
