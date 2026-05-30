@@ -18,6 +18,30 @@ const (
 	Sensor     Type = "sensor"
 )
 
+// SpecFormat represents the format of spec
+type SpecFormat string
+
+// Supported Spec Formats.
+const (
+	Bool  SpecFormat = "bool"
+	Int   SpecFormat = "int"
+	Float SpecFormat = "float"
+	List  SpecFormat = "list"
+)
+
+type SpecListItem struct {
+	Value float32 `json:"value" bson:"value"`
+	Text  string  `json:"text" bson:"text"`
+}
+
+type Spec struct {
+	Format SpecFormat     `json:"format" bson:"format"`
+	Min    *float64       `json:"min,omitempty" bson:"min,omitempty"`
+	Max    *float64       `json:"max,omitempty" bson:"max,omitempty"`
+	Step   *float64       `json:"step,omitempty" bson:"step,omitempty"`
+	List   []SpecListItem `json:"list,omitempty" bson:"list,omitempty"`
+}
+
 // Feature struct
 type Feature struct {
 	UUID   string `json:"uuid" bson:"uuid"`
@@ -26,6 +50,7 @@ type Feature struct {
 	Enable bool   `json:"enable" bson:"enable"`
 	Order  int    `json:"order" bson:"order"`
 	Unit   string `json:"unit" bson:"unit"`
+	Spec   Spec   `json:"spec" bson:"spec"`
 }
 
 // Device struct
