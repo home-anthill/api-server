@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.0.0
+
+### Features
+
+- add device feature spec support
+
+
 ## 5.0.0
 
 ### OAuth, PKCE, And Login Flows
