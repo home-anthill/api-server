@@ -6,6 +6,18 @@
 
 - add device feature spec support
 
+### Tests
+
+- Added JWT middleware tests for malformed, expired, not-yet-valid, wrongly signed, wrong-issuer, refresh-token, session-mismatch, web-session, and mobile bearer-only access-token paths.
+- Added OAuth helper tests for GitHub authorization URL construction, token exchange failures, user fetch validation, endpoint overrides, login-result error handling, and email allowlist rejection before database lookup.
+- Added utility tests for PKCE verifier/challenge/app-code validation, refresh-token hashing secret precedence, API token hashing/encryption/decryption error handling, random string generation, validator error formatting, and session/JWT context identity extraction.
+- Added startup environment tests for required secrets, OAuth callbacks, invalid/short auth config, `.env` discovery, and `InitEnv` error propagation.
+- Added integration coverage for OAuth refresh/logout validation, OAuth callbacks missing code/state, missing profile records, missing owned devices, invalid device UUIDs, and profile API-token load failures across device values, FCM, and token rotation flows.
+
+### Chores
+
+- update dependencies
+
 
 ## 5.0.0
 

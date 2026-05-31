@@ -288,6 +288,24 @@ var _ = Describe("LoginGithub", func() {
 			Expect(recorder.Code).To(Equal(http.StatusOK))
 		})
 
+		It("should reject mobile refresh without a JSON body", func() {
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/refresh", nil)
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+		})
+
+		It("should reject mobile refresh with an empty refresh token", func() {
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/refresh", strings.NewReader(`{"refreshToken":""}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusUnauthorized))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token not found"}`))
+		})
+
 		It("should logout mobile app without clearing or renewing a session cookie", func() {
 			_, refreshToken := testuutils.GetJwtMobileApp(router)
 
@@ -297,6 +315,31 @@ var _ = Describe("LoginGithub", func() {
 			router.ServeHTTP(recorder, req)
 			Expect(recorder.Code).To(Equal(http.StatusNoContent))
 			Expect(strings.Join(recorder.Header().Values("Set-Cookie"), "; ")).ToNot(ContainSubstring(utils.SessionName + "="))
+		})
+
+		It("should logout web clients even without a refresh token cookie", func() {
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/logout", nil)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusNoContent))
+		})
+
+		It("should reject mobile logout without a JSON body", func() {
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/logout", nil)
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request payload"}`))
+		})
+
+		It("should reject mobile logout with an empty refresh token", func() {
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest("POST", "/api/oauth/app/logout", strings.NewReader(`{"refreshToken":""}`))
+			req.Header.Add("Content-Type", "application/json")
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"refresh token not found"}`))
 		})
 	})
 

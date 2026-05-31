@@ -339,6 +339,27 @@ var _ = Describe("DevicesValues", func() {
 				Expect(deviceStates[0].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[0].ModifiedAt).To(Equal(currentDate.UnixMilli()))
 			})
+
+			It("should return an error when the profile apiToken cannot be loaded", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				_, err = collProfiles.UpdateOne(ctx, bson.M{"_id": profileRes.ID}, bson.M{
+					"$unset": bson.M{"apiTokenEncrypted": ""},
+				})
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+deviceController.ID.Hex()+"/values", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot get device values"}`))
+			})
 		})
 
 		When("profile owns a sensor", func() {
@@ -470,6 +491,30 @@ var _ = Describe("DevicesValues", func() {
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find device"}`))
+			})
+		})
+
+		When("profile owns a sensor with an invalid UUID", func() {
+			It("should return an error before calling the sensor service", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				deviceBadUUID := deviceSensor
+				deviceBadUUID.ID = bson.NewObjectID()
+				deviceBadUUID.UUID = "not-a-uuid"
+				err := testuutils.InsertOne(ctx, collDevices, deviceBadUUID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceBadUUID.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/devices/"+deviceBadUUID.ID.Hex()+"/values", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot get sensor value"}`))
 			})
 		})
 	})

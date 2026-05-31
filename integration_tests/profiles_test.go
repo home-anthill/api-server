@@ -161,6 +161,25 @@ var _ = Describe("Profiles", func() {
 			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 			Expect(recorder.Body.String()).To(Equal(`{"error":"cannot re-generate APIToken for a different profile then yours"}`))
 		})
+
+		It("should return an error, if the current apiToken cannot be loaded", func() {
+			jwtToken, cookieSession := testuutils.GetJwt(router)
+			profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+			_, err := collProfiles.UpdateOne(ctx, bson.M{"_id": profileRes.ID}, bson.M{
+				"$unset": bson.M{"apiTokenEncrypted": ""},
+			})
+			Expect(err).ShouldNot(HaveOccurred())
+
+			recorder := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/api/profiles/"+profileRes.ID.Hex()+"/tokens", nil)
+			req.Header.Add("Cookie", cookieSession)
+			req.Header.Add("Authorization", "Bearer "+jwtToken)
+			req.Header.Add("Content-Type", `application/json`)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"cannot update apiToken"}`))
+		})
 	})
 
 	Context("calling profiles fcmToken api POST", func() {

@@ -220,6 +220,30 @@ var _ = Describe("Online", func() {
 				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find device"}`))
 			})
 		})
+
+		When("profile owns an online sensor with an invalid UUID", func() {
+			It("should return an error before calling the online service", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				deviceBadUUID := deviceSensor
+				deviceBadUUID.ID = bson.NewObjectID()
+				deviceBadUUID.UUID = "not-a-uuid"
+				err := testuutils.InsertOne(ctx, collDevices, deviceBadUUID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceBadUUID.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/online/"+deviceBadUUID.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"Cannot get online"}`))
+			})
+		})
 	})
 })
 

@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
 )
@@ -145,6 +146,32 @@ var _ = Describe("FCMToken", func() {
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 				Expect(recorder.Body.String()).To(Equal(`{"error":"invalid request body, these fields are not valid: fcmtoken"}`))
+			})
+
+			It("should return an error, if the profile apiToken cannot be loaded", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				_, err := collProfiles.UpdateOne(ctx, bson.M{"_id": profileRes.ID}, bson.M{
+					"$unset": bson.M{"apiTokenEncrypted": ""},
+				})
+				Expect(err).ShouldNot(HaveOccurred())
+
+				initFCMTokenReq := api.InitFCMTokenReq{
+					FCMToken: "dTknleBlRLqEoWBMjiIr80:APA91bEs_Tf8dkrZ_eb872Ok--Up34Luqp1S4WZwzTGr6X1ag4PO4ksHwFFifNqTb1lhATzNcaVqDZ01kP35a0caOa6Akw4oCzYh0ElqL8msgjtZw2phLEk",
+				}
+				var buf bytes.Buffer
+				err = json.NewEncoder(&buf).Encode(initFCMTokenReq)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, "/api/fcmtoken", &buf)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot initialize FCM Token"}`))
 			})
 		})
 	})

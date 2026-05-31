@@ -121,5 +121,21 @@ var _ = Describe("LoginGithub", func() {
 			Expect(recorder.Header().Get("Location")).To(HavePrefix("/postlogin#token="))
 			Expect(strings.TrimPrefix(recorder.Header().Get("Location"), "/postlogin#token=")).ToNot(BeEmpty())
 		})
+
+		It("should reject web oauth callback without code and state", func() {
+			recorder := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/api/oauth/callback", nil)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid oauth callback"}`))
+		})
+
+		It("should reject app oauth callback without code and state", func() {
+			recorder := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", "/api/oauth/app/callback", nil)
+			router.ServeHTTP(recorder, req)
+			Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+			Expect(recorder.Body.String()).To(Equal(`{"error":"invalid oauth callback"}`))
+		})
 	})
 })

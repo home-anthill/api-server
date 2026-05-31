@@ -176,6 +176,25 @@ var _ = Describe("Devices", func() {
 				Expect(devices).To(HaveLen(2))
 			})
 		})
+
+		When("profile session points to a missing profile", func() {
+			It("should return an error", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				_, err := collProfiles.DeleteOne(ctx, bson.M{"_id": profileRes.ID})
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/devices", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find profile"}`))
+			})
+		})
 	})
 
 	Context("calling devices api DELETE", func() {
@@ -280,6 +299,24 @@ var _ = Describe("Devices", func() {
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot delete device, because it is not in your profile"}`))
+			})
+
+			It("should return an error, because device is owned but missing from db", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				missingDeviceID := bson.NewObjectID()
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, missingDeviceID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+missingDeviceID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find device"}`))
 			})
 		})
 	})

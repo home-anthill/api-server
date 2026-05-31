@@ -177,6 +177,25 @@ var _ = Describe("Homes", func() {
 				Expect(homes[1].Rooms).To(HaveLen(len(home2.Rooms)))
 			})
 		})
+
+		When("profile session points to a missing profile", func() {
+			It("should return an error", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				_, err := collProfiles.DeleteOne(ctx, bson.M{"_id": profileRes.ID})
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/homes", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find profile"}`))
+			})
+		})
 	})
 
 	Context("calling homes api POST", func() {
