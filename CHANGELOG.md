@@ -5,6 +5,8 @@
 ### Features
 
 - add device feature spec support
+- Added authenticated `GET /api/notification` to return the logged profile's Redis notification
+  history through the `online` service without exposing the profile API token to clients.
 
 ### Tests
 
@@ -13,6 +15,8 @@
 - Added utility tests for PKCE verifier/challenge/app-code validation, refresh-token hashing secret precedence, API token hashing/encryption/decryption error handling, random string generation, validator error formatting, and session/JWT context identity extraction.
 - Added startup environment tests for required secrets, OAuth callbacks, invalid/short auth config, `.env` discovery, and `InitEnv` error propagation.
 - Added integration coverage for OAuth refresh/logout validation, OAuth callbacks missing code/state, missing profile records, missing owned devices, invalid device UUIDs, and profile API-token load failures across device values, FCM, and token rotation flows.
+- Added integration coverage for proxying logged-profile notifications from the mocked `online`
+  service.
 
 ### Chores
 

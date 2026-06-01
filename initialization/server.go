@@ -140,6 +140,7 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 	// FCM = Firebase Cloud Messaging => identify a smartphone on Firebase to send notifications
 	fcmToken := api.NewFCMToken(logger, client, validate)
 	online := api.NewOnline(logger, client)
+	notifications := api.NewNotifications(logger, client)
 
 	router.GET("/api/keepalive", keepAlive.GetKeepAlive)
 	oauth := router.Group("/api/oauth")
@@ -184,5 +185,6 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 
 		private.POST("/fcmtoken", fcmToken.PostFCMToken)
 		private.GET("/online/:id", online.GetOnline)
+		private.GET("/notifications", notifications.GetNotifications)
 	}
 }
