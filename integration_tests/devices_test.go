@@ -5,6 +5,7 @@ import (
 	"api-server/initialization"
 	"api-server/models"
 	"api-server/testuutils"
+	"bytes"
 	"context"
 	"encoding/json"
 	"net"
@@ -31,6 +32,7 @@ var _ = Describe("Devices", func() {
 	var collHomes *mongo.Collection
 	var collDevices *mongo.Collection
 	var httpMockServer *httptest.Server
+	var notificationPreferenceBody string
 
 	var currDate = time.Now()
 	var deviceController = models.Device{
@@ -111,6 +113,17 @@ var _ = Describe("Devices", func() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{}`))
 	})
+	updateOnlineFeatureNotificationHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		buf := new(bytes.Buffer)
+		_, _ = buf.ReadFrom(r.Body)
+		notificationPreferenceBody = buf.String()
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	})
 
 	BeforeEach(func() {
 		logger, router, client = initialization.MustStart()
@@ -127,6 +140,10 @@ var _ = Describe("Devices", func() {
 		// --------- start an HTTP server ---------
 		mux := http.NewServeMux()
 		mux.HandleFunc("/online/"+deviceOnlineSensor.UUID, deleteOnlineSensorOnlineHandler)
+		mux.HandleFunc(
+			"/online/"+deviceOnlineSensor.UUID+"/features/"+deviceOnlineSensor.Features[0].UUID+"/notifications",
+			updateOnlineFeatureNotificationHandler,
+		)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
 		logger.Infof("online_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
@@ -142,6 +159,7 @@ var _ = Describe("Devices", func() {
 
 	AfterEach(func() {
 		httpMockServer.Close()
+		notificationPreferenceBody = ""
 		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
 
@@ -317,6 +335,43 @@ var _ = Describe("Devices", func() {
 				router.ServeHTTP(recorder, req)
 				Expect(recorder.Code).To(Equal(http.StatusBadRequest))
 				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot find device"}`))
+			})
+		})
+	})
+
+	Context("calling device feature notifications api PUT", func() {
+		BeforeEach(func() {
+			err := testuutils.InsertOne(ctx, collDevices, deviceOnlineSensor)
+			Expect(err).ShouldNot(HaveOccurred())
+		})
+
+		When("profile owns the device", func() {
+			It("should silence feature notifications", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceOnlineSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				body := bytes.NewBufferString(`{"notificationSilenced":true}`)
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(
+					http.MethodPut,
+					"/api/devices/"+deviceOnlineSensor.ID.Hex()+"/features/"+deviceOnlineSensor.Features[0].UUID+"/notifications",
+					body,
+				)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`{"message":"feature notification updated"}`))
+				Expect(notificationPreferenceBody).To(Equal(`{"notificationSilenced":true}`))
+
+				deviceFromDb, err := testuutils.FindOneById[models.Device](ctx, collDevices, deviceOnlineSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(deviceFromDb.Features[0].NotificationSilenced).To(BeTrue())
 			})
 		})
 	})

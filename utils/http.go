@@ -34,6 +34,21 @@ func Post(url string, payloadJSON []byte) (int, string, error) {
 	return readRemoteHTTPResponse(response, "HTTP POST")
 }
 
+// Put function
+func Put(url string, payloadJSON []byte) (int, string, error) {
+	var payloadBody = bytes.NewBuffer(payloadJSON)
+	req, err := http.NewRequest(http.MethodPut, url, payloadBody)
+	if err != nil {
+		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create HTTP PUT request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	response, err := remoteHTTPClient.Do(req)
+	if err != nil {
+		return -1, "", customerrors.Wrap(http.StatusInternalServerError, err, "Cannot call HTTP PUT API of the remote service")
+	}
+	return readRemoteHTTPResponse(response, "HTTP PUT")
+}
+
 // Delete function
 func Delete(url string) (int, string, error) {
 	req, err := http.NewRequest(http.MethodDelete, url, nil)

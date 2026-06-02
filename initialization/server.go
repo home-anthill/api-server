@@ -178,6 +178,7 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 
 		private.GET("/devices", devices.GetDevices)
 		private.PUT("/devices/:id", devices.PutAssignDeviceToHomeRoom)
+		private.PUT("/devices/:id/features/:featureUuid/notifications", devices.PutFeatureNotification)
 		private.DELETE("/devices/:id", devices.DeleteDevice)
 
 		private.GET("/devices/:id/values", devicesValues.GetValuesDevice)

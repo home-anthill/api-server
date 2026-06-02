@@ -5,8 +5,12 @@
 ### Features
 
 - add device feature spec support
-- Added authenticated `GET /api/notification` to return the logged profile's Redis notification
-  history through the `online` service without exposing the profile API token to clients.
+- Added authenticated notification history API `GET /api/notifications` to return the logged
+  profile's Redis notification history through the `online` service without exposing the profile
+  API token to clients.
+- Added authenticated `PUT /api/devices/:id/features/:featureUuid/notifications` to persist a
+  per-feature `notificationSilenced` flag and forward it to the `online` service for push-alert
+  suppression.
 
 ### Tests
 
@@ -17,6 +21,7 @@
 - Added integration coverage for OAuth refresh/logout validation, OAuth callbacks missing code/state, missing profile records, missing owned devices, invalid device UUIDs, and profile API-token load failures across device values, FCM, and token rotation flows.
 - Added integration coverage for proxying logged-profile notifications from the mocked `online`
   service.
+- Added integration coverage for updating an owned feature's notification silence preference.
 
 ### Chores
 

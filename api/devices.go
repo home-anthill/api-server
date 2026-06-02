@@ -6,6 +6,7 @@ import (
 	"api-server/models"
 	"api-server/utils"
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"os"
@@ -25,6 +26,11 @@ type AssignDeviceReq struct {
 	HomeID string `json:"homeId" validate:"required"`
 	RoomID string `json:"roomId" validate:"required"`
 	Name   string `json:"name" validate:"omitempty,max=32"`
+}
+
+// UpdateFeatureNotificationReq is the request body for muting or unmuting notifications for a device feature.
+type UpdateFeatureNotificationReq struct {
+	NotificationSilenced bool `json:"notificationSilenced"`
 }
 
 // Devices handles device registration, lookup, and deletion.
@@ -410,6 +416,113 @@ func (d *Devices) PutAssignDeviceToHomeRoom(c *gin.Context) {
 		"deviceName", deviceName,
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "device has been assigned to room"})
+}
+
+// PutFeatureNotification updates whether notifications are silenced for one device feature.
+func (d *Devices) PutFeatureNotification(c *gin.Context) {
+	d.logger.Info("REST - PUT - PutFeatureNotification called")
+
+	deviceID, err := bson.ObjectIDFromHex(c.Param("id"))
+	if err != nil {
+		d.logger.Error("REST - PUT - PutFeatureNotification - wrong format of device 'id' path param")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of device 'id' path param"})
+		return
+	}
+	featureUUID := c.Param("featureUuid")
+	if !utils.IsValidUUID(featureUUID) {
+		d.logger.Error("REST - PUT - PutFeatureNotification - wrong format of feature UUID")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "wrong format of feature UUID"})
+		return
+	}
+
+	var input UpdateFeatureNotificationReq
+	if err = c.ShouldBindJSON(&input); err != nil {
+		d.logger.Error("REST - PUT - PutFeatureNotification - Cannot bind request body", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+		return
+	}
+
+	profileSession, err := utils.GetProfileFromContext(c)
+	if err != nil {
+		d.logger.Error("REST - PUT - PutFeatureNotification - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
+		return
+	}
+
+	var profile models.Profile
+	err = d.collProfiles.FindOne(c.Request.Context(), bson.M{"_id": profileSession.ID}).Decode(&profile)
+	if err != nil {
+		d.logger.Error("REST - PUT - PutFeatureNotification - cannot find profile")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find profile"})
+		return
+	}
+	if !utils.Contains(profile.Devices, deviceID) {
+		d.logger.Error("REST - PUT - PutFeatureNotification - this device is not in your profile")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "device does not belong to profile"})
+		return
+	}
+
+	var device models.Device
+	err = d.collDevices.FindOne(c.Request.Context(), bson.M{"_id": deviceID}).Decode(&device)
+	if err != nil {
+		d.logger.Error("REST - PUT - PutFeatureNotification - cannot find device")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find device"})
+		return
+	}
+	if !utils.IsValidUUID(device.UUID) {
+		d.logger.Error("REST - PUT - PutFeatureNotification - invalid device UUID format")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update feature notification"})
+		return
+	}
+
+	featureFound := false
+	for _, feature := range device.Features {
+		if feature.UUID == featureUUID {
+			featureFound = true
+			break
+		}
+	}
+	if !featureFound {
+		d.logger.Error("REST - PUT - PutFeatureNotification - cannot find feature")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "cannot find feature"})
+		return
+	}
+
+	filter := bson.M{"_id": deviceID, "features.uuid": featureUUID}
+	update := bson.M{
+		"$set": bson.M{
+			"features.$.notificationSilenced": input.NotificationSilenced,
+			"modifiedAt":                      time.Now(),
+		},
+	}
+	res, err := d.collDevices.UpdateOne(c.Request.Context(), filter, update)
+	if err != nil || res.MatchedCount == 0 {
+		d.logger.Errorf("REST - PUT - PutFeatureNotification - cannot update device feature, err = %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update feature notification"})
+		return
+	}
+
+	payloadJSON, err := json.Marshal(input)
+	if err != nil {
+		d.logger.Errorf("REST - PUT - PutFeatureNotification - cannot marshal online payload, err = %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update feature notification"})
+		return
+	}
+	onlineURL := d.onlineByUUIDURL + url.PathEscape(device.UUID) + "/features/" + url.PathEscape(featureUUID) + "/notifications"
+	if _, _, err = utils.Put(onlineURL, payloadJSON); err != nil {
+		d.logger.Errorf("REST - PUT - PutFeatureNotification - cannot update online notification preference = %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update feature notification"})
+		return
+	}
+
+	d.logger.Infow("AUDIT - feature notification preference updated",
+		"profileID", profileSession.ID.Hex(),
+		"deviceID", deviceID.Hex(),
+		"deviceUUID", device.UUID,
+		"featureUUID", featureUUID,
+		"notificationSilenced", input.NotificationSilenced,
+	)
+	c.JSON(http.StatusOK, gin.H{"message": "feature notification updated"})
 }
 
 func (d *Devices) deleteOnlineByUUIDService(urlOnline string) (int, string, error) {

@@ -44,13 +44,14 @@ type Spec struct {
 
 // Feature struct
 type Feature struct {
-	UUID   string `json:"uuid" bson:"uuid"`
-	Type   Type   `json:"type" bson:"type"`
-	Name   string `json:"name" bson:"name"`
-	Enable bool   `json:"enable" bson:"enable"`
-	Order  int    `json:"order" bson:"order"`
-	Unit   string `json:"unit" bson:"unit"`
-	Spec   Spec   `json:"spec" bson:"spec"`
+	UUID                 string `json:"uuid" bson:"uuid"`
+	Type                 Type   `json:"type" bson:"type"`
+	Name                 string `json:"name" bson:"name"`
+	Enable               bool   `json:"enable" bson:"enable"`
+	Order                int    `json:"order" bson:"order"`
+	Unit                 string `json:"unit" bson:"unit"`
+	Spec                 Spec   `json:"spec" bson:"spec"`
+	NotificationSilenced bool   `json:"notificationSilenced" bson:"notificationSilenced,omitempty"`
 }
 
 // Device struct
