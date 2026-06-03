@@ -7,6 +7,7 @@ option go_package = "github.com/Ks89/home-anthill/api-server/device";
 service Device {
   rpc GetValue (GetValueRequest) returns (GetValueResponse) {}
   rpc SetValues (SetValuesRequest) returns (SetValueResponse) {}
+  rpc DeleteValue (DeleteValueRequest) returns (SetValueResponse) {}
 }
 
 message GetValueRequest {
@@ -43,4 +44,9 @@ message SetValueRequest {
 message SetValueResponse {
   string status = 1;
   string message = 2;
+}
+
+message DeleteValueRequest {
+  string deviceUuid = 1;
+  string featureUuid = 2;
 }

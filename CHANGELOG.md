@@ -11,7 +11,14 @@
 - Added authenticated `PUT /api/devices/:id/features/:featureUuid/notifications` to persist a
   per-feature `notificationSilenced` flag and forward it to the `online` service for push-alert
   suppression.
-
+- Device deletion now cleans up registered sensor documents for each sensor feature and calls the
+  online service using the correct per-feature delete path so Redis online state is removed for
+  online sensors.
+- Device deletion now calls `api-devices` `DeleteValue` for each controller feature so controller
+  documents are cleaned up alongside sensor and online state.
+- Device deletion now fails the API request before removing api-server state when downstream
+  sensor, controller, or online cleanup cannot be completed.
+- 
 ### Tests
 
 - Added JWT middleware tests for malformed, expired, not-yet-valid, wrongly signed, wrong-issuer, refresh-token, session-mismatch, web-session, and mobile bearer-only access-token paths.

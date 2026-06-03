@@ -1,12 +1,14 @@
 package api
 
 import (
+	devicepb "api-server/api/grpc/device"
 	"api-server/customerrors"
 	"api-server/db"
 	"api-server/models"
 	"api-server/utils"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +21,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo/writeconcern"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 // AssignDeviceReq is the request body for assigning a device to a home room.
@@ -43,6 +47,7 @@ type Devices struct {
 	validate        *validator.Validate
 	grpcTarget      string
 	onlineByUUIDURL string
+	sensorByUUIDURL string
 }
 
 // NewDevices constructs a Devices handler with the given dependencies.
@@ -50,6 +55,8 @@ func NewDevices(logger *zap.SugaredLogger, client *mongo.Client, validate *valid
 	grpcURL := os.Getenv("GRPC_URL")
 	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
 	onlineByUUIDURL := onlineServerURL + os.Getenv("HTTP_ONLINE_API")
+	sensorServerURL := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
+	sensorByUUIDURL := sensorServerURL + os.Getenv("HTTP_SENSOR_GETVALUE_API")
 
 	return &Devices{
 		client:          client,
@@ -60,6 +67,7 @@ func NewDevices(logger *zap.SugaredLogger, client *mongo.Client, validate *valid
 		validate:        validate,
 		grpcTarget:      grpcURL,
 		onlineByUUIDURL: onlineByUUIDURL,
+		sensorByUUIDURL: sensorByUUIDURL,
 	}
 }
 
@@ -158,6 +166,13 @@ func (d *Devices) DeleteDevice(c *gin.Context) {
 		return
 	}
 
+	err = d.deleteRemoteDeviceState(c.Request.Context(), device)
+	if err != nil {
+		d.logger.Errorf("REST - DELETE - DeleteDevices - cannot cleanup remote device state, err = %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot cleanup device state"})
+		return
+	}
+
 	// start-session
 	dbSession, err := d.client.StartSession()
 	if err != nil {
@@ -214,32 +229,34 @@ func (d *Devices) DeleteDevice(c *gin.Context) {
 		return
 	}
 
-	// if a device is a sensor with online feature, remove it also calling online service
-	// We do this OUTSIDE the transaction because HTTP requests are side effects that
-	// break idempotency if the transaction needs to retry.
-	if utils.HasOnlineFeature(device.Features) {
-		d.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from online service")
-		if !utils.IsValidUUID(device.UUID) {
-			d.logger.Errorf("REST - DELETE - DeleteDevices - invalid UUID format: device=%s", device.UUID)
-		}
-		_, result, err := d.deleteOnlineByUUIDService(d.onlineByUUIDURL + url.PathEscape(device.UUID))
-		if err != nil {
-			d.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete online from remote service = %#v", err)
-			if re, ok := err.(*customerrors.ErrorWrapper); ok {
-				d.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete online with status = %d, message = %s\n", re.Code, re.Message)
-			}
-			// DB transaction succeeded, we only log the remote error.
-		} else {
-			d.logger.Debugf("REST - DELETE - DeleteDevices - result = %#v", result)
-		}
-	}
-
 	d.logger.Infow("AUDIT - device deleted",
 		"profileID", profileSession.ID.Hex(),
 		"deviceID", objectID.Hex(),
 		"deviceUUID", device.UUID,
 	)
 	c.JSON(http.StatusOK, gin.H{"message": "device has been deleted"})
+}
+
+func (d *Devices) deleteRemoteDeviceState(ctx context.Context, device models.Device) error {
+	for _, feature := range device.Features {
+		switch feature.Type {
+		case models.Sensor:
+			if err := d.deleteSensorFeature(device, feature); err != nil {
+				return err
+			}
+		case models.Controller:
+			if err := d.deleteControllerFeature(ctx, device, feature); err != nil {
+				return err
+			}
+		}
+	}
+
+	if onlineFeature := utils.GetOnlineFeature(device.Features); onlineFeature != nil {
+		if err := d.deleteOnlineFeature(device, *onlineFeature); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // PutAssignDeviceToHomeRoom assigns a device to a room within a home and optionally sets the device name.
@@ -527,4 +544,128 @@ func (d *Devices) PutFeatureNotification(c *gin.Context) {
 
 func (d *Devices) deleteOnlineByUUIDService(urlOnline string) (int, string, error) {
 	return utils.Delete(urlOnline)
+}
+
+func (d *Devices) deleteSensorFeature(device models.Device, feature models.Feature) error {
+	d.logger.Debugw("REST - DELETE - DeleteDevices - removing sensor from sensor service",
+		"deviceUUID", device.UUID,
+		"featureUUID", feature.UUID,
+		"featureName", feature.Name,
+	)
+	if !utils.IsValidUUID(device.UUID) || !utils.IsValidUUID(feature.UUID) {
+		return fmt.Errorf(
+			"REST - DELETE - DeleteDevices - invalid UUID format: device=%s, feature=%s",
+			device.UUID,
+			feature.UUID,
+		)
+	}
+
+	sensorURL := d.sensorByUUIDURL +
+		url.PathEscape(device.UUID) +
+		"/features/" +
+		url.PathEscape(feature.UUID)
+	_, result, err := utils.Delete(sensorURL)
+	if err != nil {
+		d.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete sensor from remote service = %#v", err)
+		if re, ok := err.(*customerrors.ErrorWrapper); ok {
+			d.logger.Errorf(
+				"REST - DELETE - DeleteDevices - cannot delete sensor with status = %d, message = %s\n",
+				re.Code,
+				re.Message,
+			)
+		}
+		return fmt.Errorf("delete sensor feature %s from device %s: %w", feature.UUID, device.UUID, err)
+	}
+	d.logger.Debugf("REST - DELETE - DeleteDevices - sensor delete result = %#v", result)
+	return nil
+}
+
+func (d *Devices) deleteControllerFeature(ctx context.Context, device models.Device, feature models.Feature) error {
+	d.logger.Debugw("REST - DELETE - DeleteDevices - removing controller from api-devices",
+		"deviceUUID", device.UUID,
+		"featureUUID", feature.UUID,
+		"featureName", feature.Name,
+	)
+	if !utils.IsValidUUID(device.UUID) || !utils.IsValidUUID(feature.UUID) {
+		return fmt.Errorf(
+			"REST - DELETE - DeleteDevices - invalid UUID format: device=%s, feature=%s",
+			device.UUID,
+			feature.UUID,
+		)
+	}
+
+	securityDialOption, _, err := utils.BuildSecurityDialOption()
+	if err != nil {
+		d.logger.Errorf("REST - DELETE - DeleteDevices - cannot build gRPC security dial option: %#v", err)
+		return fmt.Errorf("build api-devices gRPC security dial option: %w", err)
+	}
+	conn, err := grpc.NewClient(d.grpcTarget, securityDialOption)
+	if err != nil {
+		d.logger.Errorf("REST - DELETE - DeleteDevices - cannot connect to api-devices gRPC: %#v", err)
+		return fmt.Errorf("connect to api-devices gRPC: %w", err)
+	}
+	defer conn.Close()
+
+	client := devicepb.NewDeviceClient(conn)
+	ctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	response, err := client.DeleteValue(ctx, &devicepb.DeleteValueRequest{
+		DeviceUuid:  device.UUID,
+		FeatureUuid: feature.UUID,
+	})
+	if err != nil {
+		if grpcStatus, ok := status.FromError(err); ok {
+			d.logger.Errorw("REST - DELETE - DeleteDevices - DeleteValue failed",
+				"code", grpcStatus.Code().String(),
+				"message", grpcStatus.Message(),
+				"target", d.grpcTarget,
+			)
+		} else {
+			d.logger.Errorf("REST - DELETE - DeleteDevices - DeleteValue failed: %#v", err)
+		}
+		return fmt.Errorf("delete controller feature %s from device %s: %w", feature.UUID, device.UUID, err)
+	}
+	if !isSuccessfulDeviceDeleteResponseStatus(response.GetStatus()) {
+		d.logger.Errorf(
+			"REST - DELETE - DeleteDevices - DeleteValue returned status = %s, message = %s",
+			response.GetStatus(),
+			response.GetMessage(),
+		)
+		return fmt.Errorf("delete controller feature %s from device %s returned status %s", feature.UUID, device.UUID, response.GetStatus())
+	}
+	return nil
+}
+
+func (d *Devices) deleteOnlineFeature(device models.Device, feature models.Feature) error {
+	d.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from online service")
+	if !utils.IsValidUUID(device.UUID) || !utils.IsValidUUID(feature.UUID) {
+		return fmt.Errorf(
+			"REST - DELETE - DeleteDevices - invalid UUID format: device=%s, feature=%s",
+			device.UUID,
+			feature.UUID,
+		)
+	}
+
+	onlineURL := d.onlineByUUIDURL +
+		url.PathEscape(device.UUID) +
+		"/features/" +
+		url.PathEscape(feature.UUID)
+	_, result, err := d.deleteOnlineByUUIDService(onlineURL)
+	if err != nil {
+		d.logger.Errorf("REST - DELETE - DeleteDevices - cannot delete online from remote service = %#v", err)
+		if re, ok := err.(*customerrors.ErrorWrapper); ok {
+			d.logger.Errorf(
+				"REST - DELETE - DeleteDevices - cannot delete online with status = %d, message = %s\n",
+				re.Code,
+				re.Message,
+			)
+		}
+		return fmt.Errorf("delete online feature %s from device %s: %w", feature.UUID, device.UUID, err)
+	}
+	d.logger.Debugf("REST - DELETE - DeleteDevices - online delete result = %#v", result)
+	return nil
+}
+
+func isSuccessfulDeviceDeleteResponseStatus(status string) bool {
+	return status == "" || status == "200"
 }

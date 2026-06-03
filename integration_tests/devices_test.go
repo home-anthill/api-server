@@ -1,6 +1,7 @@
 package integration_tests
 
 import (
+	devicepb "api-server/api/grpc/device"
 	"api-server/db"
 	"api-server/initialization"
 	"api-server/models"
@@ -8,10 +9,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -21,7 +24,24 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
+
+type deleteDeviceGrpcStub struct {
+	devicepb.UnimplementedDeviceServer
+	controllerDeleteCalled     *atomic.Bool
+	controllerDeleteShouldFail *atomic.Bool
+}
+
+func (handler *deleteDeviceGrpcStub) DeleteValue(ctx context.Context, in *devicepb.DeleteValueRequest) (*devicepb.SetValueResponse, error) {
+	handler.controllerDeleteCalled.Store(true)
+	if handler.controllerDeleteShouldFail.Load() {
+		return nil, grpcstatus.Error(codes.Unavailable, "controller cleanup unavailable")
+	}
+	return &devicepb.SetValueResponse{Status: "200", Message: "Deleted"}, nil
+}
 
 var _ = Describe("Devices", func() {
 	var ctx context.Context
@@ -31,8 +51,16 @@ var _ = Describe("Devices", func() {
 	var collProfiles *mongo.Collection
 	var collHomes *mongo.Collection
 	var collDevices *mongo.Collection
-	var httpMockServer *httptest.Server
+	var httpOnlineMockServer *httptest.Server
+	var httpSensorMockServer *httptest.Server
+	var grpcMockServer *grpc.Server
 	var notificationPreferenceBody string
+	var onlineDeleteCalled atomic.Bool
+	var sensorDeleteCalled atomic.Bool
+	var controllerDeleteCalled atomic.Bool
+	var onlineDeleteShouldFail atomic.Bool
+	var sensorDeleteShouldFail atomic.Bool
+	var controllerDeleteShouldFail atomic.Bool
 
 	var currDate = time.Now()
 	var deviceController = models.Device{
@@ -110,6 +138,30 @@ var _ = Describe("Devices", func() {
 	}
 
 	deleteOnlineSensorOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		onlineDeleteCalled.Store(true)
+		if onlineDeleteShouldFail.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"online cleanup unavailable"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{}`))
+	})
+	deleteOnlineSensorSensorHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		sensorDeleteCalled.Store(true)
+		if sensorDeleteShouldFail.Load() {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"sensor cleanup unavailable"}`))
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(`{}`))
 	})
@@ -126,6 +178,11 @@ var _ = Describe("Devices", func() {
 	})
 
 	BeforeEach(func() {
+		grpcListener, errGrpc := net.Listen("tcp", "127.0.0.1:0")
+		Expect(errGrpc).ShouldNot(HaveOccurred())
+		err := os.Setenv("GRPC_URL", grpcListener.Addr().String())
+		Expect(err).ShouldNot(HaveOccurred())
+
 		logger, router, client = initialization.MustStart()
 		ctx = context.Background()
 		defer logger.Sync()
@@ -134,31 +191,70 @@ var _ = Describe("Devices", func() {
 		collHomes = db.GetCollections(client).Homes
 		collDevices = db.GetCollections(client).Devices
 
-		err := os.Setenv("LIMIT_TO_USER_EMAILS", "test@test.com")
+		err = os.Setenv("LIMIT_TO_USER_EMAILS", "test@test.com")
 		Expect(err).ShouldNot(HaveOccurred())
+		onlineDeleteCalled.Store(false)
+		sensorDeleteCalled.Store(false)
+		controllerDeleteCalled.Store(false)
+		onlineDeleteShouldFail.Store(false)
+		sensorDeleteShouldFail.Store(false)
+		controllerDeleteShouldFail.Store(false)
 
-		// --------- start an HTTP server ---------
-		mux := http.NewServeMux()
-		mux.HandleFunc("/online/"+deviceOnlineSensor.UUID, deleteOnlineSensorOnlineHandler)
-		mux.HandleFunc(
+		grpcMockServer = grpc.NewServer()
+		devicepb.RegisterDeviceServer(grpcMockServer, &deleteDeviceGrpcStub{
+			controllerDeleteCalled:     &controllerDeleteCalled,
+			controllerDeleteShouldFail: &controllerDeleteShouldFail,
+		})
+		go func() {
+			errGrpc := grpcMockServer.Serve(grpcListener)
+			if errGrpc != nil && !errors.Is(errGrpc, grpc.ErrServerStopped) {
+				panic(errGrpc)
+			}
+		}()
+
+		// --------- start an online HTTP server ---------
+		onlineMux := http.NewServeMux()
+		onlineMux.HandleFunc(
+			"/online/"+deviceOnlineSensor.UUID+"/features/"+deviceOnlineSensor.Features[0].UUID,
+			deleteOnlineSensorOnlineHandler,
+		)
+		onlineMux.HandleFunc(
 			"/online/"+deviceOnlineSensor.UUID+"/features/"+deviceOnlineSensor.Features[0].UUID+"/notifications",
 			updateOnlineFeatureNotificationHandler,
 		)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
 		logger.Infof("online_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
-		httpMockServer = httptest.NewUnstartedServer(mux)
+		httpOnlineMockServer = httptest.NewUnstartedServer(onlineMux)
 		// NewUnstartedServer creates an httpListener, so we need to Close that
 		// httpListener and replace it with the one we created.
-		httpMockServer.Listener.Close()
-		httpMockServer.Listener = httpListener
+		httpOnlineMockServer.Listener.Close()
+		httpOnlineMockServer.Listener = httpListener
 		go func() {
-			httpMockServer.Start()
+			httpOnlineMockServer.Start()
+		}()
+
+		// --------- start a sensor HTTP server ---------
+		sensorMux := http.NewServeMux()
+		sensorMux.HandleFunc(
+			"/sensors/"+deviceOnlineSensor.UUID+"/features/"+deviceOnlineSensor.Features[0].UUID,
+			deleteOnlineSensorSensorHandler,
+		)
+		sensorHTTPListener, errHTTP := net.Listen("tcp", "localhost:8000")
+		logger.Infof("sensor_test - HTTP client listening at %s", sensorHTTPListener.Addr().String())
+		Expect(errHTTP).ShouldNot(HaveOccurred())
+		httpSensorMockServer = httptest.NewUnstartedServer(sensorMux)
+		httpSensorMockServer.Listener.Close()
+		httpSensorMockServer.Listener = sensorHTTPListener
+		go func() {
+			httpSensorMockServer.Start()
 		}()
 	})
 
 	AfterEach(func() {
-		httpMockServer.Close()
+		grpcMockServer.Stop()
+		httpOnlineMockServer.Close()
+		httpSensorMockServer.Close()
 		notificationPreferenceBody = ""
 		testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 	})
@@ -256,6 +352,35 @@ var _ = Describe("Devices", func() {
 				devices, err = testuutils.FindAll[models.Device](ctx, collDevices)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(devices).To(HaveLen(1))
+				Expect(controllerDeleteCalled.Load()).To(BeTrue())
+				Expect(sensorDeleteCalled.Load()).To(BeFalse())
+				Expect(onlineDeleteCalled.Load()).To(BeFalse())
+			})
+
+			It("should fail and keep the device when controller cleanup fails", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceController.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				controllerDeleteShouldFail.Store(true)
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceController.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot cleanup device state"}`))
+
+				devices, err := testuutils.FindAll[models.Device](ctx, collDevices)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(devices).To(HaveLen(2))
+				Expect(controllerDeleteCalled.Load()).To(BeTrue())
 			})
 		})
 
@@ -288,6 +413,63 @@ var _ = Describe("Devices", func() {
 				devices, err = testuutils.FindAll[models.Device](ctx, collDevices)
 				Expect(err).ShouldNot(HaveOccurred())
 				Expect(devices).To(HaveLen(1))
+				Expect(sensorDeleteCalled.Load()).To(BeTrue())
+				Expect(onlineDeleteCalled.Load()).To(BeTrue())
+				Expect(controllerDeleteCalled.Load()).To(BeFalse())
+			})
+
+			It("should fail and keep the device when sensor cleanup fails", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceOnlineSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				sensorDeleteShouldFail.Store(true)
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceOnlineSensor.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot cleanup device state"}`))
+
+				devices, err := testuutils.FindAll[models.Device](ctx, collDevices)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(devices).To(HaveLen(2))
+				Expect(sensorDeleteCalled.Load()).To(BeTrue())
+				Expect(onlineDeleteCalled.Load()).To(BeFalse())
+			})
+
+			It("should fail and keep the device when online cleanup fails", func() {
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceOnlineSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignHomeToProfile(ctx, collProfiles, profileRes.ID, home.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				onlineDeleteShouldFail.Store(true)
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodDelete, "/api/devices/"+deviceOnlineSensor.ID.Hex(), nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				req.Header.Add("Content-Type", `application/json`)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Body.String()).To(Equal(`{"error":"cannot cleanup device state"}`))
+
+				devices, err := testuutils.FindAll[models.Device](ctx, collDevices)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(devices).To(HaveLen(2))
+				Expect(sensorDeleteCalled.Load()).To(BeTrue())
+				Expect(onlineDeleteCalled.Load()).To(BeTrue())
 			})
 		})
 

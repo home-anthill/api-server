@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Device_GetValue_FullMethodName  = "/device.Device/GetValue"
-	Device_SetValues_FullMethodName = "/device.Device/SetValues"
+	Device_GetValue_FullMethodName    = "/device.Device/GetValue"
+	Device_SetValues_FullMethodName   = "/device.Device/SetValues"
+	Device_DeleteValue_FullMethodName = "/device.Device/DeleteValue"
 )
 
 // DeviceClient is the client API for Device service.
@@ -29,6 +30,7 @@ const (
 type DeviceClient interface {
 	GetValue(ctx context.Context, in *GetValueRequest, opts ...grpc.CallOption) (*GetValueResponse, error)
 	SetValues(ctx context.Context, in *SetValuesRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
+	DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error)
 }
 
 type deviceClient struct {
@@ -59,12 +61,23 @@ func (c *deviceClient) SetValues(ctx context.Context, in *SetValuesRequest, opts
 	return out, nil
 }
 
+func (c *deviceClient) DeleteValue(ctx context.Context, in *DeleteValueRequest, opts ...grpc.CallOption) (*SetValueResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetValueResponse)
+	err := c.cc.Invoke(ctx, Device_DeleteValue_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DeviceServer is the server API for Device service.
 // All implementations must embed UnimplementedDeviceServer
 // for forward compatibility.
 type DeviceServer interface {
 	GetValue(context.Context, *GetValueRequest) (*GetValueResponse, error)
 	SetValues(context.Context, *SetValuesRequest) (*SetValueResponse, error)
+	DeleteValue(context.Context, *DeleteValueRequest) (*SetValueResponse, error)
 	mustEmbedUnimplementedDeviceServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedDeviceServer) GetValue(context.Context, *GetValueRequest) (*G
 }
 func (UnimplementedDeviceServer) SetValues(context.Context, *SetValuesRequest) (*SetValueResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetValues not implemented")
+}
+func (UnimplementedDeviceServer) DeleteValue(context.Context, *DeleteValueRequest) (*SetValueResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteValue not implemented")
 }
 func (UnimplementedDeviceServer) mustEmbedUnimplementedDeviceServer() {}
 func (UnimplementedDeviceServer) testEmbeddedByValue()                {}
@@ -138,6 +154,24 @@ func _Device_SetValues_Handler(srv interface{}, ctx context.Context, dec func(in
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Device_DeleteValue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteValueRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeviceServer).DeleteValue(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Device_DeleteValue_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeviceServer).DeleteValue(ctx, req.(*DeleteValueRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Device_ServiceDesc is the grpc.ServiceDesc for Device service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var Device_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetValues",
 			Handler:    _Device_SetValues_Handler,
+		},
+		{
+			MethodName: "DeleteValue",
+			Handler:    _Device_DeleteValue_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -44,7 +44,7 @@ var _ = Describe("Notifications", func() {
 		ID:           bson.NewObjectID(),
 		Mac:          "AA:22:33:44:55:BB",
 		Manufacturer: "test",
-		Model:        "power-outage",
+		Model:        "environment-sensor",
 		UUID:         notificationDeviceUUID,
 		Features: []models.Feature{{
 			UUID:   notificationFeatureUUID,
@@ -53,6 +53,13 @@ var _ = Describe("Notifications", func() {
 			Enable: true,
 			Order:  1,
 			Unit:   "-",
+		}, {
+			UUID:   uuid.NewString(),
+			Type:   "sensor",
+			Name:   "temperature",
+			Enable: true,
+			Order:  2,
+			Unit:   "C",
 		}},
 		CreatedAt:  currentDate,
 		ModifiedAt: currentDate,
