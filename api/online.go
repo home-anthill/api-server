@@ -7,6 +7,7 @@ import (
 	"api-server/utils"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"os"
@@ -94,22 +95,15 @@ func (o *Online) GetOnline(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
 		return
 	}
-	path := o.onlineByUUIDURL + url.PathEscape(device.UUID) + "/features/" + url.PathEscape(onlineFeature.UUID)
-	o.logger.Debugf("REST - GET - GetOnline - calling external 'online' service = %s", path)
-	_, result, err := o.onlineByUUIDService(path)
+	onlineResp, err := o.getOnlineByDeviceFeature(device.UUID, onlineFeature.UUID)
 	if err != nil {
-		o.logger.Errorf("REST - GetOnline - cannot get online from remote service = %#v", err)
-		if re, ok := err.(*customerrors.ErrorWrapper); ok {
+		if re, ok := asErrorWrapper(err); ok {
+			o.logger.Errorf("REST - GetOnline - cannot get online from remote service = %#v", err)
 			o.logger.Errorf("REST - GetOnline - cannot get online with status = %d, message = %s\n", re.Code, re.Message)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
+			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
-		return
-	}
-	o.logger.Debugf("REST - GetOnline - result = %#v", result)
 
-	onlineResp := onlineResponse{}
-	err = json.Unmarshal([]byte(result), &onlineResp)
-	if err != nil {
 		o.logger.Errorf("REST - GetOnline - cannot unmarshal JSON response from online remote service = %#v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online response"})
 		return
@@ -123,6 +117,59 @@ func (o *Online) GetOnline(c *gin.Context) {
 	c.JSON(http.StatusOK, &response)
 }
 
+// GetProfileOnline returns online statuses for all online-capable devices owned by the logged profile.
+func (o *Online) GetProfileOnline(c *gin.Context) {
+	o.logger.Info("REST - GET - GetProfileOnline called")
+
+	profile, err := utils.GetLoggedProfileFromContext(c, o.collProfiles)
+	if err != nil {
+		o.logger.Error("REST - GET - GetProfileOnline - cannot find profile")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "cannot find profile"})
+		return
+	}
+
+	devices, err := o.getProfileDevices(c.Request.Context(), profile.Devices)
+	if err != nil {
+		o.logger.Errorf("REST - GET - GetProfileOnline - cannot get profile devices = %#v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
+		return
+	}
+
+	response := make([]models.OnlineDeviceStatus, 0, len(devices))
+	for _, device := range devices {
+		onlineFeature := utils.GetOnlineFeature(device.Features)
+		if onlineFeature == nil {
+			continue
+		}
+
+		if !utils.IsValidUUID(device.UUID) || !utils.IsValidUUID(onlineFeature.UUID) {
+			o.logger.Error("REST - GET - GetProfileOnline - invalid UUID format in device or feature")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
+			return
+		}
+
+		onlineResp, err := o.getOnlineByDeviceFeature(device.UUID, onlineFeature.UUID)
+		if err != nil {
+			o.logger.Errorf("REST - GET - GetProfileOnline - cannot get online from remote service = %#v", err)
+			if re, ok := asErrorWrapper(err); ok {
+				o.logger.Errorf("REST - GET - GetProfileOnline - cannot get online with status = %d, message = %s\n", re.Code, re.Message)
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
+			return
+		}
+
+		response = append(response, models.OnlineDeviceStatus{
+			CreatedAt:   time.UnixMilli(onlineResp.CreatedAt),
+			ModifiedAt:  time.UnixMilli(onlineResp.ModifiedAt),
+			CurrentTime: time.UnixMilli(onlineResp.CurrentTime),
+			Device:      device,
+			Feature:     *onlineFeature,
+		})
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 func (o *Online) getDevice(ctx context.Context, deviceID bson.ObjectID) (models.Device, error) {
 	o.logger.Debug("getDevice - searching device with objectId: ", deviceID)
 	var device models.Device
@@ -133,6 +180,60 @@ func (o *Online) getDevice(ctx context.Context, deviceID bson.ObjectID) (models.
 	return device, err
 }
 
+func (o *Online) getProfileDevices(ctx context.Context, deviceIDs []bson.ObjectID) ([]models.Device, error) {
+	devices := make([]models.Device, 0)
+	if len(deviceIDs) == 0 {
+		return devices, nil
+	}
+
+	cursor, err := o.collDevices.Find(ctx, bson.M{"_id": bson.M{"$in": deviceIDs}})
+	if err != nil {
+		return devices, err
+	}
+	defer func() {
+		if closeErr := cursor.Close(ctx); closeErr != nil {
+			o.logger.Errorw("getProfileDevices - cannot close cursor", "error", closeErr)
+		}
+	}()
+
+	if err = cursor.All(ctx, &devices); err != nil {
+		return devices, err
+	}
+
+	return devices, nil
+}
+
+func (o *Online) getOnlineByDeviceFeature(deviceUUID, featureUUID string) (onlineResponse, error) {
+	path := o.onlineByUUIDURL + url.PathEscape(deviceUUID) + "/features/" + url.PathEscape(featureUUID)
+	o.logger.Debugf("getOnlineByDeviceFeature - calling external 'online' service = %s", path)
+
+	_, result, err := o.onlineByUUIDService(path)
+	if err != nil {
+		return onlineResponse{}, err
+	}
+
+	onlineResp := onlineResponse{}
+	if err = json.Unmarshal([]byte(result), &onlineResp); err != nil {
+		return onlineResponse{}, err
+	}
+
+	return onlineResp, nil
+}
+
 func (o *Online) onlineByUUIDService(urlOnline string) (int, string, error) {
 	return utils.Get(urlOnline)
+}
+
+func asErrorWrapper(err error) (customerrors.ErrorWrapper, bool) {
+	var wrapper customerrors.ErrorWrapper
+	if errors.As(err, &wrapper) {
+		return wrapper, true
+	}
+
+	var wrapperPtr *customerrors.ErrorWrapper
+	if errors.As(err, &wrapperPtr) && wrapperPtr != nil {
+		return *wrapperPtr, true
+	}
+
+	return customerrors.ErrorWrapper{}, false
 }

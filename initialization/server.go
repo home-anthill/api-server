@@ -185,6 +185,7 @@ func RegisterRoutes(router *gin.Engine, logger *zap.SugaredLogger, validate *val
 		private.POST("/devices/:id/values", devicesValues.PostValuesDevice)
 
 		private.POST("/fcmtoken", fcmToken.PostFCMToken)
+		private.GET("/online", online.GetProfileOnline)
 		private.GET("/online/:id", online.GetOnline)
 		private.GET("/notifications", notifications.GetNotifications)
 	}
