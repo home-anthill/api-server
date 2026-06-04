@@ -115,7 +115,7 @@ func printEnv(logger *zap.SugaredLogger) error {
 	logger.Infof("HTTP_ONLINE_API = %s", os.Getenv("HTTP_ONLINE_API"))
 	logger.Infof("HTTP_ONLINE_NOTIFICATIONS_API = %s", os.Getenv("HTTP_ONLINE_NOTIFICATIONS_API"))
 	logger.Infof("HTTP_ONLINE_FCMTOKEN_API = %s", os.Getenv("HTTP_ONLINE_FCMTOKEN_API"))
-	logger.Infof("HTTP_ONLINE_ROTATE_APITOKEN_API = %s", os.Getenv("HTTP_ONLINE_ROTATE_APITOKEN_API"))
+	logger.Infof("HTTP_ONLINE_APITOKEN_API = %s", os.Getenv("HTTP_ONLINE_APITOKEN_API"))
 	logger.Infof("HTTP_ONLINE_KEEPALIVE_API = %s", os.Getenv("HTTP_ONLINE_KEEPALIVE_API"))
 	logger.Infof("GRPC_URL = %s", os.Getenv("GRPC_URL"))
 	logger.Infof("GRPC_TLS = %s", os.Getenv("GRPC_TLS"))

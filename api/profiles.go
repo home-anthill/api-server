@@ -24,13 +24,13 @@ type ProfileUpdateFCMTokenReq struct {
 	FCMToken string `json:"fcmToken" validate:"required,max=512"`
 }
 
-type rotateOnlineAPITokenReq struct {
+type updateOnlineAPITokenReq struct {
 	OldAPIToken    string                   `json:"oldApiToken"`
 	NewAPIToken    string                   `json:"newApiToken"`
-	DeviceFeatures []rotateOnlineDeviceFeat `json:"deviceFeatures"`
+	DeviceFeatures []updateOnlineDeviceFeat `json:"deviceFeatures"`
 }
 
-type rotateOnlineDeviceFeat struct {
+type updateOnlineDeviceFeat struct {
 	DeviceUUID  string `json:"deviceUuid"`
 	FeatureUUID string `json:"featureUuid"`
 }
@@ -51,7 +51,7 @@ type Profiles struct {
 	collSensors             *mongo.Collection
 	collControls            *mongo.Collection
 	onlineKeepAliveURL      string
-	onlineRotateAPITokenURL string
+	onlineUpdateAPITokenURL string
 	logger                  *zap.SugaredLogger
 	validate                *validator.Validate
 }
@@ -59,6 +59,7 @@ type Profiles struct {
 // NewProfiles constructs a Profiles handler with the given dependencies.
 func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Profiles {
 	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
+	onlineUpdateAPITokenAPI := os.Getenv("HTTP_ONLINE_APITOKEN_API")
 	return &Profiles{
 		client:                  client,
 		collProfiles:            db.GetCollections(client).Profiles,
@@ -66,7 +67,7 @@ func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *vali
 		collSensors:             client.Database(sensorDbName()).Collection("sensors"),
 		collControls:            client.Database(controllerDbName()).Collection("controllers"),
 		onlineKeepAliveURL:      onlineServerURL + os.Getenv("HTTP_ONLINE_KEEPALIVE_API"),
-		onlineRotateAPITokenURL: onlineServerURL + os.Getenv("HTTP_ONLINE_ROTATE_APITOKEN_API"),
+		onlineUpdateAPITokenURL: onlineServerURL + onlineUpdateAPITokenAPI,
 		logger:                  logger,
 		validate:                validate,
 	}
@@ -152,12 +153,12 @@ func (p *Profiles) PostRotateAPIToken(c *gin.Context) {
 	}
 	onlineDeviceFeatures, err := p.getProfileOnlineDeviceFeatures(c.Request.Context(), profile)
 	if err != nil {
-		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot build online apiToken rotation targets", "error", err)
+		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot build online apiToken update targets", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
-	if err = p.rotateOnlineAPIToken(oldAPIToken, newAPIToken, onlineDeviceFeatures); err != nil {
-		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot rotate apiToken in online service", "error", err)
+	if err = p.updateOnlineAPIToken(oldAPIToken, newAPIToken, onlineDeviceFeatures); err != nil {
+		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot update apiToken in online service", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
@@ -207,9 +208,9 @@ func (p *Profiles) rotateProfileAndDeviceTokens(ctx context.Context, profileID b
 	return err
 }
 
-func (p *Profiles) getProfileOnlineDeviceFeatures(ctx context.Context, profile models.Profile) ([]rotateOnlineDeviceFeat, error) {
+func (p *Profiles) getProfileOnlineDeviceFeatures(ctx context.Context, profile models.Profile) ([]updateOnlineDeviceFeat, error) {
 	if len(profile.Devices) == 0 {
-		return []rotateOnlineDeviceFeat{}, nil
+		return []updateOnlineDeviceFeat{}, nil
 	}
 
 	cursor, err := p.collDevices.Find(ctx, bson.M{"_id": bson.M{"$in": profile.Devices}})
@@ -223,10 +224,10 @@ func (p *Profiles) getProfileOnlineDeviceFeatures(ctx context.Context, profile m
 		return nil, err
 	}
 
-	deviceFeatures := make([]rotateOnlineDeviceFeat, 0)
+	deviceFeatures := make([]updateOnlineDeviceFeat, 0)
 	for _, device := range devices {
 		for _, feature := range device.Features {
-			deviceFeatures = append(deviceFeatures, rotateOnlineDeviceFeat{
+			deviceFeatures = append(deviceFeatures, updateOnlineDeviceFeat{
 				DeviceUUID:  device.UUID,
 				FeatureUUID: feature.UUID,
 			})
@@ -235,24 +236,24 @@ func (p *Profiles) getProfileOnlineDeviceFeatures(ctx context.Context, profile m
 	return deviceFeatures, nil
 }
 
-func (p *Profiles) rotateOnlineAPIToken(oldAPIToken, newAPIToken string, deviceFeatures []rotateOnlineDeviceFeat) error {
+func (p *Profiles) updateOnlineAPIToken(oldAPIToken, newAPIToken string, deviceFeatures []updateOnlineDeviceFeat) error {
 	_, _, keepAliveErr := utils.Get(p.onlineKeepAliveURL)
 	if keepAliveErr != nil {
 		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote online service")
 	}
 
-	payloadJSON, err := json.Marshal(rotateOnlineAPITokenReq{
+	payloadJSON, err := json.Marshal(updateOnlineAPITokenReq{
 		OldAPIToken:    oldAPIToken,
 		NewAPIToken:    newAPIToken,
 		DeviceFeatures: deviceFeatures,
 	})
 	if err != nil {
-		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create payload to rotate online apiToken")
+		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create payload to update online apiToken")
 	}
 
-	_, _, err = utils.Post(p.onlineRotateAPITokenURL, payloadJSON)
+	_, _, err = utils.Put(p.onlineUpdateAPITokenURL, payloadJSON)
 	if err != nil {
-		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot rotate online apiToken")
+		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot update online apiToken")
 	}
 	return nil
 }

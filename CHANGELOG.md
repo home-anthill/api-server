@@ -11,6 +11,8 @@
 - Added authenticated `PUT /api/devices/:id/features/:featureUuid/notifications` to persist a
   per-feature `notificationSilenced` flag and forward it to the `online` service for push-alert
   suppression.
+- Added authenticated `GET /api/online` to return online statuses for all online-capable devices
+  owned by the logged profile, including the matching device and feature metadata.
 - Device deletion now cleans up registered sensor documents for each sensor feature and calls the
   online service using the correct per-feature delete path so Redis online state is removed for
   online sensors.
@@ -18,7 +20,9 @@
   documents are cleaned up alongside sensor and online state.
 - Device deletion now fails the API request before removing api-server state when downstream
   sensor, controller, or online cleanup cannot be completed.
-- 
+- Profile API-token rotation now calls the online service with `PUT /api-token` via
+  `HTTP_ONLINE_APITOKEN_API`, replacing the old `POST /api-token/rotate` contract.
+
 ### Tests
 
 - Added JWT middleware tests for malformed, expired, not-yet-valid, wrongly signed, wrong-issuer, refresh-token, session-mismatch, web-session, and mobile bearer-only access-token paths.
@@ -29,10 +33,16 @@
 - Added integration coverage for proxying logged-profile notifications from the mocked `online`
   service.
 - Added integration coverage for updating an owned feature's notification silence preference.
+- Added integration coverage for logged-profile online status lookups, empty online-status
+  responses, invalid UUID validation, downstream online errors, and invalid online JSON responses.
+- Updated profile API-token rotation coverage to assert the online service receives
+  `PUT /api-token`.
 
 ### Chores
 
 - update dependencies
+- Renamed `HTTP_ONLINE_ROTATE_APITOKEN_API` to `HTTP_ONLINE_APITOKEN_API` in environment logging
+  and `.env_template`.
 
 
 ## 5.0.0
@@ -110,7 +120,7 @@
 - **Timestamp handling was normalized**: Token and OAuth operations now capture `time.Now().UTC()` once per logical operation and derive related timestamps from it.
 - **Common Go correctness issues were fixed**: Shadowed errors, unsafe type assertions, ignored errors, nil cursor cleanup, loop-variable pointer aliasing, and deferred resource accumulation were corrected.
 - **Data shape issues were fixed**: New homes initialize rooms properly, internal online API fields are hidden, and FCM forwarding includes the required API token.
-- **Profile token rotation now propagates credentials**: Regenerating a profile API token updates the profile, registered sensors, and registered controllers, then calls `online` `POST /api-token/rotate` with the profile's device/feature UUIDs so Redis online state and `fcm_by_api_token` do not keep stale plaintext tokens, including cases where Redis was already stale from an earlier partial rotation.
+- **Profile token rotation now propagates credentials**: Regenerating a profile API token updates the profile, registered sensors, and registered controllers, then calls `online` `PUT /api-token` with the profile's device/feature UUIDs so Redis online state and `fcm_by_api_token` do not keep stale plaintext tokens, including cases where Redis was already stale from an earlier partial rotation.
 
 ### Code Organization
 

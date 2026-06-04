@@ -73,7 +73,7 @@ public/                    # SPA static assets (served in non-prod environments)
 - **Device value authorization**: `POST /api/devices/:id/values` validates each requested feature against the owned device's enabled controller features before forwarding to gRPC. Do not trust caller-provided feature UUID/name/type alone.
 - **Notification device enrichment authorization**: `GET /api/notifications` proxies notification history from the `online` service, then replaces each notification's `devices` entries with full device documents from api-server's MongoDB `devices` collection. The lookup must filter by both the UUIDs returned by `online` and the authenticated profile's owned device IDs (`profile.Devices`) so a downstream response cannot cause api-server to expose devices outside the logged-in profile.
 - **API token storage**: Profile API tokens are never stored plaintext. `apiTokenHash` is an HMAC-SHA-256 lookup value using `API_TOKEN_HASH_SECRET`; `apiTokenEncrypted` is AES-GCM encrypted using `API_TOKEN_ENCRYPTION_KEY`. Both env vars are mandatory and have no fallback to JWT/refresh secrets.
-- **API token rotation**: `POST /api/profiles/:id/tokens` updates the profile, registered sensors, and registered controllers with the new token hash/encrypted token, then calls the `online` service `POST /api-token/rotate` endpoint with the profile's device/feature UUIDs so Redis online hashes and the FCM lookup move to the new plaintext token even if Redis still contains a stale older token.
+- **API token rotation**: `POST /api/profiles/:id/tokens` updates the profile, registered sensors, and registered controllers with the new token hash/encrypted token, then calls the `online` service `PUT /api-token` endpoint with the profile's device/feature UUIDs so Redis online hashes and the FCM lookup move to the new plaintext token even if Redis still contains a stale older token.
 
 ## Testing
 
@@ -100,7 +100,7 @@ Copy `.env_template` to `.env` and fill in GitHub OAuth credentials. Key variabl
 - `GRPC_TLS` / `CERT_FOLDER_PATH` - gRPC TLS toggle and certificate path
 - `HTTP_SERVER` / `HTTP_PORT` / `HTTP_CORS` - Server bind config
 - `HTTP_SENSOR_*` / `HTTP_ONLINE_*` - External service endpoints
-- `HTTP_ONLINE_ROTATE_APITOKEN_API` - Internal online-service endpoint used during profile API token rotation
+- `HTTP_ONLINE_APITOKEN_API` - Internal online-service endpoint used when api-server asks online to update API-token-backed state
 - `LIMIT_TO_USER_EMAILS` - Optional comma-separated GitHub email allowlist for login
 - `API_TOKEN_HASH_SECRET` - Mandatory HMAC secret/pepper for profile/device API token lookup hashes; startup rejects values shorter than 32 characters
 - `API_TOKEN_ENCRYPTION_KEY` - Mandatory 32-byte raw or base64/base64url AES-GCM key for encrypted API token storage

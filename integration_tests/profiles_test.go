@@ -30,7 +30,7 @@ type updateFCMTokenResponse struct {
 	Message string `json:"message"`
 }
 
-type rotateOnlineAPITokenPayload struct {
+type updateOnlineAPITokenPayload struct {
 	OldAPIToken string `json:"oldApiToken"`
 	NewAPIToken string `json:"newApiToken"`
 }
@@ -52,12 +52,12 @@ var _ = Describe("Profiles", func() {
 		}
 		w.WriteHeader(http.StatusOK)
 	})
-	apiTokenRotateOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
+	apiTokenOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		var payload rotateOnlineAPITokenPayload
+		var payload updateOnlineAPITokenPayload
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, "invalid json", http.StatusBadRequest)
 			return
@@ -84,7 +84,7 @@ var _ = Describe("Profiles", func() {
 		// --------- start an HTTP server ---------
 		mux := http.NewServeMux()
 		mux.HandleFunc("/keepalive/", keepAliveOnlineHandler)
-		mux.HandleFunc("/api-token/rotate/", apiTokenRotateOnlineHandler)
+		mux.HandleFunc("/api-token/", apiTokenOnlineHandler)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")
 		logger.Infof("online_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
