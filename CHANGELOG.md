@@ -21,7 +21,7 @@
 - Device deletion now fails the API request before removing api-server state when downstream
   sensor, controller, or online cleanup cannot be completed.
 - Profile API-token rotation now calls the online service with `PUT /api-token` via
-  `HTTP_ONLINE_APITOKEN_API`, replacing the old `POST /api-token/rotate` contract.
+  `HTTP_ONLINE_APITOKEN_API`.
 
 ### Tests
 
@@ -41,8 +41,6 @@
 ### Chores
 
 - update dependencies
-- Renamed `HTTP_ONLINE_ROTATE_APITOKEN_API` to `HTTP_ONLINE_APITOKEN_API` in environment logging
-  and `.env_template`.
 
 
 ## 5.0.0
