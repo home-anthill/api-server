@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ── Stage 1: Builder ────────────────────────────────────────────────
-FROM golang:1.26.3-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 RUN apk update && apk add --no-cache \
     protoc \
     make gcc musl-dev
@@ -28,7 +28,7 @@ RUN make build
 RUN mkdir -p /scratch/logs && chown -R 65534:65534 /scratch/logs
 
 # ── Stage 2: Hardened runtime ────────────────────────────────────────────────
-FROM dhi.io/alpine-base:3.23
+FROM dhi.io/alpine-base:3.24
 
 WORKDIR /
 
