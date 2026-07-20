@@ -1,14 +1,14 @@
 # syntax=docker/dockerfile:1
 
 # ── Stage 1: Builder ────────────────────────────────────────────────
-FROM golang:1.26.4-alpine AS builder
+FROM golang:1.26.5-alpine AS builder
 RUN apk update && apk add --no-cache \
     protoc \
     make gcc musl-dev
 
 # install protoc requirements based on https://grpc.io/docs/languages/go/quickstart/
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.11
-RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.1
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.6.2
 ENV PATH="$PATH:$(go env GOPATH)/bin"
 
 WORKDIR /app

@@ -5,6 +5,7 @@
 ### Features
 
 - add device feature spec support
+- add thermostat `mode` sensor feature
 - Added authenticated notification history API `GET /api/notifications` to return the logged
   profile's Redis notification history through the `online` service without exposing the profile
   API token to clients.
