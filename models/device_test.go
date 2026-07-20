@@ -86,10 +86,10 @@ func TestThermostatSupportsOptionalModeFeature(t *testing.T) {
 	}
 }
 
-func TestThermostatModeSupportsNegativeFaultValue(t *testing.T) {
-	minValue := float64(-1)
-	maxValue := float64(2)
-	step := float64(1)
+func TestThermostatModeSupportsAdmittedFloatValues(t *testing.T) {
+	minValue := float64(-1.0)
+	maxValue := float64(2.0)
+	step := float64(1.0)
 	feature := Feature{
 		Type:   Sensor,
 		Name:   "mode",
@@ -97,7 +97,7 @@ func TestThermostatModeSupportsNegativeFaultValue(t *testing.T) {
 		Order:  4,
 		Unit:   "-",
 		Spec: Spec{
-			Format: Int,
+			Format: Float,
 			Min:    &minValue,
 			Max:    &maxValue,
 			Step:   &step,
@@ -113,17 +113,22 @@ func TestThermostatModeSupportsNegativeFaultValue(t *testing.T) {
 	if err = json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatalf("unmarshal thermostat mode feature: %v", err)
 	}
-	if decoded.Spec.Format != Int || decoded.Spec.Min == nil || *decoded.Spec.Min != -1 {
+	if decoded.Spec.Format != Float || decoded.Spec.Min == nil || *decoded.Spec.Min != -1.0 ||
+		decoded.Spec.Max == nil || *decoded.Spec.Max != 2.0 ||
+		decoded.Spec.Step == nil || *decoded.Spec.Step != 1.0 {
 		t.Fatalf("thermostat mode spec was not preserved: %#v", decoded.Spec)
 	}
 
-	state := DeviceFeatureState{
-		FeatureUUID: "mode-feature",
-		Type:        Sensor,
-		Name:        "mode",
-		Value:       -1,
-	}
-	if err = validator.New().Struct(state); err != nil {
-		t.Fatalf("negative thermostat fault mode should be valid: %v", err)
+	admittedValues := []float32{-1.0, 0.0, 1.0, 2.0}
+	for _, value := range admittedValues {
+		state := DeviceFeatureState{
+			FeatureUUID: "mode-feature",
+			Type:        Sensor,
+			Name:        "mode",
+			Value:       value,
+		}
+		if err = validator.New().Struct(state); err != nil {
+			t.Fatalf("thermostat mode value %.1f should be valid: %v", value, err)
+		}
 	}
 }
