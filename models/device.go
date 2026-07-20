@@ -73,7 +73,7 @@ type DeviceFeatureState struct {
 	FeatureUUID string  `json:"featureUuid" validate:"required"`
 	Type        Type    `json:"type" validate:"required"` // feature type
 	Name        string  `json:"name" validate:"required"` // feature name
-	Value       float32 `json:"value" validate:"min=0"`   // feature value
+	Value       float32 `json:"value"`                    // feature value; valid range is defined by the feature spec
 	CreatedAt   int64   `json:"createdAt"`                // as unix epoch in milliseconds
 	ModifiedAt  int64   `json:"modifiedAt"`               // as unix epoch in milliseconds
 }
