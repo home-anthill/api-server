@@ -219,7 +219,7 @@ var _ = Describe("Devices", func() {
 			deleteOnlineSensorOnlineHandler,
 		)
 		onlineMux.HandleFunc(
-			"/online/"+deviceOnlineSensor.UUID+"/features/"+deviceOnlineSensor.Features[0].UUID+"/notifications",
+			"/alarms/"+deviceOnlineSensor.UUID+"/features/"+deviceOnlineSensor.Features[0].UUID+"/notifications",
 			updateOnlineFeatureNotificationHandler,
 		)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8089")

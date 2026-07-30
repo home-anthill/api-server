@@ -130,11 +130,11 @@ var _ = Describe("Online", func() {
 
 		host, port, err := net.SplitHostPort(httpListener.Addr().String())
 		Expect(err).ShouldNot(HaveOccurred())
-		oldHTTPOnlineServer = os.Getenv("HTTP_ONLINE_SERVER")
-		oldHTTPOnlinePort = os.Getenv("HTTP_ONLINE_PORT")
-		err = os.Setenv("HTTP_ONLINE_SERVER", "http://"+host)
+		oldHTTPOnlineServer = os.Getenv("HTTP_ALARM_SERVER")
+		oldHTTPOnlinePort = os.Getenv("HTTP_ALARM_PORT")
+		err = os.Setenv("HTTP_ALARM_SERVER", "http://"+host)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = os.Setenv("HTTP_ONLINE_PORT", port)
+		err = os.Setenv("HTTP_ALARM_PORT", port)
 		Expect(err).ShouldNot(HaveOccurred())
 
 		logger, router, client = initialization.MustStart()
@@ -166,9 +166,9 @@ var _ = Describe("Online", func() {
 		if ctx != nil {
 			testuutils.DropAllCollections(ctx, collProfiles, collHomes, collDevices)
 		}
-		err := os.Setenv("HTTP_ONLINE_SERVER", oldHTTPOnlineServer)
+		err := os.Setenv("HTTP_ALARM_SERVER", oldHTTPOnlineServer)
 		Expect(err).ShouldNot(HaveOccurred())
-		err = os.Setenv("HTTP_ONLINE_PORT", oldHTTPOnlinePort)
+		err = os.Setenv("HTTP_ALARM_PORT", oldHTTPOnlinePort)
 		Expect(err).ShouldNot(HaveOccurred())
 	})
 
@@ -359,7 +359,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile owns an online sensor with an invalid UUID", func() {
-			It("should return an error before calling the online service", func() {
+			It("should return an error before calling the alarm service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -383,7 +383,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile owns an online-capable device with an invalid feature UUID", func() {
-			It("should return an error before calling the online service", func() {
+			It("should return an error before calling the alarm service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -407,7 +407,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("online service returns an error for a single device lookup", func() {
+		When("alarm service returns an error for a single device lookup", func() {
 			It("should return a remote online error", func() {
 				onlineResponseStatus = http.StatusBadGateway
 				onlineResponseBody = `{"error":"online unavailable"}`
@@ -428,7 +428,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("online service returns invalid JSON for a single device lookup", func() {
+		When("alarm service returns invalid JSON for a single device lookup", func() {
 			It("should return an online response parsing error", func() {
 				onlineResponseBody = `not-json`
 
@@ -449,7 +449,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile online lookup includes a device with an invalid UUID", func() {
-			It("should return an error before calling the online service", func() {
+			It("should return an error before calling the alarm service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -473,7 +473,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("online service returns an error for profile online lookup", func() {
+		When("alarm service returns an error for profile online lookup", func() {
 			It("should return a remote online error", func() {
 				onlineResponseStatus = http.StatusBadGateway
 				onlineResponseBody = `{"error":"online unavailable"}`
@@ -494,7 +494,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("online service returns invalid JSON for profile online lookup", func() {
+		When("alarm service returns invalid JSON for profile online lookup", func() {
 			It("should return a remote online error", func() {
 				onlineResponseBody = `not-json`
 

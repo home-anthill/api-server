@@ -50,7 +50,7 @@ type Notification struct {
 	ProviderMessageID string          `json:"providerMessageId"`
 }
 
-// Notifications handles notification-history lookups via the external online service.
+// Notifications handles notification-history lookups via the external alarm service.
 type Notifications struct {
 	client                 *mongo.Client
 	collDevices            *mongo.Collection
@@ -61,8 +61,8 @@ type Notifications struct {
 
 // NewNotifications constructs a Notifications handler with the given dependencies.
 func NewNotifications(logger *zap.SugaredLogger, client *mongo.Client) *Notifications {
-	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
-	onlineNotificationsAPI := os.Getenv("HTTP_ONLINE_NOTIFICATIONS_API")
+	onlineServerURL := os.Getenv("HTTP_ALARM_SERVER") + ":" + os.Getenv("HTTP_ALARM_PORT")
+	onlineNotificationsAPI := os.Getenv("HTTP_ALARM_NOTIFICATIONS_API")
 
 	return &Notifications{
 		client:                 client,
@@ -97,7 +97,7 @@ func (n *Notifications) GetNotifications(c *gin.Context) {
 	}
 
 	path := n.onlineNotificationsURL + url.PathEscape(apiToken)
-	n.logger.Debug("REST - GET - GetNotifications - calling external 'online' notifications service using apiToken")
+	n.logger.Debug("REST - GET - GetNotifications - calling external 'alarm' notifications service using apiToken")
 	_, result, err := n.notificationsService(path)
 	if err != nil {
 		n.logger.Errorf("REST - GET - GetNotifications - cannot get notifications from remote service = %#v", err)
@@ -173,7 +173,7 @@ func (n *Notifications) getProfileDevicesByUUID(c *gin.Context, profile models.P
 	}
 
 	cur, err := n.collDevices.Find(c.Request.Context(), bson.M{
-		// resolve the device references returned by the online service notification payload
+		// resolve the device references returned by the alarm service notification payload
 		"_id": bson.M{"$in": profile.Devices},
 		// ensure we only return devices owned by the authenticated profile
 		"uuid": bson.M{"$in": deviceUUIDs},

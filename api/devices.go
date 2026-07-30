@@ -47,14 +47,16 @@ type Devices struct {
 	validate        *validator.Validate
 	grpcTarget      string
 	onlineByUUIDURL string
+	alarmsByUUIDURL string
 	sensorByUUIDURL string
 }
 
 // NewDevices constructs a Devices handler with the given dependencies.
 func NewDevices(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Devices {
 	grpcURL := os.Getenv("GRPC_URL")
-	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
-	onlineByUUIDURL := onlineServerURL + os.Getenv("HTTP_ONLINE_API")
+	onlineServerURL := os.Getenv("HTTP_ALARM_SERVER") + ":" + os.Getenv("HTTP_ALARM_PORT")
+	onlineByUUIDURL := onlineServerURL + os.Getenv("HTTP_ALARM_ONLINE_API")
+	alarmsByUUIDURL := onlineServerURL + os.Getenv("HTTP_ALARM_ALARMS_API")
 	sensorServerURL := os.Getenv("HTTP_SENSOR_SERVER") + ":" + os.Getenv("HTTP_SENSOR_PORT")
 	sensorByUUIDURL := sensorServerURL + os.Getenv("HTTP_SENSOR_GETVALUE_API")
 
@@ -67,6 +69,7 @@ func NewDevices(logger *zap.SugaredLogger, client *mongo.Client, validate *valid
 		validate:        validate,
 		grpcTarget:      grpcURL,
 		onlineByUUIDURL: onlineByUUIDURL,
+		alarmsByUUIDURL: alarmsByUUIDURL,
 		sensorByUUIDURL: sensorByUUIDURL,
 	}
 }
@@ -525,9 +528,9 @@ func (d *Devices) PutFeatureNotification(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update feature notification"})
 		return
 	}
-	onlineURL := d.onlineByUUIDURL + url.PathEscape(device.UUID) + "/features/" + url.PathEscape(featureUUID) + "/notifications"
-	if _, _, err = utils.Put(onlineURL, payloadJSON); err != nil {
-		d.logger.Errorf("REST - PUT - PutFeatureNotification - cannot update online notification preference = %#v", err)
+	alarmsURL := d.alarmsByUUIDURL + url.PathEscape(device.UUID) + "/features/" + url.PathEscape(featureUUID) + "/notifications"
+	if _, _, err = utils.Put(alarmsURL, payloadJSON); err != nil {
+		d.logger.Errorf("REST - PUT - PutFeatureNotification - cannot update alarm notification preference = %#v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot update feature notification"})
 		return
 	}
@@ -637,7 +640,7 @@ func (d *Devices) deleteControllerFeature(ctx context.Context, device models.Dev
 }
 
 func (d *Devices) deleteOnlineFeature(device models.Device, feature models.Feature) error {
-	d.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from online service")
+	d.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from alarm service")
 	if !utils.IsValidUUID(device.UUID) || !utils.IsValidUUID(feature.UUID) {
 		return fmt.Errorf(
 			"REST - DELETE - DeleteDevices - invalid UUID format: device=%s, feature=%s",

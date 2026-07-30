@@ -21,7 +21,7 @@ type InitFCMTokenReq struct {
 	FCMToken string `json:"fcmToken" validate:"required,max=512"`
 }
 
-// OnlineFCMReq is the payload forwarded to the online service to associate an FCM token with an API token.
+// OnlineFCMReq is the payload forwarded to the alarm service to associate an FCM token with an API token.
 type OnlineFCMReq struct {
 	APIToken string `json:"apiToken" validate:"required"`
 	FCMToken string `json:"fcmToken" validate:"required,max=512"`
@@ -39,9 +39,9 @@ type FCMToken struct {
 
 // NewFCMToken constructs an FCMToken handler with the given dependencies.
 func NewFCMToken(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *FCMToken {
-	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
-	keepAliveOnlineURL := onlineServerURL + os.Getenv("HTTP_ONLINE_KEEPALIVE_API")
-	fcmTokenOnlineURL := onlineServerURL + os.Getenv("HTTP_ONLINE_FCMTOKEN_API")
+	onlineServerURL := os.Getenv("HTTP_ALARM_SERVER") + ":" + os.Getenv("HTTP_ALARM_PORT")
+	keepAliveOnlineURL := onlineServerURL + os.Getenv("HTTP_ALARM_KEEPALIVE_API")
+	fcmTokenOnlineURL := onlineServerURL + os.Getenv("HTTP_ALARM_FCMTOKEN_API")
 
 	return &FCMToken{
 		client:             client,
@@ -54,7 +54,7 @@ func NewFCMToken(logger *zap.SugaredLogger, client *mongo.Client, validate *vali
 }
 
 // PostFCMToken function to associate smartphone app with Firebase client to this server via APIToken
-// This will be sent to online server to store that data in Redis to be able to send Push Notifications
+// This will be sent to alarm server to store that data in Redis to be able to send Push Notifications
 func (ft *FCMToken) PostFCMToken(c *gin.Context) {
 	ft.logger.Info("REST - POST - PostFCMToken called")
 
@@ -126,10 +126,10 @@ func (ft *FCMToken) initFCMTokenViaHTTP(obj *OnlineFCMReq) error {
 	// check if service is available calling keep-alive
 	_, _, keepAliveErr := utils.Get(ft.keepAliveOnlineURL)
 	if keepAliveErr != nil {
-		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote online service")
+		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote alarm service")
 	}
 
-	// do the real call to the remote online service
+	// do the real call to the remote alarm service
 	payloadJSON, err := json.Marshal(obj)
 	if err != nil {
 		return customerrors.Wrap(http.StatusInternalServerError, err, "Cannot create payload to call fcmToken service")

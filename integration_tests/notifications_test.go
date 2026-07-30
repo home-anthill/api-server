@@ -109,7 +109,7 @@ var _ = Describe("Notifications", func() {
 
 	Context("calling notification api GET", func() {
 		When("profile is authenticated", func() {
-			It("should get logged profile notifications from online service", func() {
+			It("should get logged profile notifications from alarm service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 				err := testuutils.SetAPITokenToProfile(ctx, collProfiles, profileRes.ID, mockedProfileAPIToken)
@@ -199,7 +199,7 @@ var _ = Describe("Notifications", func() {
 		})
 
 		When("profile apiToken has an invalid format", func() {
-			It("should return an error before calling online service", func() {
+			It("should return an error before calling alarm service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 				err := testuutils.SetAPITokenToProfile(ctx, collProfiles, profileRes.ID, "not-a-uuid")
@@ -217,7 +217,7 @@ var _ = Describe("Notifications", func() {
 			})
 		})
 
-		When("online service returns an error", func() {
+		When("alarm service returns an error", func() {
 			It("should return an error", func() {
 				notificationsResponseStatus = http.StatusBadGateway
 				notificationsResponseBody = `{"error":"online unavailable"}`
@@ -238,7 +238,7 @@ var _ = Describe("Notifications", func() {
 			})
 		})
 
-		When("online service returns invalid JSON", func() {
+		When("alarm service returns invalid JSON", func() {
 			It("should return an error", func() {
 				notificationsResponseBody = `not-json`
 				jwtToken, cookieSession := testuutils.GetJwt(router)
@@ -286,7 +286,7 @@ var _ = Describe("Notifications", func() {
 			})
 		})
 
-		When("online service returns a device outside the logged profile", func() {
+		When("alarm service returns a device outside the logged profile", func() {
 			It("should not enrich the notification with that device", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)

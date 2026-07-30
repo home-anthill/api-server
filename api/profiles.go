@@ -58,15 +58,15 @@ type Profiles struct {
 
 // NewProfiles constructs a Profiles handler with the given dependencies.
 func NewProfiles(logger *zap.SugaredLogger, client *mongo.Client, validate *validator.Validate) *Profiles {
-	onlineServerURL := os.Getenv("HTTP_ONLINE_SERVER") + ":" + os.Getenv("HTTP_ONLINE_PORT")
-	onlineUpdateAPITokenAPI := os.Getenv("HTTP_ONLINE_APITOKEN_API")
+	onlineServerURL := os.Getenv("HTTP_ALARM_SERVER") + ":" + os.Getenv("HTTP_ALARM_PORT")
+	onlineUpdateAPITokenAPI := os.Getenv("HTTP_ALARM_APITOKEN_API")
 	return &Profiles{
 		client:                  client,
 		collProfiles:            db.GetCollections(client).Profiles,
 		collDevices:             db.GetCollections(client).Devices,
 		collSensors:             client.Database(sensorDbName()).Collection("sensors"),
 		collControls:            client.Database(controllerDbName()).Collection("controllers"),
-		onlineKeepAliveURL:      onlineServerURL + os.Getenv("HTTP_ONLINE_KEEPALIVE_API"),
+		onlineKeepAliveURL:      onlineServerURL + os.Getenv("HTTP_ALARM_KEEPALIVE_API"),
 		onlineUpdateAPITokenURL: onlineServerURL + onlineUpdateAPITokenAPI,
 		logger:                  logger,
 		validate:                validate,
@@ -158,7 +158,7 @@ func (p *Profiles) PostRotateAPIToken(c *gin.Context) {
 		return
 	}
 	if err = p.updateOnlineAPIToken(oldAPIToken, newAPIToken, onlineDeviceFeatures); err != nil {
-		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot update apiToken in online service", "error", err)
+		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot update apiToken in alarm service", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
@@ -239,7 +239,7 @@ func (p *Profiles) getProfileOnlineDeviceFeatures(ctx context.Context, profile m
 func (p *Profiles) updateOnlineAPIToken(oldAPIToken, newAPIToken string, deviceFeatures []updateOnlineDeviceFeat) error {
 	_, _, keepAliveErr := utils.Get(p.onlineKeepAliveURL)
 	if keepAliveErr != nil {
-		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote online service")
+		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote alarm service")
 	}
 
 	payloadJSON, err := json.Marshal(updateOnlineAPITokenReq{
