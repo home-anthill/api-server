@@ -640,7 +640,7 @@ func (d *Devices) deleteControllerFeature(ctx context.Context, device models.Dev
 }
 
 func (d *Devices) deleteOnlineFeature(device models.Device, feature models.Feature) error {
-	d.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from alarm service")
+	d.logger.Debug("REST - DELETE - DeleteDevices - removing online sensor from alarm-api service")
 	if !utils.IsValidUUID(device.UUID) || !utils.IsValidUUID(feature.UUID) {
 		return fmt.Errorf(
 			"REST - DELETE - DeleteDevices - invalid UUID format: device=%s, feature=%s",

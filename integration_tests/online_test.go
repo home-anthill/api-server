@@ -359,7 +359,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile owns an online sensor with an invalid UUID", func() {
-			It("should return an error before calling the alarm service", func() {
+			It("should return an error before calling the alarm-api service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -383,7 +383,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile owns an online-capable device with an invalid feature UUID", func() {
-			It("should return an error before calling the alarm service", func() {
+			It("should return an error before calling the alarm-api service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -407,7 +407,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("alarm service returns an error for a single device lookup", func() {
+		When("alarm-api service returns an error for a single device lookup", func() {
 			It("should return a remote online error", func() {
 				onlineResponseStatus = http.StatusBadGateway
 				onlineResponseBody = `{"error":"online unavailable"}`
@@ -428,7 +428,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("alarm service returns invalid JSON for a single device lookup", func() {
+		When("alarm-api service returns invalid JSON for a single device lookup", func() {
 			It("should return an online response parsing error", func() {
 				onlineResponseBody = `not-json`
 
@@ -449,7 +449,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile online lookup includes a device with an invalid UUID", func() {
-			It("should return an error before calling the alarm service", func() {
+			It("should return an error before calling the alarm-api service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -473,7 +473,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("alarm service returns an error for profile online lookup", func() {
+		When("alarm-api service returns an error for profile online lookup", func() {
 			It("should return a remote online error", func() {
 				onlineResponseStatus = http.StatusBadGateway
 				onlineResponseBody = `{"error":"online unavailable"}`
@@ -494,7 +494,7 @@ var _ = Describe("Online", func() {
 			})
 		})
 
-		When("alarm service returns invalid JSON for profile online lookup", func() {
+		When("alarm-api service returns invalid JSON for profile online lookup", func() {
 			It("should return a remote online error", func() {
 				onlineResponseBody = `not-json`
 

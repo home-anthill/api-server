@@ -50,7 +50,7 @@ type Notification struct {
 	ProviderMessageID string          `json:"providerMessageId"`
 }
 
-// Notifications handles notification-history lookups via the external alarm service.
+// Notifications handles notification-history lookups via the external alarm-api service.
 type Notifications struct {
 	client                 *mongo.Client
 	collDevices            *mongo.Collection
@@ -97,7 +97,7 @@ func (n *Notifications) GetNotifications(c *gin.Context) {
 	}
 
 	path := n.onlineNotificationsURL + url.PathEscape(apiToken)
-	n.logger.Debug("REST - GET - GetNotifications - calling external 'alarm' notifications service using apiToken")
+	n.logger.Debug("REST - GET - GetNotifications - calling external 'alarm-api' notifications service using apiToken")
 	_, result, err := n.notificationsService(path)
 	if err != nil {
 		n.logger.Errorf("REST - GET - GetNotifications - cannot get notifications from remote service = %#v", err)
@@ -173,7 +173,7 @@ func (n *Notifications) getProfileDevicesByUUID(c *gin.Context, profile models.P
 	}
 
 	cur, err := n.collDevices.Find(c.Request.Context(), bson.M{
-		// resolve the device references returned by the alarm service notification payload
+		// resolve the device references returned by the alarm-api service notification payload
 		"_id": bson.M{"$in": profile.Devices},
 		// ensure we only return devices owned by the authenticated profile
 		"uuid": bson.M{"$in": deviceUUIDs},

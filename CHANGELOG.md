@@ -5,25 +5,25 @@
 ### Features
 
 - Renamed the internal online-service connection settings from `HTTP_ONLINE_*` to `HTTP_ALARM_*` while preserving the public `/api/online` API and downstream `/online/` heartbeat route.
-- Added `HTTP_ALARM_ALARMS_API` and routed feature notification preferences to the alarm service's `/alarms/.../notifications` endpoint while preserving `/online` for heartbeat operations.
+- Added `HTTP_ALARM_ALARMS_API` and routed feature notification preferences to the alarm-api service's `/alarms/.../notifications` endpoint while preserving `/online` for heartbeat operations.
 - add device feature spec support
 - add thermostat `mode` sensor feature
 - Added authenticated notification history API `GET /api/notifications` to return the logged
-  profile's Redis notification history through the `alarm` service without exposing the profile
+  profile's Redis notification history through the `alarm-api` service without exposing the profile
   API token to clients.
 - Added authenticated `PUT /api/devices/:id/features/:featureUuid/notifications` to persist a
-  per-feature `notificationSilenced` flag and forward it to the `alarm` service for push-alert
+  per-feature `notificationSilenced` flag and forward it to the `alarm-api` service for push-alert
   suppression.
 - Added authenticated `GET /api/online` to return online statuses for all online-capable devices
   owned by the logged profile, including the matching device and feature metadata.
 - Device deletion now cleans up registered sensor documents for each sensor feature and calls the
-  alarm service using the correct per-feature delete path so Redis online state is removed for
+  alarm-api service using the correct per-feature delete path so Redis online state is removed for
   online sensors.
 - Device deletion now calls `api-devices` `DeleteValue` for each controller feature so controller
   documents are cleaned up alongside sensor and online state.
 - Device deletion now fails the API request before removing api-server state when downstream
   sensor, controller, or online cleanup cannot be completed.
-- Profile API-token rotation now calls the alarm service with `PUT /api-token` via
+- Profile API-token rotation now calls the alarm-api service with `PUT /api-token` via
   `HTTP_ALARM_APITOKEN_API`.
 
 ### Tests
@@ -33,12 +33,12 @@
 - Added utility tests for PKCE verifier/challenge/app-code validation, refresh-token hashing secret precedence, API token hashing/encryption/decryption error handling, random string generation, validator error formatting, and session/JWT context identity extraction.
 - Added startup environment tests for required secrets, OAuth callbacks, invalid/short auth config, `.env` discovery, and `InitEnv` error propagation.
 - Added integration coverage for OAuth refresh/logout validation, OAuth callbacks missing code/state, missing profile records, missing owned devices, invalid device UUIDs, and profile API-token load failures across device values, FCM, and token rotation flows.
-- Added integration coverage for proxying logged-profile notifications from the mocked `alarm`
+- Added integration coverage for proxying logged-profile notifications from the mocked `alarm-api`
   service.
 - Added integration coverage for updating an owned feature's notification silence preference.
 - Added integration coverage for logged-profile online status lookups, empty online-status
   responses, invalid UUID validation, downstream online errors, and invalid online JSON responses.
-- Updated profile API-token rotation coverage to assert the alarm service receives
+- Updated profile API-token rotation coverage to assert the alarm-api service receives
   `PUT /api-token`.
 
 ### Chores

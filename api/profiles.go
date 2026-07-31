@@ -158,7 +158,7 @@ func (p *Profiles) PostRotateAPIToken(c *gin.Context) {
 		return
 	}
 	if err = p.updateOnlineAPIToken(oldAPIToken, newAPIToken, onlineDeviceFeatures); err != nil {
-		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot update apiToken in alarm service", "error", err)
+		p.logger.Errorw("REST - POST - PostRotateAPIToken - Cannot update apiToken in alarm-api service", "error", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update apiToken"})
 		return
 	}
@@ -239,7 +239,7 @@ func (p *Profiles) getProfileOnlineDeviceFeatures(ctx context.Context, profile m
 func (p *Profiles) updateOnlineAPIToken(oldAPIToken, newAPIToken string, deviceFeatures []updateOnlineDeviceFeat) error {
 	_, _, keepAliveErr := utils.Get(p.onlineKeepAliveURL)
 	if keepAliveErr != nil {
-		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote alarm service")
+		return customerrors.Wrap(http.StatusInternalServerError, keepAliveErr, "Cannot call keepAlive of remote alarm-api service")
 	}
 
 	payloadJSON, err := json.Marshal(updateOnlineAPITokenReq{

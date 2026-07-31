@@ -27,7 +27,7 @@ type onlineResponse struct {
 	CurrentTime int64  `json:"currentTime"`
 }
 
-// Online handles device online-status lookups via the external alarm service.
+// Online handles device online-status lookups via the external alarm-api service.
 type Online struct {
 	client          *mongo.Client
 	collDevices     *mongo.Collection
@@ -108,7 +108,7 @@ func (o *Online) GetOnline(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online response"})
 		return
 	}
-	o.logger.Debugf("REST - GetOnline - external 'alarm' service response = %#v", onlineResp)
+	o.logger.Debugf("REST - GetOnline - external 'alarm-api' service response = %#v", onlineResp)
 
 	response := models.Online{}
 	response.CreatedAt = time.UnixMilli(onlineResp.CreatedAt)
@@ -205,7 +205,7 @@ func (o *Online) getProfileDevices(ctx context.Context, deviceIDs []bson.ObjectI
 
 func (o *Online) getOnlineByDeviceFeature(deviceUUID, featureUUID string) (onlineResponse, error) {
 	path := o.onlineByUUIDURL + url.PathEscape(deviceUUID) + "/features/" + url.PathEscape(featureUUID)
-	o.logger.Debugf("getOnlineByDeviceFeature - calling external 'alarm' service = %s", path)
+	o.logger.Debugf("getOnlineByDeviceFeature - calling external 'alarm-api' service = %s", path)
 
 	_, result, err := o.onlineByUUIDService(path)
 	if err != nil {
