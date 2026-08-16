@@ -28,3 +28,12 @@ func GetOnlineFeature(features []models.Feature) *models.Feature {
 	}
 	return nil
 }
+
+func GetEnabledOnlineFeature(features []models.Feature) *models.Feature {
+	for i := range features {
+		if features[i].Enable && features[i].Type == models.Sensor && features[i].Name == "online" {
+			return &features[i]
+		}
+	}
+	return nil
+}

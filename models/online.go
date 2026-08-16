@@ -11,11 +11,20 @@ type Online struct {
 	CurrentTime time.Time `json:"currentTime"`
 }
 
-// OnlineDeviceStatus includes the online status with its owning device and feature.
+type OnlineStatus string
+
+const (
+	OnlineStatusOnline  OnlineStatus = "online"
+	OnlineStatusOffline OnlineStatus = "offline"
+	OnlineStatusUnknown OnlineStatus = "unknown"
+)
+
+// OnlineDeviceStatus is the client-facing status for one enabled online feature.
 type OnlineDeviceStatus struct {
-	CreatedAt   time.Time `json:"createdAt"`
-	ModifiedAt  time.Time `json:"modifiedAt"`
-	CurrentTime time.Time `json:"currentTime"`
-	Device      Device    `json:"device"`
-	Feature     Feature   `json:"feature"`
+	DeviceID    string       `json:"deviceId"`
+	FeatureUUID string       `json:"featureUuid"`
+	Status      OnlineStatus `json:"status"`
+	CreatedAt   *time.Time   `json:"createdAt"`
+	ModifiedAt  *time.Time   `json:"modifiedAt"`
+	CurrentTime time.Time    `json:"currentTime"`
 }

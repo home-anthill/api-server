@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -43,6 +45,9 @@ var _ = Describe("Online", func() {
 	var oldHTTPOnlinePort string
 	var onlineResponseStatus int
 	var onlineResponseBody string
+	var onlineBulkResponseStatus int
+	var onlineBulkResponseBody string
+	var onlineBulkRequestCount atomic.Int32
 
 	var deviceSensor = models.Device{
 		ID:           bson.NewObjectID(),
@@ -116,13 +121,26 @@ var _ = Describe("Online", func() {
 		w.WriteHeader(onlineResponseStatus)
 		_, _ = w.Write([]byte(onlineResponseBody))
 	})
+	getBulkOnlineHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		onlineBulkRequestCount.Add(1)
+		w.WriteHeader(onlineBulkResponseStatus)
+		_, _ = w.Write([]byte(onlineBulkResponseBody))
+	})
 
 	BeforeEach(func() {
 		onlineResponseStatus = http.StatusOK
 		onlineResponseBody = getOnlineJSONResponse(mockedProfileAPIToken, currentDate, currentDate)
+		onlineBulkResponseStatus = http.StatusOK
+		onlineBulkResponseBody = getOnlineBulkJSONResponse(
+			currentDate,
+			onlineBulkFoundStatus(onlineDeviceUUID, onlineFeatureUUID, currentDate, currentDate),
+			onlineBulkFoundStatus(onlineDeviceUUID2, onlineFeatureUUID2, currentDate, currentDate),
+		)
+		onlineBulkRequestCount.Store(0)
 
 		// --------- start an HTTP server ---------
 		mux := http.NewServeMux()
+		mux.HandleFunc("/online/bulk", getBulkOnlineHandler)
 		mux.HandleFunc("/online/"+onlineDeviceUUID+"/features/"+onlineFeatureUUID, getSensorOnlineHandler)
 		mux.HandleFunc("/online/"+onlineDeviceUUID2+"/features/"+onlineFeatureUUID2, getSensorOnlineHandler)
 		httpListener, errHTTP := net.Listen("tcp", "127.0.0.1:0")
@@ -210,7 +228,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile owns online-capable devices", func() {
-			It("should get online statuses with devices and features", func() {
+			It("should get compact statuses with one bulk alarm-api request", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 				err := testuutils.SetAPITokenToProfile(ctx, collProfiles, profileRes.ID, mockedProfileAPIToken)
@@ -235,11 +253,138 @@ var _ = Describe("Online", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 
 				Expect(onlineStatuses).To(HaveLen(2))
-				Expect(onlineStatuses[0].CreatedAt.UnixMilli()).To(Equal(currentDate.UnixMilli()))
-				Expect(onlineStatuses[0].ModifiedAt.UnixMilli()).To(Equal(currentDate.UnixMilli()))
-				Expect(onlineStatuses[0].CurrentTime.UnixMilli()).To(Equal(currentDate.UnixMilli()))
-				Expect([]string{onlineStatuses[0].Device.UUID, onlineStatuses[1].Device.UUID}).To(ConsistOf(deviceSensor.UUID, deviceSensor2.UUID))
-				Expect([]string{onlineStatuses[0].Feature.UUID, onlineStatuses[1].Feature.UUID}).To(ConsistOf(onlineFeatureUUID, onlineFeatureUUID2))
+				statusesByDeviceID := make(map[string]models.OnlineDeviceStatus, len(onlineStatuses))
+				for _, status := range onlineStatuses {
+					statusesByDeviceID[status.DeviceID] = status
+				}
+				Expect(statusesByDeviceID).To(HaveKey(deviceSensor.ID.Hex()))
+				Expect(statusesByDeviceID).To(HaveKey(deviceSensor2.ID.Hex()))
+				Expect(statusesByDeviceID[deviceSensor.ID.Hex()].Status).To(Equal(models.OnlineStatusOnline))
+				Expect(statusesByDeviceID[deviceSensor.ID.Hex()].FeatureUUID).To(Equal(onlineFeatureUUID))
+				Expect(statusesByDeviceID[deviceSensor.ID.Hex()].CreatedAt).NotTo(BeNil())
+				Expect(statusesByDeviceID[deviceSensor.ID.Hex()].CreatedAt.UnixMilli()).To(Equal(currentDate.UnixMilli()))
+				Expect(statusesByDeviceID[deviceSensor.ID.Hex()].ModifiedAt.UnixMilli()).To(Equal(currentDate.UnixMilli()))
+				Expect(statusesByDeviceID[deviceSensor.ID.Hex()].CurrentTime.UnixMilli()).To(Equal(currentDate.UnixMilli()))
+				Expect(onlineBulkRequestCount.Load()).To(Equal(int32(1)))
+			})
+		})
+
+		When("one online-capable device has no Redis record", func() {
+			It("should preserve the found status and mark the missing status offline", func() {
+				onlineBulkResponseBody = getOnlineBulkJSONResponse(
+					currentDate,
+					onlineBulkFoundStatus(onlineDeviceUUID, onlineFeatureUUID, currentDate, currentDate),
+					onlineBulkMissingStatus(onlineDeviceUUID2, onlineFeatureUUID2),
+				)
+
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor2.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/online", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				var statuses []models.OnlineDeviceStatus
+				err = json.Unmarshal(recorder.Body.Bytes(), &statuses)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(statuses).To(HaveLen(2))
+				statusesByDeviceID := make(map[string]models.OnlineDeviceStatus, len(statuses))
+				for _, status := range statuses {
+					statusesByDeviceID[status.DeviceID] = status
+				}
+				Expect(statusesByDeviceID[deviceSensor.ID.Hex()].Status).To(Equal(models.OnlineStatusOnline))
+				Expect(statusesByDeviceID[deviceSensor2.ID.Hex()].Status).To(Equal(models.OnlineStatusOffline))
+				Expect(statusesByDeviceID[deviceSensor2.ID.Hex()].CreatedAt).To(BeNil())
+				Expect(statusesByDeviceID[deviceSensor2.ID.Hex()].ModifiedAt).To(BeNil())
+				Expect(onlineBulkRequestCount.Load()).To(Equal(int32(1)))
+			})
+		})
+
+		When("an online record is older than the offline threshold", func() {
+			It("should return an offline status with its last-seen timestamps", func() {
+				staleTime := currentDate.Add(-2 * time.Minute)
+				onlineBulkResponseBody = getOnlineBulkJSONResponse(
+					currentDate,
+					onlineBulkFoundStatus(onlineDeviceUUID, onlineFeatureUUID, staleTime, staleTime),
+				)
+
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/online", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				var statuses []models.OnlineDeviceStatus
+				err = json.Unmarshal(recorder.Body.Bytes(), &statuses)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(statuses).To(HaveLen(1))
+				Expect(statuses[0].Status).To(Equal(models.OnlineStatusOffline))
+				Expect(statuses[0].ModifiedAt).NotTo(BeNil())
+				Expect(statuses[0].ModifiedAt.UnixMilli()).To(Equal(staleTime.UnixMilli()))
+			})
+		})
+
+		When("alarm-api omits a requested device from its bulk response", func() {
+			It("should return unknown for that device", func() {
+				onlineBulkResponseBody = getOnlineBulkJSONResponse(currentDate)
+
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				err := testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, deviceSensor.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/online", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+
+				var statuses []models.OnlineDeviceStatus
+				err = json.Unmarshal(recorder.Body.Bytes(), &statuses)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(statuses).To(HaveLen(1))
+				Expect(statuses[0].Status).To(Equal(models.OnlineStatusUnknown))
+				Expect(statuses[0].CreatedAt).To(BeNil())
+				Expect(statuses[0].ModifiedAt).To(BeNil())
+			})
+		})
+
+		When("an online feature is disabled", func() {
+			It("should omit the device without calling alarm-api", func() {
+				disabledDevice := cloneOnlineTestDevice(deviceSensor)
+				disabledDevice.ID = bson.NewObjectID()
+				disabledDevice.Mac = "12:34:56:78:90:AB"
+				disabledDevice.Features[0].Enable = false
+				err := testuutils.InsertOne(ctx, collDevices, disabledDevice)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				jwtToken, cookieSession := testuutils.GetJwt(router)
+				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
+				err = testuutils.AssignDeviceToProfile(ctx, collProfiles, profileRes.ID, disabledDevice.ID)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				recorder := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodGet, "/api/online", nil)
+				req.Header.Add("Cookie", cookieSession)
+				req.Header.Add("Authorization", "Bearer "+jwtToken)
+				router.ServeHTTP(recorder, req)
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				Expect(recorder.Body.String()).To(Equal(`[]`))
+				Expect(onlineBulkRequestCount.Load()).To(BeZero())
 			})
 		})
 
@@ -449,7 +594,7 @@ var _ = Describe("Online", func() {
 		})
 
 		When("profile online lookup includes a device with an invalid UUID", func() {
-			It("should return an error before calling the alarm-api service", func() {
+			It("should return an unknown status without calling the alarm-api service", func() {
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
 
@@ -468,15 +613,23 @@ var _ = Describe("Online", func() {
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
-				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
-				Expect(recorder.Body.String()).To(Equal(`{"error":"Cannot get online"}`))
+				Expect(recorder.Code).To(Equal(http.StatusOK))
+				var statuses []models.OnlineDeviceStatus
+				err = json.Unmarshal(recorder.Body.Bytes(), &statuses)
+				Expect(err).ShouldNot(HaveOccurred())
+				Expect(statuses).To(HaveLen(1))
+				Expect(statuses[0].DeviceID).To(Equal(deviceBadUUID.ID.Hex()))
+				Expect(statuses[0].Status).To(Equal(models.OnlineStatusUnknown))
+				Expect(statuses[0].CreatedAt).To(BeNil())
+				Expect(statuses[0].ModifiedAt).To(BeNil())
+				Expect(onlineBulkRequestCount.Load()).To(BeZero())
 			})
 		})
 
 		When("alarm-api service returns an error for profile online lookup", func() {
 			It("should return a remote online error", func() {
-				onlineResponseStatus = http.StatusBadGateway
-				onlineResponseBody = `{"error":"online unavailable"}`
+				onlineBulkResponseStatus = http.StatusBadGateway
+				onlineBulkResponseBody = `{"error":"online unavailable"}`
 
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
@@ -489,14 +642,14 @@ var _ = Describe("Online", func() {
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
-				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Code).To(Equal(http.StatusBadGateway))
 				Expect(recorder.Body.String()).To(Equal(`{"error":"Cannot get online"}`))
 			})
 		})
 
 		When("alarm-api service returns invalid JSON for profile online lookup", func() {
 			It("should return a remote online error", func() {
-				onlineResponseBody = `not-json`
+				onlineBulkResponseBody = `not-json`
 
 				jwtToken, cookieSession := testuutils.GetJwt(router)
 				profileRes := testuutils.GetLoggedProfile(router, jwtToken, cookieSession)
@@ -509,7 +662,7 @@ var _ = Describe("Online", func() {
 				req.Header.Add("Authorization", "Bearer "+jwtToken)
 				req.Header.Add("Content-Type", `application/json`)
 				router.ServeHTTP(recorder, req)
-				Expect(recorder.Code).To(Equal(http.StatusInternalServerError))
+				Expect(recorder.Code).To(Equal(http.StatusBadGateway))
 				Expect(recorder.Body.String()).To(Equal(`{"error":"Cannot get online"}`))
 			})
 		})
@@ -518,6 +671,28 @@ var _ = Describe("Online", func() {
 
 func getOnlineJSONResponse(apiToken string, createDate time.Time, modDate time.Time) string {
 	return `{"apiToken": "` + apiToken + `", "createdAt": ` + fmt.Sprintf("%v", createDate.UnixMilli()) + `, "modifiedAt": ` + fmt.Sprintf("%v", modDate.UnixMilli()) + `, "currentTime": ` + fmt.Sprintf("%v", modDate.UnixMilli()) + `}`
+}
+
+func getOnlineBulkJSONResponse(currentTime time.Time, statuses ...string) string {
+	return `{"statuses":[` + strings.Join(statuses, ",") + `],"currentTime":` + fmt.Sprintf("%d", currentTime.UnixMilli()) + `}`
+}
+
+func onlineBulkFoundStatus(deviceUUID, featureUUID string, createdAt, modifiedAt time.Time) string {
+	return fmt.Sprintf(
+		`{"deviceUuid":%q,"featureUuid":%q,"status":"found","createdAt":%d,"modifiedAt":%d}`,
+		deviceUUID,
+		featureUUID,
+		createdAt.UnixMilli(),
+		modifiedAt.UnixMilli(),
+	)
+}
+
+func onlineBulkMissingStatus(deviceUUID, featureUUID string) string {
+	return fmt.Sprintf(
+		`{"deviceUuid":%q,"featureUuid":%q,"status":"missing","createdAt":null,"modifiedAt":null}`,
+		deviceUUID,
+		featureUUID,
+	)
 }
 
 func cloneOnlineTestDevice(device models.Device) models.Device {

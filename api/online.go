@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -27,26 +28,56 @@ type onlineResponse struct {
 	CurrentTime int64  `json:"currentTime"`
 }
 
+const offlineThreshold = time.Minute
+
+type onlineBulkDeviceFeature struct {
+	DeviceUUID  string `json:"deviceUuid"`
+	FeatureUUID string `json:"featureUuid"`
+}
+
+type onlineBulkRequest struct {
+	DeviceFeatures []onlineBulkDeviceFeature `json:"deviceFeatures"`
+}
+
+type onlineBulkStatus struct {
+	DeviceUUID  string `json:"deviceUuid"`
+	FeatureUUID string `json:"featureUuid"`
+	Status      string `json:"status"`
+	CreatedAt   *int64 `json:"createdAt"`
+	ModifiedAt  *int64 `json:"modifiedAt"`
+}
+
+type onlineBulkResponse struct {
+	Statuses    []onlineBulkStatus `json:"statuses"`
+	CurrentTime int64              `json:"currentTime"`
+}
+
+type onlineStatusCandidate struct {
+	deviceID    string
+	deviceUUID  string
+	featureUUID string
+}
+
 // Online handles device online-status lookups via the external alarm-api service.
 type Online struct {
-	client          *mongo.Client
-	collDevices     *mongo.Collection
-	collProfiles    *mongo.Collection
-	logger          *zap.SugaredLogger
-	onlineByUUIDURL string
+	client       *mongo.Client
+	collDevices  *mongo.Collection
+	collProfiles *mongo.Collection
+	logger       *zap.SugaredLogger
+	onlineURL    string
 }
 
 // NewOnline constructs an Online handler with the given dependencies.
 func NewOnline(logger *zap.SugaredLogger, client *mongo.Client) *Online {
 	onlineServerURL := os.Getenv("HTTP_ALARM_SERVER") + ":" + os.Getenv("HTTP_ALARM_PORT")
-	onlineByUUIDURL := onlineServerURL + os.Getenv("HTTP_ALARM_ONLINE_API")
+	onlineURL := onlineServerURL + os.Getenv("HTTP_ALARM_ONLINE_API")
 
 	return &Online{
-		client:          client,
-		collDevices:     db.GetCollections(client).Devices,
-		collProfiles:    db.GetCollections(client).Profiles,
-		logger:          logger,
-		onlineByUUIDURL: onlineByUUIDURL,
+		client:       client,
+		collDevices:  db.GetCollections(client).Devices,
+		collProfiles: db.GetCollections(client).Profiles,
+		logger:       logger,
+		onlineURL:    onlineURL,
 	}
 }
 
@@ -136,38 +167,113 @@ func (o *Online) GetProfileOnline(c *gin.Context) {
 	}
 
 	response := make([]models.OnlineDeviceStatus, 0, len(devices))
+	candidates := make([]onlineStatusCandidate, 0, len(devices))
+	request := onlineBulkRequest{DeviceFeatures: make([]onlineBulkDeviceFeature, 0, len(devices))}
+	fallbackCurrentTime := time.Now().UTC()
 	for _, device := range devices {
-		onlineFeature := utils.GetOnlineFeature(device.Features)
+		// filter only devices that have 'online feature' enabled
+		onlineFeature := utils.GetEnabledOnlineFeature(device.Features)
 		if onlineFeature == nil {
 			continue
 		}
 
 		if !utils.IsValidUUID(device.UUID) || !utils.IsValidUUID(onlineFeature.UUID) {
-			o.logger.Error("REST - GET - GetProfileOnline - invalid UUID format in device or feature")
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
-			return
+			o.logger.Errorw(
+				"REST - GET - GetProfileOnline - invalid UUID format in device or feature",
+				"deviceID", device.ID.Hex(),
+			)
+			response = append(response, models.OnlineDeviceStatus{
+				DeviceID:    device.ID.Hex(),
+				FeatureUUID: onlineFeature.UUID,
+				Status:      models.OnlineStatusUnknown,
+				CurrentTime: fallbackCurrentTime,
+			})
+			continue
 		}
 
-		onlineResp, err := o.getOnlineByDeviceFeature(device.UUID, onlineFeature.UUID)
-		if err != nil {
-			o.logger.Errorf("REST - GET - GetProfileOnline - cannot get online from remote service = %#v", err)
-			if re, ok := asErrorWrapper(err); ok {
-				o.logger.Errorf("REST - GET - GetProfileOnline - cannot get online with status = %d, message = %s\n", re.Code, re.Message)
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Cannot get online"})
-			return
-		}
-
-		response = append(response, models.OnlineDeviceStatus{
-			CreatedAt:   time.UnixMilli(onlineResp.CreatedAt),
-			ModifiedAt:  time.UnixMilli(onlineResp.ModifiedAt),
-			CurrentTime: time.UnixMilli(onlineResp.CurrentTime),
-			Device:      device,
-			Feature:     *onlineFeature,
+		// candidates because those devices are only eligible to be checked—not yet known to be online
+		candidates = append(candidates, onlineStatusCandidate{
+			deviceID:    device.ID.Hex(),
+			deviceUUID:  device.UUID,
+			featureUUID: onlineFeature.UUID,
+		})
+		request.DeviceFeatures = append(request.DeviceFeatures, onlineBulkDeviceFeature{
+			DeviceUUID:  device.UUID,
+			FeatureUUID: onlineFeature.UUID,
 		})
 	}
 
+	if len(candidates) == 0 {
+		c.JSON(http.StatusOK, response)
+		return
+	}
+
+	bulkResponse, err := o.getOnlineBulk(request)
+	if err != nil {
+		o.logger.Errorf("REST - GET - GetProfileOnline - cannot get bulk online statuses = %#v", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Cannot get online"})
+		return
+	}
+	if bulkResponse.CurrentTime <= 0 {
+		o.logger.Error("REST - GET - GetProfileOnline - invalid currentTime in bulk response")
+		c.JSON(http.StatusBadGateway, gin.H{"error": "Cannot get online"})
+		return
+	}
+
+	currentTime := time.UnixMilli(bulkResponse.CurrentTime)
+	statusesByKey := make(map[string]onlineBulkStatus, len(bulkResponse.Statuses))
+	for _, status := range bulkResponse.Statuses {
+		statusesByKey[onlineStatusKey(status.DeviceUUID, status.FeatureUUID)] = status
+	}
+
+	for _, candidate := range candidates {
+		status, found := statusesByKey[onlineStatusKey(candidate.deviceUUID, candidate.featureUUID)]
+		result := models.OnlineDeviceStatus{
+			DeviceID:    candidate.deviceID,
+			FeatureUUID: candidate.featureUUID,
+			Status:      models.OnlineStatusUnknown,
+			CurrentTime: currentTime,
+		}
+
+		if found && status.Status == "missing" {
+			result.Status = models.OnlineStatusOffline
+		} else if found && status.Status == "found" && status.CreatedAt != nil && status.ModifiedAt != nil {
+			createdAt := time.UnixMilli(*status.CreatedAt)
+			modifiedAt := time.UnixMilli(*status.ModifiedAt)
+			result.CreatedAt = &createdAt
+			result.ModifiedAt = &modifiedAt
+			result.Status = models.OnlineStatusOnline
+			if modifiedAt.Before(currentTime.Add(-offlineThreshold)) {
+				result.Status = models.OnlineStatusOffline
+			}
+		}
+
+		response = append(response, result)
+	}
+
 	c.JSON(http.StatusOK, response)
+}
+
+func onlineStatusKey(deviceUUID, featureUUID string) string {
+	return deviceUUID + ":" + featureUUID
+}
+
+func (o *Online) getOnlineBulk(request onlineBulkRequest) (onlineBulkResponse, error) {
+	payload, err := json.Marshal(request)
+	if err != nil {
+		return onlineBulkResponse{}, err
+	}
+
+	_, result, err := utils.Post(strings.TrimSuffix(o.onlineURL, "/")+"/bulk", payload)
+	if err != nil {
+		return onlineBulkResponse{}, err
+	}
+
+	response := onlineBulkResponse{}
+	if err = json.Unmarshal([]byte(result), &response); err != nil {
+		return onlineBulkResponse{}, err
+	}
+	return response, nil
 }
 
 func (o *Online) getDevice(ctx context.Context, deviceID bson.ObjectID) (models.Device, error) {
@@ -204,7 +310,7 @@ func (o *Online) getProfileDevices(ctx context.Context, deviceIDs []bson.ObjectI
 }
 
 func (o *Online) getOnlineByDeviceFeature(deviceUUID, featureUUID string) (onlineResponse, error) {
-	path := o.onlineByUUIDURL + url.PathEscape(deviceUUID) + "/features/" + url.PathEscape(featureUUID)
+	path := o.onlineURL + url.PathEscape(deviceUUID) + "/features/" + url.PathEscape(featureUUID)
 	o.logger.Debugf("getOnlineByDeviceFeature - calling external 'alarm-api' service = %s", path)
 
 	_, result, err := o.onlineByUUIDService(path)
