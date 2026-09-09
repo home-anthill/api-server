@@ -33,11 +33,11 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@v7
         with:
-          go-version: 1.26
+          go-version: 1.27
       - name: Install Make and protoc
         run: sudo apt-get install -y make protobuf-compiler
       - name: Install Make
@@ -74,7 +74,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # Workaround: https://github.com/docker/build-push-action/issues/461
       - name: Set up Docker Buildx

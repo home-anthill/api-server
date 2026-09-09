@@ -78,7 +78,7 @@ var _ = Describe("Online", func() {
 		ID:           bson.NewObjectID(),
 		Mac:          "FF:22:33:44:55:CC",
 		Manufacturer: "test",
-		Model:        "pir",
+		Model:        "motion",
 		UUID:         uuid.NewString(),
 		Features: []models.Feature{{
 			UUID:   uuid.NewString(),
