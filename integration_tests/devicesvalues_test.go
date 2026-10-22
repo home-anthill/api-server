@@ -42,12 +42,26 @@ var humidityFeatureUUID = uuid.NewString()
 var airpressureFeatureUUID = uuid.NewString()
 var motionFeatureUUID = uuid.NewString()
 var airqualityFeatureUUID = uuid.NewString()
+var levelFeatureUUID = uuid.NewString()
+var altitudeFeatureUUID = uuid.NewString()
+var co2FeatureUUID = uuid.NewString()
+var phFeatureUUID = uuid.NewString()
+var iaqFeatureUUID = uuid.NewString()
+var vocFeatureUUID = uuid.NewString()
+var eco2FeatureUUID = uuid.NewString()
 var temperatureSensorValue = float32(22.12)
 var lightSensorValue = float32(17.1)
 var humiditySensorValue = float32(55.12)
 var airpressureSensorValue = float32(100.71)
 var motionSensorValue = float32(1.0)
 var airqualitySensorValue = float32(2.0)
+var levelSensorValue = float32(1)
+var altitudeSensorValue = float32(-12.5)
+var co2SensorValue = float32(850)
+var phSensorValue = float32(7.25)
+var iaqSensorValue = float32(75.5)
+var vocSensorValue = float32(0.75)
+var eco2SensorValue = float32(650)
 
 type deviceGrpcStub struct {
 	device.UnimplementedDeviceServer
@@ -187,6 +201,55 @@ var _ = Describe("DevicesValues", func() {
 			Enable: true,
 			Order:  6,
 			Unit:   "-",
+		}, {
+			UUID:   levelFeatureUUID,
+			Type:   "sensor",
+			Name:   "level",
+			Enable: true,
+			Order:  7,
+			Unit:   "-",
+		}, {
+			UUID:   altitudeFeatureUUID,
+			Type:   "sensor",
+			Name:   "altitude",
+			Enable: true,
+			Order:  8,
+			Unit:   "m",
+		}, {
+			UUID:   co2FeatureUUID,
+			Type:   "sensor",
+			Name:   "co2",
+			Enable: true,
+			Order:  9,
+			Unit:   "ppm",
+		}, {
+			UUID:   phFeatureUUID,
+			Type:   "sensor",
+			Name:   "ph",
+			Enable: true,
+			Order:  10,
+			Unit:   "pH",
+		}, {
+			UUID:   iaqFeatureUUID,
+			Type:   "sensor",
+			Name:   "iaq",
+			Enable: true,
+			Order:  11,
+			Unit:   "IAQ",
+		}, {
+			UUID:   vocFeatureUUID,
+			Type:   "sensor",
+			Name:   "voc",
+			Enable: true,
+			Order:  12,
+			Unit:   "ppm",
+		}, {
+			UUID:   eco2FeatureUUID,
+			Type:   "sensor",
+			Name:   "eco2",
+			Enable: true,
+			Order:  13,
+			Unit:   "ppm",
 		}},
 		CreatedAt:  currentDate,
 		ModifiedAt: currentDate,
@@ -219,6 +282,34 @@ var _ = Describe("DevicesValues", func() {
 	getSensorAirqualityHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(getSensorJSONResponse(airqualitySensorValue, currentDate, currentDate)))
+	})
+	getSensorLevelHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(levelSensorValue, currentDate, currentDate)))
+	})
+	getSensorAltitudeHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(altitudeSensorValue, currentDate, currentDate)))
+	})
+	getSensorCo2Handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(co2SensorValue, currentDate, currentDate)))
+	})
+	getSensorPhHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(phSensorValue, currentDate, currentDate)))
+	})
+	getSensorIaqHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(iaqSensorValue, currentDate, currentDate)))
+	})
+	getSensorVocHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(vocSensorValue, currentDate, currentDate)))
+	})
+	getSensorEco2Handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(getSensorJSONResponse(eco2SensorValue, currentDate, currentDate)))
 	})
 
 	BeforeEach(func() {
@@ -277,6 +368,13 @@ var _ = Describe("DevicesValues", func() {
 		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+airpressureFeatureUUID+"/airpressure", getSensorAirpressureHandler)
 		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+motionFeatureUUID+"/motion", getSensorMotionHandler)
 		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+airqualityFeatureUUID+"/airquality", getSensorAirqualityHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+levelFeatureUUID+"/level", getSensorLevelHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+altitudeFeatureUUID+"/altitude", getSensorAltitudeHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+co2FeatureUUID+"/co2", getSensorCo2Handler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+phFeatureUUID+"/ph", getSensorPhHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+iaqFeatureUUID+"/iaq", getSensorIaqHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+vocFeatureUUID+"/voc", getSensorVocHandler)
+		mux.HandleFunc("/sensors/"+deviceUUID+"/features/"+eco2FeatureUUID+"/eco2", getSensorEco2Handler)
 		httpListener, errHTTP := net.Listen("tcp", "localhost:8000")
 		logger.Infof("register_test - HTTP client listening at %s", httpListener.Addr().String())
 		Expect(errHTTP).ShouldNot(HaveOccurred())
@@ -381,7 +479,7 @@ var _ = Describe("DevicesValues", func() {
 				err = json.Unmarshal(recorder.Body.Bytes(), &deviceStates)
 				Expect(err).ShouldNot(HaveOccurred())
 				// order is the same of deviceSensor.Features
-				Expect(deviceStates).To(HaveLen(6))
+				Expect(deviceStates).To(HaveLen(13))
 				Expect(deviceStates[0].FeatureUUID).To(Equal(temperatureFeatureUUID))
 				Expect(deviceStates[0].Value).To(Equal(temperatureSensorValue))
 				Expect(deviceStates[0].CreatedAt).To(Equal(currentDate.UnixMilli()))
@@ -406,6 +504,34 @@ var _ = Describe("DevicesValues", func() {
 				Expect(deviceStates[5].Value).To(Equal(airqualitySensorValue))
 				Expect(deviceStates[5].CreatedAt).To(Equal(currentDate.UnixMilli()))
 				Expect(deviceStates[5].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[6].FeatureUUID).To(Equal(levelFeatureUUID))
+				Expect(deviceStates[6].Value).To(Equal(levelSensorValue))
+				Expect(deviceStates[6].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[6].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[7].FeatureUUID).To(Equal(altitudeFeatureUUID))
+				Expect(deviceStates[7].Value).To(Equal(altitudeSensorValue))
+				Expect(deviceStates[7].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[7].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[8].FeatureUUID).To(Equal(co2FeatureUUID))
+				Expect(deviceStates[8].Value).To(Equal(co2SensorValue))
+				Expect(deviceStates[8].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[8].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[9].FeatureUUID).To(Equal(phFeatureUUID))
+				Expect(deviceStates[9].Value).To(Equal(phSensorValue))
+				Expect(deviceStates[9].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[9].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[10].FeatureUUID).To(Equal(iaqFeatureUUID))
+				Expect(deviceStates[10].Value).To(Equal(iaqSensorValue))
+				Expect(deviceStates[10].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[10].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[11].FeatureUUID).To(Equal(vocFeatureUUID))
+				Expect(deviceStates[11].Value).To(Equal(vocSensorValue))
+				Expect(deviceStates[11].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[11].ModifiedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[12].FeatureUUID).To(Equal(eco2FeatureUUID))
+				Expect(deviceStates[12].Value).To(Equal(eco2SensorValue))
+				Expect(deviceStates[12].CreatedAt).To(Equal(currentDate.UnixMilli()))
+				Expect(deviceStates[12].ModifiedAt).To(Equal(currentDate.UnixMilli()))
 			})
 		})
 

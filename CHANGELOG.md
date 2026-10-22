@@ -4,6 +4,8 @@
 
 ### Features
 
+- Extended the existing sensor device-values API test with `level`, negative fractional `altitude`, `co2`, and fractional `ph`, using explicit mock routes and checking feature UUIDs, values, ordering, and timestamps.
+- Extend the existing all-sensors device fixture, explicit HTTP routes, and list-value assertions for `iaq`, `voc`, and `eco2`.
 - Renamed the internal online-service connection settings from `HTTP_ONLINE_*` to `HTTP_ALARM_*` while preserving the public `/api/online` API and downstream `/online/` heartbeat route.
 - Added `HTTP_ALARM_ALARMS_API` and routed feature notification preferences to the alarm-api service's `/alarms/.../notifications` endpoint while preserving `/online` for heartbeat operations.
 - add device feature spec support

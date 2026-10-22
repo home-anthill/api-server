@@ -15,9 +15,9 @@ const SessionName = "oauth_session"
 // flow.
 const RefreshTokenCookieName = "refresh_token"
 
-// RefreshTokenCookiePath scopes the web refresh cookie to the refresh endpoint
+// RefreshTokenCookiePath scopes the web refresh cookie to refresh and logout endpoints
 // so it is not sent with unrelated API requests.
-const RefreshTokenCookiePath = "/api/oauth/refresh"
+const RefreshTokenCookiePath = "/api/oauth"
 
 // SetRefreshTokenCookie writes the web refresh token as an HttpOnly SameSite=Lax
 // cookie with the configured TTL and secure flag.

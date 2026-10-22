@@ -226,7 +226,9 @@ func (oc *OAuthHandler) Logout(c *gin.Context) {
 		defer cancel()
 		now := time.Now().UTC()
 		if err = oc.revokeRefreshTokenFamilyByHash(ctx, utils.HashToken(rawRefreshToken), authpkg.RefreshTokenClientWeb, now); err != nil {
-			oc.logger.Warnw("REST - POST - Logout - cannot revoke refresh token family", "error", err)
+			oc.logger.Errorw("REST - POST - Logout - cannot revoke refresh token family", "error", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot logout"})
+			return
 		}
 	}
 
@@ -268,7 +270,9 @@ func (oc *OAuthHandler) LogoutApp(c *gin.Context) {
 	defer cancel()
 	now := time.Now().UTC()
 	if err := oc.revokeRefreshTokenFamilyByHash(ctx, utils.HashToken(rawRefreshToken), authpkg.RefreshTokenClientMobile, now); err != nil {
-		oc.logger.Warnw("REST - POST - LogoutApp - cannot revoke refresh token family", "error", err)
+		oc.logger.Errorw("REST - POST - LogoutApp - cannot revoke refresh token family", "error", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot logout"})
+		return
 	}
 
 	c.Status(http.StatusNoContent)
